@@ -1,0 +1,9 @@
+{
+  "kits": [
+    {
+      "id": "virtuosity",
+      "name": "Virtuosity Studio",
+      "path": "kits/virtuosity/kit.json"
+    }
+  ]
+}
