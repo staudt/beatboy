@@ -20,6 +20,7 @@ export default defineConfig({
   webServer: {
     command: 'node scripts/serve-subpath.mjs',
     url: BASE_URL,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
+    env: { DIST_DIR: 'dist-e2e' },
   },
 });

@@ -1,11 +1,11 @@
-// Static server for e2e tests: serves ./dist under /beatboy/ to mimic GitHub Pages.
+// Static server for e2e tests: serves $DIST_DIR (default ./dist) under /beatboy/ to mimic GitHub Pages.
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', process.env.DIST_DIR || 'dist');
 const BASE = '/beatboy/';
 const PORT = Number(process.env.PORT) || 4173;
 

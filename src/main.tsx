@@ -1,3 +1,4 @@
+import '@fontsource-variable/jetbrains-mono';
 import { render } from 'preact';
 import { App } from './ui/App';
 import './ui/styles.css';

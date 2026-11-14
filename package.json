@@ -10,9 +10,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "pnpm build && playwright test"
+    "test:e2e": "tsc --noEmit && vite build --mode test --outDir dist-e2e && playwright test"
   },
   "dependencies": {
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@preact/signals": "^2.11.4",
     "idb": "^8.0.4",
     "preact": "^11.2.0"

@@ -5,3 +5,4 @@ playwright-report
 .kit-cache
 *.log
 .DS_Store
+dist-e2e
