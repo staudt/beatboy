@@ -122,3 +122,28 @@ export function isTap(down: TapPoint, up: TapPoint): boolean {
 export function isDoubleTap(prev: TapPoint | null, cur: TapPoint): boolean {
   return !!prev && cur.t - prev.t <= DOUBLE_TAP_MS && cur.t >= prev.t && Math.hypot(cur.x - prev.x, cur.y - prev.y) <= DOUBLE_TAP_SLOP;
 }
+
+/** Pattern of the focus section (last played / touched), else the start section, else section 1. Null for an empty song. */
+export function focusPatternId(song: Song | null, focusId: string | null, selectedId: string | null): string | null {
+  if (!song) return null;
+  const sec = song.sections.find((s) => s.id === focusId) ?? song.sections.find((s) => s.id === selectedId) ?? song.sections[0];
+  return sec?.patternId ?? null;
+}
+
+/** The song's distinct patterns in section order (song beats included) and the names of the sections using each. */
+export function songGrooves(song: Song | null, library: readonly Pattern[]): { patterns: Pattern[]; sections: Map<string, string[]> } {
+  const patterns: Pattern[] = [];
+  const sections = new Map<string, string[]>();
+  for (const sec of song?.sections ?? []) {
+    const names = sections.get(sec.patternId);
+    if (names) {
+      names.push(sec.name);
+      continue;
+    }
+    const p = library.find((x) => x.id === sec.patternId);
+    if (!p) continue;
+    patterns.push(p);
+    sections.set(p.id, [sec.name]);
+  }
+  return { patterns, sections };
+}

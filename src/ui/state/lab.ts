@@ -272,6 +272,27 @@ export function auditionSound(sound: SoundId, vel?: number): void {
   engine.audition(sound, vel);
 }
 
+/** A tap on an instrument name: select it and play it like its pad (call from the gesture handler). */
+export function pickSound(sound: SoundId): void {
+  selectedSound.value = sound;
+  auditionSound(sound);
+}
+
+/** Props for an instrument-name button: pointer-down auditions + selects; Enter auditions; Space / other clicks only select. */
+export function soundNameProps(sound: SoundId) {
+  return {
+    onPointerDown: (e: PointerEvent) => {
+      if (e.button === 0 || e.pointerType !== 'mouse') pickSound(sound);
+    },
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.repeat) auditionSound(sound);
+    },
+    onClick: () => {
+      selectedSound.value = sound;
+    },
+  };
+}
+
 let rafId = 0;
 function tickLoop(): void {
   const t = engine.currentTick();

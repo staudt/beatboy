@@ -81,12 +81,19 @@ hashes are rewritten with `replaceState`. (Internal names `assistant/`, `beatlab
   - Drummer -> Editor while a song plays: the editor selects the pattern of the section playing right now before it
     renders; playback (same `SongSource`, which reads patterns from the shared library on every collect, so editor
     edits are heard live) is untouched.
+  - Drummer -> Editor while stopped: the editor selects the **focus section's** pattern (`selectPattern`, no
+    autosave or playback side effects). Focus (`songs.focusSectionId`, runtime only, reset on song change) is the
+    section last played (follows the playing section, stays after Stop), tapped / number-keyed while stopped, or whose
+    beat dropdown was opened or beat edited. No focus yet: the start section, else section 1 (`focusPatternId`).
   - Copy-on-write of a built-in that the playing section uses repoints that section to the copy.
   - "Something else" in the editor (pick another pattern, New beat, Duplicate, delete the current one) while mode is
     `song`: `engine.playPattern` swaps the source to a `PatternLoopSource` without restarting the scheduler (same
     transport position, no count-in, no click) and mode becomes `lab`.
   - Editor -> Drummer: `song` continues; `lab` stops; `idle` nothing.
   - Editor Play when stopped always loops the editor's pattern (`lab`); Stop stops whatever plays.
+  - Editor pattern picker: the first group is "In <Song name>" (`songGrooves`): the current song's distinct patterns in
+    section order, song-local beats included, subtitle "<sections> · <length>"; the usual groups follow without those
+    patterns (other songs' beats stay hidden). The find field also matches section names (`groupWithLeading`).
   - Playing dot: Drummer tab when mode is `song`; Beat Editor tab when `lab`.
 
 ## Drummer (songs)

@@ -3,7 +3,7 @@ import { getMix, hasNotes, setMix } from '../../domain/patternOps';
 import { SOUNDS } from '../../domain/sounds';
 import { SOUND_IDS } from '../../domain/types';
 import { IconSpeaker, IconSpeakerOff } from '../common/icons';
-import { current, editCurrent, selectedSound } from '../state/lab';
+import { current, editCurrent, selectedSound, soundNameProps } from '../state/lab';
 import { useFollowPlayhead } from '../useFollowPlayhead';
 import { BeatTextField } from './BeatTextField';
 import { SoundKey, soundTitle } from './SoundKey';
@@ -34,7 +34,7 @@ export function FullGrid() {
           return (
             <div class={`fg-row${s === sel ? ' is-selected' : ''}${mix.muted ? ' is-muted' : ''}${hasNotes(p, s) ? ' has-notes' : ''}`} key={s}>
               <div class="fg-ctrl">
-                <button type="button" class="fg-name" aria-label={`Select ${SOUNDS[s].name}`} aria-pressed={s === sel} title={soundTitle(s)} onClick={() => (selectedSound.value = s)}>
+                <button type="button" class="fg-name" aria-label={`Select ${SOUNDS[s].name}`} aria-pressed={s === sel} title={soundTitle(s)} {...soundNameProps(s)}>
                   <SoundKey sound={s} />
                   {SOUNDS[s].short}
                 </button>

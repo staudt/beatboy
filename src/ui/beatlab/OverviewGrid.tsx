@@ -5,7 +5,7 @@ import { patternSteps } from '../../domain/time';
 import { SOUNDS } from '../../domain/sounds';
 import { SOUND_IDS } from '../../domain/types';
 import { laneView, scrollLaneToStep } from '../laneScroll';
-import { current, playheadStep, selectedSound } from '../state/lab';
+import { current, playheadStep, selectedSound, soundNameProps } from '../state/lab';
 import { SoundKey, soundTitle } from './SoundKey';
 import { levelName } from './cellInput';
 
@@ -63,7 +63,7 @@ export function OverviewGrid() {
                 aria-label={`Select ${SOUNDS[s].name}`}
                 aria-pressed={s === sel}
                 title={soundTitle(s)}
-                onClick={() => (selectedSound.value = s)}
+                {...soundNameProps(s)}
               >
                 <SoundKey sound={s} />
                 {SOUNDS[s].short}

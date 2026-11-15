@@ -1,3 +1,8 @@
+import type { Pattern } from '../../domain/types';
+import { useMemo } from 'preact/hooks';
+import { lengthLabel } from '../../domain/time';
+import { songGrooves } from '../state/songLogic';
+import { currentSong } from '../state/songs';
 import { IconCopy, IconTrash } from '../common/icons';
 import { PatternPicker } from '../common/PatternPicker';
 import { SaveStatusChip } from '../common/SaveStatus';
@@ -18,11 +23,24 @@ export function PatternHeader() {
   const local = !!p.ownerSongId;
   // Song beats stay out of the list, except the one being edited (shown under "Song beat").
   const list = library.value.flatMap((q) => (q.id === p.id && local ? [{ ...q, category: 'Song beat' }] : q.ownerSongId ? [] : [q]));
+  const song = currentSong.value;
+  const lead = useMemo(() => {
+    const g = songGrooves(song, library.value);
+    if (!song || !g.patterns.length) return undefined;
+    const names = (q: Pattern) => g.sections.get(q.id) ?? [];
+    return {
+      title: `In ${song.name}`,
+      patterns: g.patterns,
+      subtitleOf: (q: Pattern) => `${names(q).join(', ')} · ${lengthLabel(q)}`,
+      searchText: (q: Pattern) => names(q).join(' '),
+    };
+  }, [song, library.value]);
   return (
     <>
     <header class="pattern-header">
       <PatternPicker
         patterns={list}
+        leadingGroup={lead}
         currentId={currentId.value}
         onSelect={choosePattern}
         onRename={renameCurrent}

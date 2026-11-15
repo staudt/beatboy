@@ -49,6 +49,12 @@ export const currentSong = computed<Song | null>(() => songs.value.find((s) => s
 export const songSaveStatus = signal<SaveStatus>('idle');
 /** Section the user tapped while stopped (= start section; also where "+ section" inserts). */
 export const selectedSectionId = signal<string | null>(null);
+/** Section last played or touched (runtime only): the Beat Editor opens its beat when switching tabs while stopped. */
+export const focusSectionId = signal<string | null>(null);
+/** Marks a section as the one the user is working with. */
+export function touchSection(id: string): void {
+  focusSectionId.value = id;
+}
 
 export const songPlaying = signal(false);
 export const songInfo = signal<SongInfo | null>(null);
@@ -83,6 +89,7 @@ function enter(song: Song | null): void {
   batch(() => {
     currentSongId.value = song?.id ?? null;
     selectedSectionId.value = null;
+    focusSectionId.value = null;
     if (song) drummer.setBpm(song.bpm);
   });
 }
@@ -183,6 +190,7 @@ export function addSectionOfKind(kind: SectionKind): void {
 
 export function patchSection(id: string, patch: SectionPatch): void {
   if (patch.patternId && !library.peek().find((p) => p.id === patch.patternId)?.ownerSongId) drummer.lastGrooveId.value = patch.patternId;
+  if (patch.patternId) touchSection(id);
   editSong((s) => updateSection(s, id, patch));
 }
 
@@ -241,6 +249,7 @@ export function setSectionText(sectionId: string, text: string): TextApply {
   const song = currentSong.peek();
   const sec = song?.sections.find((s) => s.id === sectionId);
   if (!song || !sec) return { ok: false, error: 'No such section' };
+  touchSection(sectionId);
   const base = library.peek().find((p) => p.id === sec.patternId);
   const r = localPatternFor(song, sec, text, base, Date.now());
   if (!r.ok) {
@@ -285,7 +294,10 @@ export function tapSection(id: string): void {
   const i = song?.sections.findIndex((s) => s.id === id) ?? -1;
   if (i < 0) return;
   if (engine.mode === 'song') engine.songAct({ type: 'jump', sectionIndex: i });
-  else selectedSectionId.value = id;
+  else {
+    selectedSectionId.value = id;
+    focusSectionId.value = id;
+  }
 }
 
 /** Keyboard number keys: playing = queued jump to section i; stopped = make it the start section. */
@@ -293,7 +305,10 @@ export function selectSectionByIndex(i: number): void {
   const sec = currentSong.peek()?.sections[i];
   if (!sec) return;
   if (engine.mode === 'song') engine.songAct({ type: 'jump', sectionIndex: i });
-  else selectedSectionId.value = sec.id;
+  else {
+    selectedSectionId.value = sec.id;
+    focusSectionId.value = sec.id;
+  }
 }
 
 // ── transport ────────────────────────────────────────────────────
@@ -374,6 +389,12 @@ export function initSongs(): Promise<void> {
 
 async function doInit(): Promise<void> {
   engine.subscribe(syncEngine);
+  // While a song plays the focus follows the playing section (and stays there after Stop).
+  effect(() => {
+    const i = playingSectionIndex.value;
+    const sec = i === null ? undefined : currentSong.peek()?.sections[i];
+    if (sec) focusSectionId.value = sec.id;
+  });
   hooks.songsUsing = (id) => songsUsingPattern(songs.peek(), id).map((s) => s.name);
   await drummer.initDrummer(); // also waits for the lab (library + repo) and the shared settings
   const repo = getRepo();

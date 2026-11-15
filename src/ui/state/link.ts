@@ -12,6 +12,7 @@ import * as lab from './lab';
 import * as songs from './songs';
 import { navigate, route, type Route } from '../router';
 import { editorPlayAction, routeChangeAction } from './linkLogic';
+import { focusPatternId } from './songLogic';
 
 /** Editor Play/Stop (button and Space). Call from a user gesture. */
 export function editorTogglePlay(): void {
@@ -54,6 +55,7 @@ export function initLink(): void {
       mode: engine.mode,
       editorId: lab.currentId.peek(),
       songPatternId: playingSectionPatternId(),
+      focusPatternId: focusPatternId(songs.currentSong.peek(), songs.focusSectionId.peek(), songs.selectedSectionId.peek()),
     });
     const forced = forcedEditorId;
     forcedEditorId = null;

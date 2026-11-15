@@ -32,6 +32,8 @@ export class DrumEngine {
   private readonly scheduler: Scheduler;
   private readonly ticker: Ticker;
   readonly scheduledLog: ScheduledLogEntry[] = [];
+  /** Test builds only: every audition (pad / label tap). */
+  readonly auditionLog: { sound: SoundId; vel: number }[] = [];
   kitReady = false;
   private _mode: EngineMode = 'idle';
   private song: SongSource | null = null;
@@ -179,6 +181,7 @@ export class DrumEngine {
   }
 
   audition(sound: SoundId, vel: number = VELOCITY.normal): void {
+    if (DEBUG) this.auditionLog.push({ sound, vel });
     const ready = this.ensureReady();
     if (this.sampler) {
       this.sampler.audition(sound, vel);
@@ -208,10 +211,10 @@ export const engine = new DrumEngine();
 
 declare global {
   interface Window {
-    __beatboy?: { engine: DrumEngine; scheduledLog: ScheduledLogEntry[] };
+    __beatboy?: { engine: DrumEngine; scheduledLog: ScheduledLogEntry[]; auditionLog: { sound: SoundId; vel: number }[] };
   }
 }
 
 if (DEBUG && typeof window !== 'undefined') {
-  window.__beatboy = { engine, scheduledLog: engine.scheduledLog };
+  window.__beatboy = { engine, scheduledLog: engine.scheduledLog, auditionLog: engine.auditionLog };
 }

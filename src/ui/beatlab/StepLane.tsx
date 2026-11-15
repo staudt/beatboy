@@ -1,7 +1,7 @@
 import { useRef } from 'preact/hooks';
 import { SOUNDS } from '../../domain/sounds';
 import { registerLane, laneView } from '../laneScroll';
-import { selectedSound } from '../state/lab';
+import { auditionSound, selectedSound } from '../state/lab';
 import { useFollowPlayhead } from '../useFollowPlayhead';
 import { useEffect } from 'preact/hooks';
 import { SoundKey, soundTitle } from './SoundKey';
@@ -55,7 +55,12 @@ export function StepLane() {
   return (
     <section class="lane" aria-label={`${SOUNDS[sound].name} steps`}>
       <div class="lane-head">
-        <h3 class="stepgrid-title" title={soundTitle(sound)}>
+        <h3
+          class="stepgrid-title"
+          title={soundTitle(sound)}
+          data-testid="lane-title"
+          onPointerDown={(e) => (e.button === 0 || e.pointerType !== 'mouse') && auditionSound(sound)}
+        >
           <SoundKey sound={sound} />
           {SOUNDS[sound].name}
         </h3>

@@ -402,7 +402,9 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await goEditor(page);
       await press(page, page.getByRole('button', { name: /^Patterns:/ }));
       const dlg = page.getByRole('dialog', { name: 'Patterns' });
-      await expect(dlg.getByRole('option').filter({ hasText: 'Song 1 · Verse' })).toHaveCount(0);
+      // the current song's own beat is listed once, in the song group at the top (never in the category lists)
+      await expect(dlg.getByRole('option').filter({ hasText: 'Song 1 · Verse' })).toHaveCount(1);
+      await expect(dlg.getByRole('group', { name: 'In Song 1' }).getByRole('option').filter({ hasText: 'Song 1 · Verse' })).toHaveCount(1);
       await page.keyboard.press('Escape');
     });
 

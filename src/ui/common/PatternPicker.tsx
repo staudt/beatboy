@@ -16,6 +16,8 @@ export interface PatternPickerProps {
   onNew?: () => void;
   /** Replaces the whole row subtitle. */
   subtitleOf?: (p: Pattern) => string;
+  /** A first group listed above the categories (e.g. the current song's grooves); its patterns are left out of the other groups. */
+  leadingGroup?: LeadingGroup;
   /** Accessible name of the trigger's popup. */
   label?: string;
   /** data-testid for the trigger's name text. */
@@ -39,6 +41,25 @@ export interface PatternPickerProps {
   className?: string;
   /** Wording for other kinds of items (songs). */
   words?: { newLabel: string; nameLabel: string; findPlaceholder: string; findLabel: string; empty: string; list: string };
+}
+
+export interface LeadingGroup {
+  title: string;
+  patterns: readonly Pattern[];
+  /** Row subtitle for these patterns. */
+  subtitleOf?: (p: Pattern) => string;
+  /** Extra text the find field matches (e.g. section names). */
+  searchText?: (p: Pattern) => string;
+}
+
+/** Leading group first (when it has patterns), then the categories without the leading patterns. */
+export function groupWithLeading(list: readonly Pattern[], lead: LeadingGroup | undefined, q: string): [string, Pattern[]][] {
+  const match = (p: Pattern, extra = '') =>
+    !q || p.name.toLowerCase().includes(q) || (p.category || 'Other').toLowerCase().includes(q) || extra.toLowerCase().includes(q);
+  const head = lead ? lead.patterns.filter((p) => match(p, lead.searchText?.(p))) : [];
+  const ids = new Set((lead?.patterns ?? []).map((p) => p.id));
+  const rest = groupPatterns(list.filter((p) => !ids.has(p.id) && match(p)));
+  return lead && head.length ? [[lead.title, [...head]], ...rest] : rest;
 }
 
 const BEAT_WORDS = { newLabel: 'New beat', nameLabel: 'Pattern name', findPlaceholder: 'Find a beat…', findLabel: 'Find pattern', empty: 'No beats match.', list: 'Patterns' };
@@ -72,6 +93,7 @@ export function PatternPicker({
   onRename,
   onNew,
   subtitleOf,
+  leadingGroup,
   label = 'Patterns',
   nameTestId,
   triggerName,
@@ -85,7 +107,7 @@ export function PatternPicker({
   className,
   words = BEAT_WORDS,
 }: PatternPickerProps) {
-  const cur = patterns.find((p) => p.id === currentId);
+  const cur = patterns.find((p) => p.id === currentId) ?? leadingGroup?.patterns.find((p) => p.id === currentId);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [query, setQuery] = useState('');
@@ -203,17 +225,9 @@ export function PatternPicker({
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  const showSearch = patterns.length > SEARCH_MIN;
+  const showSearch = patterns.length + (leadingGroup?.patterns.length ?? 0) > SEARCH_MIN;
   const q = query.trim().toLowerCase();
-  const groups = useMemo(
-    () =>
-      groupPatterns(
-        q
-          ? patterns.filter((p) => p.name.toLowerCase().includes(q) || (p.category || 'Other').toLowerCase().includes(q))
-          : patterns,
-      ),
-    [patterns, q],
-  );
+  const groups = useMemo(() => groupWithLeading(patterns, leadingGroup, q), [patterns, leadingGroup, q]);
   const flat = groups.flatMap(([, l]) => l);
 
   const move = (d: number) => {
@@ -294,7 +308,9 @@ export function PatternPicker({
   const listId = 'pp-list';
   const optId = (id: string) => `pp-opt-${id}`;
   const activeOpt = activeId && flat.some((p) => p.id === activeId) ? optId(activeId) : undefined;
-  const subtitle = (p: Pattern) =>
+  const leadIds = new Set((leadingGroup?.patterns ?? []).map((p) => p.id));
+  const subtitle = (p: Pattern, inLead = false) =>
+    (inLead ? leadingGroup?.subtitleOf?.(p) : undefined) ??
     subtitleOf?.(p) ??
     `${lengthLabel(p)} · ${feelOf(p)}${p.builtIn ? ' · built-in' : ''}`;
 
@@ -417,7 +433,7 @@ export function PatternPicker({
                     >
                       <span class="pp-main">
                         <span class="bi-name">{p.name}</span>
-                        <span class="bi-meta">{subtitle(p)}</span>
+                        <span class="bi-meta">{subtitle(p, cat === leadingGroup?.title && leadIds.has(p.id))}</span>
                       </span>
                       {p.id === currentId && (
                         <span class="pp-check" aria-hidden="true">

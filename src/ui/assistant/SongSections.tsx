@@ -26,6 +26,7 @@ import {
   songInfo,
   songPlaying,
   tapSection,
+  touchSection,
 } from '../state/songs';
 
 const beatsLabel = (p: Pattern) => `${lengthLabel(p)} · ${feelOf(p)}`;
@@ -286,6 +287,7 @@ function BeatCombo({ section, pattern }: { section: Section; pattern: Pattern | 
       panelWidth={600}
       findHeading="Choose another beat"
       onOpen={() => {
+        touchSection(section.id);
         clearTimeout(timer.current);
         lastApplied.current = text;
         latest.current = text;

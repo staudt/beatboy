@@ -3,7 +3,7 @@ import { SOUNDS } from '../../domain/sounds';
 import { SOUND_IDS } from '../../domain/types';
 import { IconSpeaker, IconSpeakerOff } from '../common/icons';
 import { SoundKey, soundTitle } from './SoundKey';
-import { current, editCurrent, selectedSound } from '../state/lab';
+import { current, editCurrent, selectedSound, soundNameProps } from '../state/lab';
 
 export function MixPanel() {
   const p = current.value;
@@ -15,7 +15,7 @@ export function MixPanel() {
         const pct = Math.round(m.gain * 100);
         return (
           <div class={`mix-row${m.muted ? ' is-muted' : ''}${hasNotes(p, s) ? '' : ' is-empty'}`} key={s}>
-            <button type="button" class="mix-name" aria-label={`Select ${SOUNDS[s].name}`} title={soundTitle(s)} onClick={() => (selectedSound.value = s)}>
+            <button type="button" class="mix-name" aria-label={`Select ${SOUNDS[s].name}`} title={soundTitle(s)} {...soundNameProps(s)}>
               <SoundKey sound={s} />
               {SOUNDS[s].name}
             </button>
