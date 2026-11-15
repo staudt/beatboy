@@ -36,10 +36,7 @@ async function press(page: Page, loc: Locator): Promise<void> {
   else await loc.click();
 }
 
-async function openText(page: Page): Promise<void> {
-  if (isMobile(page)) await press(page, page.getByRole('tab', { name: 'Text' }));
-  await expect(page.getByRole('textbox', { name: 'Beat text' })).toBeVisible();
-}
+const beatText = (page: Page): Locator => page.getByRole('textbox', { name: 'Beat text' });
 
 async function openSettings(page: Page): Promise<void> {
   if (isMobile(page)) {
@@ -225,18 +222,15 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(option(page, /^Rock 8ths/)).toBeVisible();
     });
 
-    test('text notation: apply and errors', async ({ page }) => {
+    test('beat text: live apply, errors, Escape and blur revert', async ({ page }) => {
       await open(page);
       await newBeat(page);
       await expect(patternName(page)).toHaveText('Beat 1');
-      await openSettings(page);
-      await openText(page);
-      const box = page.getByRole('textbox', { name: 'Beat text' });
+      const box = beatText(page);
+      await expect(box).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Apply' })).toHaveCount(0);
       await box.fill('kh . h .  sh . h .  kh . kh .  sh . h .');
-      await expect(page.locator('.parse.ok')).toContainText('✓ 16 steps · 4 beats');
-      await press(page, page.getByRole('button', { name: 'Apply' }));
-      await expect(page.getByRole('button', { name: 'Apply' })).toBeDisabled();
-
+      await expect(page.locator('.parse.ok')).toContainText('16 steps · 4 beats');
       if (isMobile(page)) await press(page, page.getByRole('tab', { name: 'Grid' }));
       await press(page, pad(page, 'Kick'));
       // 8th-note text (written with its rests) lands on every other square of the 16th grid.
@@ -248,14 +242,92 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       for (const s of [0, 2, 4, 6, 8, 10, 12, 14]) await expect(cell(page, 'hatClosed', s)).toHaveAttribute('aria-pressed', 'true');
       await expect(cell(page, 'hatClosed', 1)).toHaveAttribute('aria-pressed', 'false');
 
-      await openText(page);
+      // Invalid text: error shown, last valid pattern kept.
       await box.fill('k h\nk q');
       await expect(page.locator('.parse.err')).toContainText("Line 2, col 3: Unknown sound 'q'");
+      await page.waitForTimeout(500);
+      await expect(cell(page, 'hatClosed', 2)).toHaveAttribute('aria-pressed', 'true');
       await box.fill('k . . . '.repeat(33));
       await expect(page.locator('.parse.err')).toContainText('Too many steps: maximum is 128 (32 beats)');
-      await expect(page.getByRole('button', { name: 'Apply' })).toBeDisabled();
-      await press(page, page.getByRole('button', { name: 'Revert' }));
-      await expect(page.locator('.parse.ok')).toBeVisible();
+      await page.waitForTimeout(500);
+      await expect(cell(page, 'hatClosed', 2)).toHaveAttribute('aria-pressed', 'true');
+
+      // Escape reverts the field to the pattern's text and blurs.
+      await box.focus();
+      await box.press('Escape');
+      await expect(box).not.toBeFocused();
+      await expect(page.locator('.parse.ok')).toContainText('16 steps · 4 beats');
+      await expect(box).toHaveValue(/^kh \. h \./);
+
+      // Blur with invalid text reverts too, with a hint.
+      await box.fill('k q');
+      await expect(page.locator('.parse.err')).toBeVisible();
+      await box.blur();
+      await expect(page.getByText('Reverted — invalid beat')).toBeVisible();
+      await expect(box).toHaveValue(/^kh \. h \./);
+    });
+
+    test('beat text sits above the pads and the grid, no tab switch needed', async ({ page }) => {
+      await open(page);
+      const box = await beatText(page).boundingBox();
+      const padBox = await pad(page, 'Kick').boundingBox();
+      const gridBox = await cell(page, 'kick', 0).boundingBox();
+      expect(box && padBox && gridBox).toBeTruthy();
+      expect(box!.y + box!.height).toBeLessThanOrEqual(padBox!.y);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(gridBox!.y);
+      await expect(page.getByRole('tab', { name: 'Text' })).toHaveCount(0);
+    });
+
+    test('typing applies live; grid edits rewrite the field', async ({ page }) => {
+      await open(page);
+      await newBeat(page);
+      await beatText(page).fill('kh . h .  sh . h .');
+      await press(page, pad(page, 'Kick'));
+      await expect(cell(page, 'kick', 0)).toHaveAttribute('aria-pressed', 'true', { timeout: 1000 });
+      // Grid edit -> field text.
+      await press(page, cell(page, 'kick', 3));
+      await expect(beatText(page)).toHaveValue(/^kh \. h k/);
+    });
+
+    test('a grid change does not clobber the field while typing; blur shows the merged result', async ({ page }) => {
+      await open(page);
+      await newBeat(page);
+      const box = beatText(page);
+      await box.fill('k . . .  s . . .  h');
+      await expect(page.locator('.parse.ok')).toHaveText('9 steps');
+      // A grid toggle that happens elsewhere while the field is focused (synthetic mouse press, no blur).
+      await cell(page, 'kick', 0).evaluate((el) => {
+        const o = { bubbles: true, pointerType: 'mouse', button: 0 };
+        el.dispatchEvent(new PointerEvent('pointerdown', o));
+        document.dispatchEvent(new PointerEvent('pointerup', o));
+      });
+      await page.waitForTimeout(500);
+      await expect(box).toBeFocused();
+      await expect(box).toHaveValue('k . . .  s . . .  h');
+      await box.blur();
+      // Desktop keeps 4 beats per line; phones break every 2 beats.
+      await expect(box).toHaveValue(/^\. \. \. \.  s \. \. \.( \|\n|  )h/);
+    });
+
+    test('editing a built-in by typing makes a My copy that survives reload', async ({ page }) => {
+      await open(page);
+      await expect(patternName(page)).toHaveText('Rock 8ths');
+      await beatText(page).fill('k . s .');
+      await expect(patternName(page)).toHaveText('My Rock 8ths');
+      await expect(page.getByRole('status').filter({ hasText: 'Saved as My Rock 8ths' })).toBeVisible();
+      await expect(page.locator('.chip-saved')).toHaveText('Saved');
+      await page.reload();
+      await expect(patternName(page)).toHaveText('My Rock 8ths');
+      await expect(beatText(page)).toHaveValue(/^k \. s \./);
+    });
+
+    test('Space types in the beat text and does not start playback', async ({ page }) => {
+      await open(page);
+      const box = beatText(page);
+      await box.fill('k');
+      await box.press('Space');
+      await expect(box).toHaveValue('k ');
+      await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
     });
 
     test('beats control and feel toggle resize the grid but keep squares the same size', async ({ page }) => {
@@ -553,6 +625,7 @@ test.describe('mobile touch', () => {
     expect(await lane.evaluate((el) => el.scrollLeft)).toBe(0);
 
     // Drag starting ON a cell, well beyond the 8 px tap slop.
+    await lane.scrollIntoViewIfNeeded();
     const c = (await cell(page, 'kick', 3).boundingBox())!;
     const y = c.y + c.height / 2;
     await touchDrag(page, { x: c.x + c.width / 2, y }, { x: c.x + c.width / 2 - 160, y });
@@ -686,6 +759,8 @@ test('screenshots', async ({ browser }) => {
     await expect(patternName(page)).toBeVisible();
     const shot = (n: string) => page.screenshot({ path: `test-results/screenshots/${name}-${n}.png`, fullPage: true });
 
+    await beatText(page).fill('kh . h . sh . h .  kh . kh . sh . h .  kh . h . sh . h .  k . . . s . . .  kh . h . sh . h .  kh . h . s s s .');
+    await page.waitForTimeout(450);
     await press(page, pad(page, 'Snare'));
     await press(page, cell(page, 'snare', 3));
     await press(page, cell(page, 'snare', 3));
@@ -695,9 +770,11 @@ test('screenshots', async ({ browser }) => {
     await page.waitForTimeout(450);
     await shot('editor');
 
-    await openText(page);
-    await page.getByRole('textbox', { name: 'Beat text' }).scrollIntoViewIfNeeded();
-    await shot('text');
+    await beatText(page).fill('k');
+    await beatText(page).pressSequentially(' q');
+    await expect(page.locator('.parse.err')).toBeVisible();
+    await shot('editor-error');
+    await beatText(page).press('Escape');
 
     if (isMobile(page)) {
       await press(page, page.getByRole('tab', { name: 'Mix' }));
@@ -744,5 +821,31 @@ test('screenshots', async ({ browser }) => {
     await shot('editor-8beats');
     expect(errors).toEqual([]);
     await ctx.close();
+  }
+});
+
+test.describe('editor layout across widths', () => {
+  for (const w of [360, 375, 414, 580, 768, 899, 900, 1024, 1440]) {
+    test(`beat text, header and transport do not overlap or overflow at ${w}px`, async ({ browser }) => {
+      const ctx = await browser.newContext({ viewport: { width: w, height: 900 }, hasTouch: w < 900, isMobile: w < 900 });
+      const page = await ctx.newPage();
+      await page.goto('./#/editor');
+      await expect(patternName(page)).toBeVisible();
+      await beatText(page).fill('kh . h .  sh . h .  kh . kh .  sh . h .  kh . h .  sh . h .');
+      await expect(page.locator('.parse.ok')).toContainText('24 steps');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      const box = (await beatText(page).boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(w);
+      const head = (await page.locator('.pattern-header').boundingBox())!;
+      const pads = (await pad(page, 'Kick').boundingBox())!;
+      expect(head.y + head.height).toBeLessThanOrEqual(box.y + 1);
+      expect(box.y + box.height).toBeLessThanOrEqual(pads.y);
+      // The caption and its Syntax toggle sit side by side without overlapping.
+      const cap = (await page.locator('.beattext-caption .parse').boundingBox())!;
+      const tog = (await page.locator('.syntax-toggle').boundingBox())!;
+      expect(cap.x + cap.width).toBeLessThanOrEqual(tog.x + 1);
+      await ctx.close();
+    });
   }
 });

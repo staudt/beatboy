@@ -218,7 +218,14 @@ export function parseBeatText(text: string, opts: { stepsPerBeat: number }): Par
  * two between beats (the last beat may be partial). Notes that are off the grid cannot be written and are counted in
  * `droppedOffGrid`. By default a line per 4 beats, each ending in ` |`; `lineBreaks: false` gives one bar-line-free line.
  */
-export function formatBeatText(p: Pattern, opts: { lineBreaks?: boolean } = {}): { text: string; droppedOffGrid: number } {
+/**
+ * Grid → text. `lineBreaks: false` gives one line; otherwise a line every `beatsPerLine` beats (default 4;
+ * phones use 2 so lines break on beat boundaries instead of wrapping mid-beat).
+ */
+export function formatBeatText(
+  p: Pattern,
+  opts: { lineBreaks?: boolean; beatsPerLine?: number } = {},
+): { text: string; droppedOffGrid: number } {
   const st = stepTicks(p.timeSig, p.stepsPerBeat);
   const spb = p.stepsPerBeat;
   const totalSteps = patternSteps(p);
@@ -260,7 +267,10 @@ export function formatBeatText(p: Pattern, opts: { lineBreaks?: boolean } = {}):
   }
   const lines: string[] = [];
   if (opts.lineBreaks === false) lines.push(beatTexts.join('  '));
-  else for (let k = 0; k < beatTexts.length; k += 4) lines.push(`${beatTexts.slice(k, k + 4).join('  ')} |`);
+  else {
+    const per = Math.max(1, Math.floor(opts.beatsPerLine ?? 4));
+    for (let k = 0; k < beatTexts.length; k += per) lines.push(`${beatTexts.slice(k, k + per).join('  ')} |`);
+  }
   return { text: lines.join('\n'), droppedOffGrid: dropped };
 }
 

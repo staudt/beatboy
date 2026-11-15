@@ -12,7 +12,7 @@ import { applyEdit, findPattern, nextBeatName, removePattern } from './labLogic'
 
 export const DEFAULT_PATTERN_ID = 'f-rock-8ths';
 
-export type LabView = 'grid' | 'text' | 'mix';
+export type LabView = 'grid' | 'mix';
 export type KitStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export interface ToastMsg {
@@ -60,8 +60,6 @@ export const settingsOpen = signal(false);
 export const saveGrooveReq = signal<{ id: string; name: string } | null>(null);
 export const velPopover = signal<VelPopover | null>(null);
 export const ready = signal(false);
-/** Unsaved text-editor draft; null = follow the pattern. */
-export const textDraft = signal<string | null>(null);
 
 /** Timeline shape as primitives so cells re-render only when the structure changes. */
 /** Loop length in squares (steps); a partial last beat is possible. */
@@ -177,7 +175,6 @@ export function editCurrent(fn: (p: Pattern) => Pattern, opts: { quiet?: boolean
 export function selectPattern(id: string): void {
   if (!findPattern(library.peek(), id)) return;
   currentId.value = id;
-  textDraft.value = null;
 }
 
 /**

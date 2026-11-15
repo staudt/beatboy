@@ -356,3 +356,17 @@ describe('round trip', () => {
     expect(stepsCaption(2, 3)).toBe('2 steps (triplets)');
   });
 });
+
+describe('formatBeatText beatsPerLine', () => {
+  it('breaks lines on beat boundaries every N beats and still round-trips', async () => {
+    const { createPattern } = await import('../../src/domain/patternOps');
+    const base = createPattern({ timeSig: { num: 6, den: 4 }, stepsPerBeat: 4 }, 0);
+    const res = applyBeatText(base, 'kh . h .  sh . h .  kh . kh .  sh . h .  k . . .  s . . .', 0);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const two = formatBeatText(res.pattern, { beatsPerLine: 2 }).text;
+    expect(two.split('\n')).toEqual(['kh . h .  sh . h . |', 'kh . kh .  sh . h . |', 'k . . .  s . . . |']);
+    const back = applyBeatText(res.pattern, two, 0);
+    expect(back.ok && back.pattern.notes).toEqual(res.pattern.notes);
+  });
+});

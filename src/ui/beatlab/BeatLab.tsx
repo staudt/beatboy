@@ -9,14 +9,13 @@ import { PadGrid } from './PadGrid';
 import { PatternHeader } from './PatternHeader';
 import { PatternSettings } from './PatternSettings';
 import { StepLane } from './StepLane';
-import { TextPanel } from './TextPanel';
+import { BeatTextField } from './BeatTextField';
 import { Transport } from './Transport';
 import { VelocityPopover } from './VelocityPopover';
 import { IconGear } from '../common/icons';
 
 const VIEWS: { id: LabView; label: string }[] = [
   { id: 'grid', label: 'Grid' },
-  { id: 'text', label: 'Text' },
   { id: 'mix', label: 'Mix' },
 ];
 
@@ -67,6 +66,7 @@ export function BeatLab() {
           <PatternHeader />
           <Transport />
         </div>
+        <BeatTextField />
         <div class="lab-cols">
           <div class="lab-left">
             <PadGrid />
@@ -77,10 +77,6 @@ export function BeatLab() {
           </div>
           <div class="lab-right">
             <FullGrid />
-            <div class="panel">
-              <h2 class="label panel-title">text</h2>
-              <TextPanel />
-            </div>
           </div>
         </div>
         <VelocityPopover />
@@ -92,6 +88,7 @@ export function BeatLab() {
     <div class="lab lab-mobile">
       <PatternHeader />
       <Transport />
+      <BeatTextField />
       <Summary />
       {settingsOpen.value && (
         <div id="pattern-settings" class="panel">
@@ -106,7 +103,6 @@ export function BeatLab() {
           <OverviewGrid />
         </>
       )}
-      {view === 'text' && <TextPanel />}
       {view === 'mix' && <MixPanel />}
       <VelocityPopover />
     </div>
