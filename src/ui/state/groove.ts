@@ -105,9 +105,11 @@ export function tap(now: number = performance.now()): void {
 
 // ── transport ────────────────────────────────────────────────────
 /** Call synchronously from a user gesture (unlocks the AudioContext). */
-export function play(): void {
+export function play(opts: { countIn?: boolean } = {}): void {
   engine.setBpm(bpm.peek());
-  const started = engine.playGroove(getConfig);
+  // Starting from the Beat Editor doesn't count in (countInBars only matters at start).
+  const cfg = opts.countIn === false ? () => ({ ...getConfig(), countInBars: 0 as const }) : getConfig;
+  const started = engine.playGroove(cfg);
   trackKit(started);
   started.catch(() => {});
 }
@@ -198,10 +200,9 @@ async function doInit(): Promise<void> {
       void acquireLock();
     }
   });
-  // Tempo is the groove's own: follow the BPM signal while the groove plays.
+  // One shared tempo for both tabs: the engine always follows the BPM signal.
   effect(() => {
-    const b = bpm.value;
-    if (engine.mode === 'groove') engine.setBpm(b);
+    engine.setBpm(bpm.value);
   });
 
   await initLab();

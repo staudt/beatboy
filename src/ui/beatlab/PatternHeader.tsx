@@ -2,7 +2,7 @@ import { IconCopy, IconTrash } from '../common/icons';
 import { PatternPicker } from '../common/PatternPicker';
 import { SaveStatusChip } from '../common/SaveStatus';
 import {
-  bpmOverrides,
+  choosePattern,
   current,
   currentId,
   duplicateCurrent,
@@ -10,21 +10,18 @@ import {
   newPattern,
   renameCurrent,
   requestDelete,
-  selectPattern,
 } from '../state/lab';
 
 export function PatternHeader() {
   const p = current.value;
-  const overrides = bpmOverrides.value;
   return (
     <header class="pattern-header">
       <PatternPicker
         patterns={library.value}
         currentId={currentId.value}
-        onSelect={selectPattern}
+        onSelect={choosePattern}
         onRename={renameCurrent}
         onNew={newPattern}
-        bpmOf={(q) => overrides[q.id] ?? q.bpm}
         label="Patterns"
         nameTestId="pattern-name"
       />

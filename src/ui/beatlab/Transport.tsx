@@ -1,7 +1,9 @@
 import { PATTERN_LIMITS } from '../../domain/types';
 import { IconMinus, IconPlay, IconPlus, IconStop } from '../common/icons';
 import { isDesktop } from '../media';
-import { bpm, current, kitStatus, playing, settingsOpen, setTempo, tap, togglePlay } from '../state/lab';
+import { bpm, nudgeBpm, setBpm as setTempo, tap } from '../state/groove';
+import { current, kitStatus, playing, settingsOpen } from '../state/lab';
+import { editorTogglePlay as togglePlay } from '../state/link';
 
 export function Transport() {
   const isPlaying = playing.value;
@@ -24,7 +26,7 @@ export function Transport() {
   );
   const commit = (el: HTMLInputElement) => {
     const v = Number(el.value);
-    if (Number.isFinite(v) && v > 0) setTempo(Math.min(PATTERN_LIMITS.maxBpm, Math.max(PATTERN_LIMITS.minBpm, v)));
+    if (Number.isFinite(v) && v > 0) setTempo(v);
     el.value = String(bpm.peek());
   };
   return (
@@ -38,7 +40,7 @@ export function Transport() {
         {isPlaying ? <IconStop width={26} height={26} /> : <IconPlay width={26} height={26} />}
       </button>
       <div class="tempo">
-        <button type="button" class="btn btn-icon" aria-label="Tempo down" disabled={b <= PATTERN_LIMITS.minBpm} onClick={() => setTempo(b - 1)}>
+        <button type="button" class="btn btn-icon" aria-label="Tempo down" disabled={b <= PATTERN_LIMITS.minBpm} onClick={() => nudgeBpm(-1)}>
           <IconMinus />
         </button>
         <label class="tempo-field">
@@ -56,7 +58,7 @@ export function Transport() {
           <span class="label">bpm</span>
         </label>
         {desktop && slider}
-        <button type="button" class="btn btn-icon" aria-label="Tempo up" disabled={b >= PATTERN_LIMITS.maxBpm} onClick={() => setTempo(b + 1)}>
+        <button type="button" class="btn btn-icon" aria-label="Tempo up" disabled={b >= PATTERN_LIMITS.maxBpm} onClick={() => nudgeBpm(1)}>
           <IconPlus />
         </button>
       </div>

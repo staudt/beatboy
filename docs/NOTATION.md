@@ -1,6 +1,6 @@
 # Beat text notation
 
-Beat Lab's **Text** panel lets you type a pattern instead of tapping it. One token is one square, or one beat, or one 8th, depending on how coarsely you write it (see *Resolution* below), so `k-s-k-s-` is a kick on 1 and 3 and a snare on 2 and 4 of a 4-beat loop written in 8ths.
+Beat Editor's **Text** panel lets you type a pattern instead of tapping it. One token is one square, or one beat, or one 8th, depending on how coarsely you write it (see *Resolution* below), so `k-s-k-s-` is a kick on 1 and 3 and a snare on 2 and 4 of a 4-beat loop written in 8ths.
 
 Parsing is done by `parseBeatText` in `src/domain/notation.ts`; `formatBeatText` writes a pattern back out as text. The grid is always 16ths (4 squares per beat, **Straight**) or triplets (3 squares per beat, **Triplet**); a pattern is a loop of N beats (1 to 32).
 

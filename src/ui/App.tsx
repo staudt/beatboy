@@ -7,18 +7,20 @@ import { Toast } from './common/Toast';
 import { isDesktop } from './media';
 import { navigate, route, type Route } from './router';
 import * as groove from './state/groove';
-import { initLab, playing as labPlaying, prepareAudio, ready, togglePlay } from './state/lab';
+import { editorTogglePlay, initLink } from './state/link';
+import { playingTabs } from './state/linkLogic';
+import { currentId, initLab, mode, prepareAudio, ready } from './state/lab';
 
 const TABS: { id: Route; label: string; icon: typeof IconGrid }[] = [
-  { id: 'assistant', label: 'Assistant', icon: IconBot },
-  { id: 'lab', label: 'Beat Lab', icon: IconGrid },
+  { id: 'drummer', label: 'Drummer', icon: IconBot },
+  { id: 'editor', label: 'Beat Editor', icon: IconGrid },
 ];
 
 function Tabs({ where }: { where: 'top' | 'bottom' }) {
-  const desktopOrder = [...TABS].reverse();
+  const dots = playingTabs({ mode: mode.value, grooveId: groove.grooveId.value, editorId: currentId.value });
   return (
     <nav class={`tabs tabs-${where}`} aria-label="Sections">
-      {(where === 'top' ? desktopOrder : TABS).map((t) => (
+      {TABS.map((t) => (
         <button
           key={t.id}
           type="button"
@@ -28,7 +30,7 @@ function Tabs({ where }: { where: 'top' | 'bottom' }) {
         >
           <t.icon width={20} height={20} />
           <span>{t.label}</span>
-          {(t.id === 'lab' ? labPlaying.value : groove.playing.value) && (
+          {dots[t.id] && (
             <i class="tab-dot" data-testid={`playing-${t.id}`} aria-label="playing" role="img" />
           )}
         </button>
@@ -49,6 +51,7 @@ function isTypingTarget(t: EventTarget | null): boolean {
 
 export function App() {
   useEffect(() => {
+    initLink();
     void initLab();
     void groove.initGroove();
     // First gesture warms up audio + loads the kit.
@@ -59,15 +62,15 @@ export function App() {
       if (e.repeat && e.code === 'Space') return;
       const t = e.target as HTMLElement | null;
       if (isTypingTarget(t) || t?.closest('.pp-panel')) return;
-      const assistant = route.value === 'assistant';
+      const drummer = route.value === 'drummer';
       if (e.code === 'Space') {
         e.preventDefault();
         spaceHandled = true;
-        if (assistant) groove.togglePlay();
-        else togglePlay();
+        if (drummer) groove.togglePlay();
+        else editorTogglePlay();
         return;
       }
-      if (!assistant || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (!drummer || e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.key === 'f' || e.key === 'F') {
         if (e.repeat) return;
         e.preventDefault();
@@ -107,7 +110,7 @@ export function App() {
           <Tabs where="top" />
         </header>
       )}
-      <main class="view">{route.value === 'lab' ? ready.value ? <BeatLab /> : <p class="boot">Loading…</p> : <GrooveView />}</main>
+      <main class="view">{route.value === 'editor' ? ready.value ? <BeatLab /> : <p class="boot">Loading…</p> : <GrooveView />}</main>
       {!desktop && <Tabs where="bottom" />}
       <Toast />
       <ConfirmSheet />

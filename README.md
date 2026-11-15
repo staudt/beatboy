@@ -1,6 +1,6 @@
 # Beatboy
 
-A super metronome and drum assistant for guitarists, with a pocket drum-machine Beat Lab.
+A super metronome and Drummer for guitarists, with a pocket drum-machine Beat Editor.
 
 ## Commands
 

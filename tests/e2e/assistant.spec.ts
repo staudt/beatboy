@@ -75,11 +75,11 @@ async function setClick(page: Page, on: boolean): Promise<void> {
   await expect(b).toHaveAttribute('aria-pressed', String(on));
 }
 
-test('defaults to the Assistant and keeps same-origin requests only', async ({ page }) => {
+test('defaults to the Drummer and keeps same-origin requests only', async ({ page }) => {
   const urls: string[] = [];
   page.on('request', (r) => urls.push(r.url()));
   await open(page);
-  await expect(page.getByRole('region', { name: 'Drum Assistant' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Drummer' })).toBeVisible();
   await expect(bpmInput(page)).toHaveValue('100');
   await expect(page.getByTestId('groove-name')).toHaveText('Click only');
   await expect(fillBtn(page)).toBeDisabled();
@@ -199,12 +199,12 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(page.locator('.gv-lamp')).toHaveCount(3);
     });
 
-    test('Edit in Beat Lab opens that pattern', async ({ page }) => {
+    test('Edit in Beat Editor opens that pattern', async ({ page }) => {
       await open(page);
-      await expect(page.getByRole('button', { name: 'Edit in Beat Lab' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Edit in Beat Editor' })).toHaveCount(0);
       await pickGroove(page, 'Punk');
-      await press(page, page.getByRole('button', { name: 'Edit in Beat Lab' }));
-      await expect(page).toHaveURL(/#\/lab$/);
+      await press(page, page.getByRole('button', { name: 'Edit in Beat Editor' }));
+      await expect(page).toHaveURL(/#\/editor$/);
       await expect(page.getByTestId('pattern-name')).toHaveText('Punk');
     });
 
@@ -232,20 +232,20 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await open(page);
       await setBpm(page, 120);
       await pickGroove(page, 'Rock 8ths');
-      await shot('assistant');
+      await shot('drummer');
       await setCountIn(page, 'Off');
       await press(page, play(page));
       await page.waitForTimeout(1300);
       await press(page, fillBtn(page));
       await page.waitForTimeout(500);
-      await shot('assistant-playing');
+      await shot('drummer-playing');
       await press(page, stopBtn(page));
       if (name === 'mobile') {
         await setBpm(page, 60);
         await setCountIn(page, '1');
         await press(page, play(page));
         await expect(page.getByTestId('countdown')).toHaveText('3');
-        await shot('assistant-countin');
+        await shot('drummer-countin');
         await press(page, stopBtn(page));
       }
     });
@@ -255,7 +255,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
 test.describe('desktop keyboard', () => {
   test.use(LAYOUTS.desktop);
 
-  test('Space, F, arrows and T on the Assistant', async ({ page }) => {
+  test('Space, F, arrows and T on the Drummer', async ({ page }) => {
     await open(page);
     await setBpm(page, 100);
     await pickGroove(page, 'Rock 8ths');
@@ -263,7 +263,7 @@ test.describe('desktop keyboard', () => {
     await page.locator('body').click({ position: { x: 5, y: 5 } });
     await page.keyboard.press('Space');
     await expect(stopBtn(page)).toBeVisible();
-    await expect(page.getByTestId('playing-assistant')).toBeVisible();
+    await expect(page.getByTestId('playing-drummer')).toBeVisible();
     await page.keyboard.press('f');
     await expect(fillBtn(page)).toHaveAttribute('data-state', /queued|active/);
     await page.keyboard.press('ArrowUp');
@@ -282,29 +282,22 @@ test.describe('desktop keyboard', () => {
     await expect(play(page)).toBeVisible();
   });
 
-  test('Space plays the lab on #/lab; groove hands over to the lab and back', async ({ page }) => {
+  test('Space toggles playback on both tabs', async ({ page }) => {
     await open(page);
     await page.keyboard.press('Space');
     await expect(stopBtn(page)).toBeVisible();
-    await page.getByRole('button', { name: /Beat Lab/ }).click();
-    // the groove is playing: the lab shows stopped (and the tab dot marks the groove)
-    await expect(play(page)).toBeVisible();
-    await expect(page.getByTestId('playing-assistant')).toBeVisible();
-    await expect(page.getByTestId('playing-lab')).toHaveCount(0);
-    await play(page).click();
+    await page.getByRole('button', { name: /Beat Editor/ }).click();
+    // click only keeps playing across the switch; the editor shows it as playing
     await expect(stopBtn(page)).toBeVisible();
-    await expect(page.getByTestId('playing-lab')).toBeVisible();
-    await expect(page.getByTestId('playing-assistant')).toHaveCount(0);
-    await page.getByRole('button', { name: /Assistant/ }).click();
-    await expect(play(page)).toBeVisible();
-    // Space on the lab toggles the lab pattern
-    await page.getByRole('button', { name: /Beat Lab/ }).click();
+    await expect(page.getByTestId('playing-drummer')).toBeVisible();
     await page.locator('body').click({ position: { x: 5, y: 5 } });
     await page.keyboard.press('Space');
     await expect(play(page)).toBeVisible();
     await page.keyboard.press('Space');
     await expect(stopBtn(page)).toBeVisible();
-    await page.keyboard.press('Space');
+    await expect(page.getByTestId('playing-editor')).toBeVisible();
+    // the editor owns the playback now (lab mode): going back to the Drummer stops it
+    await page.getByRole('button', { name: /Drummer/ }).click();
     await expect(play(page)).toBeVisible();
   });
 });

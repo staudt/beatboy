@@ -18,7 +18,7 @@ DOM or Web Audio imports and are fully unit-tested in Node.
 - Integer **ticks**, `TPQ = 480` per quarter note. A beat is one `1/den` note (`beatTicks = 480·4/den`).
 - Patterns store sparse notes `{tick, vel}` per sound. The step grid is a *view*:
   `stepTicks = beatTicks / stepsPerBeat`.
-- **Beats + feel model**: a Beat Lab pattern is one loop of N beats (1–32, the BEATS control at the top right of
+- **Beats + feel model**: a Beat Editor pattern is one loop of N beats (1–32, the BEATS control at the top right of
   the editor). Every pattern has `timeSig = {num: N, den: 4}` and `bars = 1` (the field stays for the engine and
   later songs, where bar grouping will live). The grid is always 16ths: `stepsPerBeat` is 4 (FEEL = Straight, 4
   squares per beat; 8th-note grooves leave every other square empty) or 3 (FEEL = Triplet: shuffle, 6/8, 12/8).
@@ -58,6 +58,29 @@ Timing is the top product requirement, so sounds are never triggered from a JS t
 7. **Start/stop**: the AudioContext is created/resumed inside the user's first gesture (autoplay policy;
    iOS gets a silent unlock buffer). Stop ramps the master gain to 0 over 30 ms and stops all voices,
    including ones already scheduled for the next 120 ms, so stopping is click-free.
+
+## Tabs, shared tempo and the Drummer/Editor link
+
+Two tabs: **Drummer** (`#/drummer`, default, first) and **Beat Editor** (`#/editor`). Old `#/assistant` / `#/lab`
+hashes are rewritten with `replaceState`. (Internal names `assistant/`, `beatlab/`, `lab.ts` are unchanged.)
+
+- **One tempo**: both tabs read and write `groove.bpm` (persisted with the Drummer settings); the engine follows
+  it in every mode. `Pattern.bpm` stays in the data model but no longer drives playback; selecting or creating a
+  pattern never changes the tempo.
+- **Link rules** (pure functions in `ui/state/linkLogic.ts`, wired in `ui/state/link.ts` by one effect on the
+  route signal, so tab clicks, keyboard and back button behave the same). `engine.mode` is `idle | lab | groove`.
+  - Drummer -> Editor while mode is `groove` and a groove is selected: the editor selects that pattern before it
+    renders; playback (same GrooveSource: click, fills, position) is untouched. `GrooveSource` reads the pattern
+    from the shared library on every collect, so editor edits are heard live. Click-only: nothing is linked.
+  - Copy-on-write of a built-in that is the playing groove sets the Drummer's groove to the copy.
+  - "Something else" in the editor (pick another pattern, New beat, Duplicate, delete the current one) while mode is
+    `groove`: `engine.playPattern` swaps the source to a `PatternLoopSource` without restarting the scheduler (same
+    transport position, no count-in, no click or fills) and mode becomes `lab`.
+  - Editor -> Drummer: `groove` continues; `lab` stops; `idle` nothing.
+  - Editor Play when stopped: if the editor's pattern is the Drummer's groove it starts the groove with no count-in
+    (so the Drummer can continue it), otherwise it loops the pattern (`lab`). Stop stops whatever plays.
+  - Playing dot: Drummer tab when mode is `groove`; Beat Editor tab when `lab`, or `groove` with editor pattern ==
+    groove.
 
 ## Sound
 

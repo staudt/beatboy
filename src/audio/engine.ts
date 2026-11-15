@@ -101,20 +101,21 @@ export class DrumEngine {
     return Promise.all([running, this.kitPromise]).then(() => this.emit());
   }
 
-  /** Start looping a pattern, or (if already playing) switch to it without restarting the transport. */
+  /** Start looping a pattern, or (if already playing, in lab or groove mode) switch to it without restarting the transport. */
   async playPattern(getPattern: () => Pattern): Promise<void> {
     const ready = this.ensureReady();
     const source = new PatternLoopSource(getPattern);
     await ready;
-    if (this.scheduler.playing && this._mode === 'groove') {
-      // leaving groove mode: restart cleanly from tick 0
-      this.ticker.stop();
-      this.scheduler.stop();
-    }
+    this.groove?.reset();
     this.groove = null;
+    this.grooveConfig = null;
     if (this.scheduler.playing) {
+      // Already playing (lab loop or groove): swap the source, keep the transport position (the loop is
+      // indexed by absolute tick, so the phase stays aligned).
       this.scheduler.setSource(source);
+      const changed = this._mode !== 'lab';
       this._mode = 'lab';
+      if (changed) this.emit();
       return;
     }
     this.scheduler.setSource(source);

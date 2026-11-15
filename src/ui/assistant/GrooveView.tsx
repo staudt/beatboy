@@ -133,10 +133,10 @@ function Settings() {
               class="btn btn-small btn-ghost gv-edit"
               onClick={() => {
                 selectPattern(g.id);
-                navigate('lab');
+                navigate('editor');
               }}
             >
-              Edit in Beat Lab
+              Edit in Beat Editor
             </button>
           )}
         </div>
@@ -165,9 +165,9 @@ function Settings() {
 
 export function GrooveView() {
   return (
-    <section class="gv" aria-label="Drum Assistant">
+    <section class="gv" aria-label="Drummer">
       <div class="gv-main">
-        <h2 class="label gv-title">Assistant · Groove</h2>
+        <h2 class="label gv-title">Drummer · Groove</h2>
         <BpmControl />
         <BeatLamps />
       </div>

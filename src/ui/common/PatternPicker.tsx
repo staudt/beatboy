@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Pattern } from '../../domain/types';
+import { feelOf } from '../../domain/patternOps';
 import { isDesktop } from '../media';
 import { IconChevronDown, IconPlus } from './icons';
 
@@ -11,8 +12,6 @@ export interface PatternPickerProps {
   onRename?: (name: string) => void;
   /** Enables the "+ New beat" row. Must make the new pattern current. */
   onNew?: () => void;
-  /** Tempo shown in the row subtitle (defaults to the pattern's own). */
-  bpmOf?: (p: Pattern) => number;
   /** Replaces the whole row subtitle. */
   subtitleOf?: (p: Pattern) => string;
   /** Accessible name of the trigger's popup. */
@@ -49,7 +48,6 @@ export function PatternPicker({
   onSelect,
   onRename,
   onNew,
-  bpmOf,
   subtitleOf,
   label = 'Patterns',
   nameTestId,
@@ -252,7 +250,7 @@ export function PatternPicker({
   const activeOpt = activeId && flat.some((p) => p.id === activeId) ? optId(activeId) : undefined;
   const subtitle = (p: Pattern) =>
     subtitleOf?.(p) ??
-    `${p.timeSig.num} beat${p.timeSig.num === 1 ? '' : 's'} · ${bpmOf ? bpmOf(p) : p.bpm} BPM${p.builtIn ? ' · built-in' : ''}`;
+    `${p.timeSig.num} beat${p.timeSig.num === 1 ? '' : 's'} · ${feelOf(p)}${p.builtIn ? ' · built-in' : ''}`;
 
   return (
     <div class="pp">

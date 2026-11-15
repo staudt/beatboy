@@ -1,21 +1,12 @@
 import { computed, effect, signal } from '@preact/signals';
-import { engine } from '../../audio/engine';
+import { engine, type EngineMode } from '../../audio/engine';
 import { factoryPatterns } from '../../domain/factory';
 import { addBeat, duplicatePattern, createPattern, lastBeatHasNotes, removeLastBeat, rename } from '../../domain/patternOps';
 import { patternTicks, stepTicks } from '../../domain/time';
 import type { Pattern, SoundId } from '../../domain/types';
-import { registerTap } from '../../input/tapTempo';
 import { Autosaver, installLifecycleFlush, type SaveStatus } from '../../storage/autosave';
 import { PatternRepo, requestPersistentStorage } from '../../storage/patternRepo';
-import {
-  applyEdit,
-  applyTempo,
-  effectiveBpm,
-  findPattern,
-  nextBeatName,
-  removePattern,
-  type BpmOverrides,
-} from './labLogic';
+import { applyEdit, findPattern, nextBeatName, removePattern } from './labLogic';
 
 export const DEFAULT_PATTERN_ID = 'f-rock-8ths';
 
@@ -43,18 +34,18 @@ export interface VelPopover {
 // ── state ────────────────────────────────────────────────────────
 export const library = signal<Pattern[]>([...factoryPatterns()]);
 export const currentId = signal<string>(DEFAULT_PATTERN_ID);
-export const bpmOverrides = signal<BpmOverrides>({});
 export const current = computed<Pattern>(
   () => findPattern(library.value, currentId.value) ?? (factoryPatterns()[0] as Pattern),
 );
-/** Tempo of the current pattern (override for built-ins). */
-export const bpm = computed(() => effectiveBpm(current.value, bpmOverrides.value));
 export const selectedSound = signal<SoundId>('kick');
 /** While playing, the lane/grid scrolls to keep the playhead in view. Turned off by manual scrolling. */
 export const followPlayhead = signal(true);
 export const labView = signal<LabView>('grid');
 export const playheadStep = signal<number | null>(null);
+/** True while anything is audible (editor loop or the Drummer's groove). */
 export const playing = signal(false);
+/** Mirror of engine.mode. */
+export const mode = signal<EngineMode>('idle');
 export const saveStatus = signal<SaveStatus>('idle');
 export const saveMessage = signal<string | null>(null);
 export const kitStatus = signal<KitStatus>('idle');
@@ -118,40 +109,42 @@ export function dismissToast(): void {
 }
 
 // ── editing ──────────────────────────────────────────────────────
+/** Set by state/link.ts: called when a built-in was copied by an edit (so the Drummer can follow). */
+export const hooks: { onCopied?: (from: Pattern, copy: Pattern) => void } = {};
+
 /** Copy-on-write edit of the current pattern. */
 export function editCurrent(fn: (p: Pattern) => Pattern, opts: { quiet?: boolean } = {}): void {
-  const res = applyEdit({ library: library.peek(), currentId: currentId.peek() }, bpmOverrides.peek(), fn, Date.now());
+  const res = applyEdit({ library: library.peek(), currentId: currentId.peek() }, fn, Date.now());
   if (!res.changed) return;
   library.value = res.library;
   currentId.value = res.currentId;
-  bpmOverrides.value = res.overrides;
   save(res.changed);
-  if (res.copiedFrom && !opts.quiet) showToast(`Saved as ${res.changed.name}`);
+  if (res.copiedFrom) {
+    hooks.onCopied?.(res.copiedFrom, res.changed);
+    if (!opts.quiet) showToast(`Saved as ${res.changed.name}`);
+  }
 }
 
-export function setTempo(value: number): void {
-  const res = applyTempo(
-    { library: library.peek(), currentId: currentId.peek() },
-    bpmOverrides.peek(),
-    Math.round(value),
-    Date.now(),
-  );
-  library.value = res.library;
-  bpmOverrides.value = res.overrides;
-  save(res.changed);
-}
-
-let taps: number[] = [];
-export function tap(now: number = performance.now()): void {
-  const r = registerTap(taps, now);
-  taps = r.taps;
-  if (r.bpm !== null) setTempo(r.bpm);
-}
-
+/** Raw selection (no playback side effects). */
 export function selectPattern(id: string): void {
   if (!findPattern(library.peek(), id)) return;
   currentId.value = id;
   textDraft.value = null;
+}
+
+/**
+ * The editor moved to a different pattern on its own initiative ("something else"): if the Drummer's groove is
+ * playing, keep the transport running but loop the editor's new pattern instead (no click, no fills).
+ */
+function followEditorPattern(): void {
+  if (engine.mode === 'groove') void engine.playPattern(() => current.peek()).catch(() => {});
+}
+
+/** User picked a pattern in the editor. */
+export function choosePattern(id: string): void {
+  if (id === currentId.peek() || !findPattern(library.peek(), id)) return;
+  selectPattern(id);
+  followEditorPattern();
 }
 
 export function newPattern(): void {
@@ -159,18 +152,16 @@ export function newPattern(): void {
   library.value = [...library.peek(), p];
   selectPattern(p.id);
   save(p);
+  followEditorPattern();
 }
 
 export function duplicateCurrent(): void {
   const cur = current.peek();
-  const copy = duplicatePattern(
-    { ...cur, bpm: effectiveBpm(cur, bpmOverrides.peek()) },
-    Date.now(),
-    `${cur.name} copy`,
-  );
+  const copy = duplicatePattern(cur, Date.now(), `${cur.name} copy`);
   library.value = [...library.peek(), copy];
   selectPattern(copy.id);
   save(copy);
+  followEditorPattern();
   showToast(`Duplicated as ${copy.name}`);
 }
 
@@ -190,7 +181,10 @@ export function requestDelete(id: string): void {
       if (!next) return;
       const switched = next.currentId !== currentId.peek();
       library.value = next.library;
-      if (switched) selectPattern(next.currentId);
+      if (switched) {
+        selectPattern(next.currentId);
+        followEditorPattern();
+      }
       saver?.scheduleDelete(id);
       showToast(`Deleted ${p.name}`);
     },
@@ -217,18 +211,6 @@ export function prepareAudio(): void {
   trackKit(engine.ensureReady());
 }
 
-export function togglePlay(): void {
-  if (engine.mode === 'lab') {
-    engine.stop();
-    return;
-  }
-  // Idle, or the Assistant groove is playing (the lab takes over). Tempo is per-mode.
-  engine.setBpm(bpm.peek());
-  const started = engine.playPattern(() => current.peek());
-  trackKit(started);
-  started.catch(() => {});
-}
-
 export function auditionSound(sound: SoundId, vel?: number): void {
   prepareAudio();
   engine.audition(sound, vel);
@@ -250,7 +232,8 @@ function tickLoop(): void {
 }
 
 function syncPlaying(): void {
-  const now = engine.mode === 'lab';
+  mode.value = engine.mode;
+  const now = engine.playing;
   if (now === playing.peek()) return;
   playing.value = now;
   if (now) {
@@ -276,13 +259,6 @@ async function doInit(): Promise<void> {
     syncPlaying();
     if (engine.kitReady && kitStatus.peek() !== 'ready') kitStatus.value = 'ready';
   });
-  // Keep the engine tempo in step with the current pattern / overrides.
-  // (The Assistant groove has its own tempo, so leave the engine alone while it plays.)
-  effect(() => {
-    const b = bpm.value;
-    if (engine.mode !== 'groove') engine.setBpm(b);
-  });
-
   try {
     repo = await PatternRepo.open();
     const user = await repo.list();

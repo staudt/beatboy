@@ -1,9 +1,17 @@
 import { signal } from '@preact/signals';
 
-export type Route = 'lab' | 'assistant';
+export type Route = 'drummer' | 'editor';
 
+/** Old hashes (#/assistant, #/lab) still work: they are rewritten to the new ones. */
 function parse(): Route {
-  return location.hash.startsWith('#/lab') ? 'lab' : 'assistant';
+  const h = location.hash;
+  if (h.startsWith('#/editor')) return 'editor';
+  if (h.startsWith('#/lab')) {
+    history.replaceState(null, '', '#/editor');
+    return 'editor';
+  }
+  if (h.startsWith('#/assistant')) history.replaceState(null, '', '#/drummer');
+  return 'drummer';
 }
 
 export const route = signal<Route>(parse());
