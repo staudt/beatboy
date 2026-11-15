@@ -5,7 +5,6 @@ import { FullGrid } from './FullGrid';
 import { MixPanel } from './MixPanel';
 import { OverviewGrid } from './OverviewGrid';
 import { PadGrid } from './PadGrid';
-import { PatternBrowser } from './PatternBrowser';
 import { PatternHeader } from './PatternHeader';
 import { PatternSettings } from './PatternSettings';
 import { StepLane } from './StepLane';
@@ -83,7 +82,6 @@ export function BeatLab() {
             </div>
           </div>
         </div>
-        <PatternBrowser />
         <VelocityPopover />
       </div>
     );
@@ -109,7 +107,6 @@ export function BeatLab() {
       )}
       {view === 'text' && <TextPanel />}
       {view === 'mix' && <MixPanel />}
-      <PatternBrowser />
       <VelocityPopover />
     </div>
   );

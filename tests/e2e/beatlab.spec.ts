@@ -85,10 +85,26 @@ async function touchDrag(page: Page, from: { x: number; y: number }, to: { x: nu
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
 
+const trigger = (page: Page): Locator => page.getByRole('button', { name: /^Patterns:/ });
+const panel = (page: Page): Locator => page.getByRole('dialog', { name: 'Patterns' });
+const nameField = (page: Page): Locator => page.getByRole('textbox', { name: 'Pattern name' });
+const option = (page: Page, name: RegExp | string): Locator => panel(page).getByRole('option', { name });
+
+async function openPicker(page: Page): Promise<void> {
+  await press(page, trigger(page));
+  await expect(panel(page)).toBeVisible();
+}
+
+async function closePicker(page: Page): Promise<void> {
+  await page.keyboard.press('Escape');
+  await expect(panel(page)).toHaveCount(0);
+}
+
+/** Creates a new beat; the panel stays open for naming, so close it. */
 async function newBeat(page: Page): Promise<void> {
-  await press(page, page.getByRole('button', { name: 'Browse patterns' }));
-  await press(page, page.getByRole('button', { name: 'New beat' }));
-  await expect(page.getByRole('dialog', { name: 'Patterns' })).toHaveCount(0);
+  await openPicker(page);
+  await press(page, panel(page).getByRole('button', { name: 'New beat' }));
+  await closePicker(page);
 }
 
 async function waitSaved(page: Page): Promise<void> {
@@ -204,14 +220,13 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(patternName(page)).toHaveText('My Rock 8ths');
       await expect(cell(page, 'kick', 1)).toHaveAttribute('aria-pressed', 'true');
       // The built-in is still pristine.
-      await press(page, page.getByRole('button', { name: 'Browse patterns' }));
-      await expect(page.getByRole('button', { name: /^Rock 8ths/ })).toBeVisible();
+      await openPicker(page);
+      await expect(option(page, /^Rock 8ths/)).toBeVisible();
     });
 
     test('text notation: apply and errors', async ({ page }) => {
       await open(page);
-      await press(page, page.getByRole('button', { name: 'Browse patterns' }));
-      await press(page, page.getByRole('button', { name: 'New beat' }));
+      await newBeat(page);
       await expect(patternName(page)).toHaveText('Beat 1');
       await openSettings(page);
       await openText(page);
@@ -356,28 +371,32 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await press(page, page.getByRole('button', { name: 'Stop' }));
     });
 
-    test('pattern browser: new, duplicate, rename, delete', async ({ page }) => {
+    test('pattern picker: new, duplicate, rename, delete', async ({ page }) => {
       await open(page);
       // Built-ins can't be deleted.
       await expect(page.getByRole('button', { name: 'Delete pattern' })).toBeDisabled();
 
-      await press(page, page.getByRole('button', { name: 'Browse patterns' }));
-      await press(page, page.getByRole('button', { name: 'New beat' }));
+      await newBeat(page);
       await expect(patternName(page)).toHaveText('Beat 1');
 
       await press(page, page.getByRole('button', { name: 'Duplicate pattern' }));
       await expect(patternName(page)).toHaveText('Beat 1 copy');
 
-      await press(page, page.getByRole('button', { name: 'Rename pattern' }));
-      const input = page.getByRole('textbox', { name: 'Pattern name' });
-      await input.fill('Groove');
-      await input.press('Enter');
+      await openPicker(page);
+      await nameField(page).fill('Groove');
+      await nameField(page).press('Enter');
+      await expect(panel(page)).toHaveCount(0);
       await expect(patternName(page)).toHaveText('Groove');
 
-      await press(page, page.getByRole('button', { name: 'Browse patterns' }));
-      await expect(page.getByRole('button', { name: /^Beat 1 · |^Beat 1\b/ }).first()).toBeVisible();
-      await expect(page.getByRole('button', { name: /^Groove/ })).toBeVisible();
-      await page.keyboard.press('Escape');
+      await openPicker(page);
+      await expect(option(page, /^Beat 1\b/).first()).toBeVisible();
+      await expect(option(page, /^Groove/)).toHaveAttribute('aria-selected', 'true');
+      await press(page, option(page, /^Beat 1 /).first());
+      await expect(panel(page)).toHaveCount(0);
+      await expect(patternName(page)).toHaveText('Beat 1');
+      await openPicker(page);
+      await press(page, option(page, /^Groove/));
+      await expect(patternName(page)).toHaveText('Groove');
 
       await press(page, page.getByRole('button', { name: 'Delete pattern' }));
       await expect(page.getByRole('dialog', { name: 'Delete pattern?' })).toBeVisible();
@@ -391,11 +410,133 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await waitSaved(page);
       await page.reload();
       await expect(patternName(page)).toHaveText('Beat 1');
-      await press(page, page.getByRole('button', { name: 'Browse patterns' }));
-      await expect(page.getByRole('button', { name: /^Groove/ })).toHaveCount(0);
+      await openPicker(page);
+      await expect(option(page, /^Groove/)).toHaveCount(0);
+    });
+
+    test('picker: panel opens directly below the trigger and stays inside the viewport', async ({ page }) => {
+      await open(page);
+      await openPicker(page);
+      const t = (await trigger(page).boundingBox())!;
+      const pb = (await panel(page).boundingBox())!;
+      const vw = page.viewportSize()!.width;
+      expect(pb.y).toBeGreaterThanOrEqual(t.y + t.height - 1);
+      expect(pb.y - (t.y + t.height)).toBeLessThan(16);
+      expect(pb.x).toBeGreaterThanOrEqual(0);
+      expect(pb.x + pb.width).toBeLessThanOrEqual(vw);
+      if (isMobile(page)) {
+        expect(pb.x).toBeCloseTo(16, 0);
+        expect(pb.width).toBeCloseTo(vw - 32, 0);
+      } else {
+        expect(pb.width).toBeCloseTo(360, 0);
+        expect(Math.abs(pb.x - t.x)).toBeLessThan(2);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+
+    test('picker: typing renames live and persists; Escape reverts', async ({ page }) => {
+      await open(page);
+      await newBeat(page);
+      await openPicker(page);
+      await nameField(page).fill('Funk idea');
+      await expect(patternName(page)).toHaveText('Funk idea');
+      await nameField(page).press('Enter');
+      await expect(panel(page)).toHaveCount(0);
+      await waitSaved(page);
+      await page.reload();
+      await expect(patternName(page)).toHaveText('Funk idea');
+
+      await openPicker(page);
+      await nameField(page).fill('Oops');
+      await expect(patternName(page)).toHaveText('Oops');
+      await page.keyboard.press('Escape');
+      await expect(panel(page)).toHaveCount(0);
+      await expect(patternName(page)).toHaveText('Funk idea');
+    });
+
+    test('picker: search filters rows', async ({ page }) => {
+      await open(page);
+      await openPicker(page);
+      const all = await panel(page).getByRole('option').count();
+      expect(all).toBeGreaterThan(8);
+      await panel(page).getByRole('searchbox', { name: 'Find pattern' }).fill('rock');
+      const n = await panel(page).getByRole('option').count();
+      expect(n).toBeGreaterThan(0);
+      expect(n).toBeLessThan(all);
+      await expect(option(page, /^Rock 8ths/)).toBeVisible();
+      await expect(option(page, /^Funk/)).toHaveCount(0);
+      await panel(page).getByRole('searchbox', { name: 'Find pattern' }).fill('zzzz');
+      await expect(panel(page).getByRole('option')).toHaveCount(0);
+    });
+
+    test('picker: + New beat keeps the panel open ready to name', async ({ page }) => {
+      await open(page);
+      await openPicker(page);
+      await press(page, panel(page).getByRole('button', { name: 'New beat' }));
+      await expect(panel(page)).toBeVisible();
+      await expect(patternName(page)).toHaveText('Beat 1');
+      await expect(nameField(page)).toHaveValue('Beat 1');
+      if (!isMobile(page)) {
+        await expect(nameField(page)).toBeFocused();
+        await page.keyboard.type('Named at once');
+        await expect(patternName(page)).toHaveText('Named at once');
+      }
+    });
+
+    test('picker: clicking outside closes', async ({ page }) => {
+      await open(page);
+      await openPicker(page);
+      await page.mouse.click(5, page.viewportSize()!.height - 5);
+      await expect(panel(page)).toHaveCount(0);
     });
   });
 }
+
+test('desktop picker: renaming a built-in makes a copy and keeps focus; arrows + Enter select', async ({ browser }) => {
+  const ctx = await browser.newContext(LAYOUTS.desktop);
+  const page = await ctx.newPage();
+  await open(page);
+  await openPicker(page);
+  await expect(nameField(page)).toBeFocused();
+  const rows = await page.getByRole('option').count();
+
+  // Escape after typing a name for a built-in leaves no stray copy behind.
+  await page.keyboard.type('Scratch name', { delay: 30 });
+  await page.keyboard.press('Escape');
+  await expect(panel(page)).toHaveCount(0);
+  await expect(patternName(page)).toHaveText('Rock 8ths');
+  await openPicker(page);
+  await expect(page.getByRole('option')).toHaveCount(rows);
+  await expect(option(page, /^Scratch name/)).toHaveCount(0);
+
+  // For a built-in the name is a draft until committed with Enter (no copy while typing).
+  await page.keyboard.type('My own groove', { delay: 120 });
+  await expect(patternName(page)).toHaveText('Rock 8ths');
+  await expect(nameField(page)).toBeFocused();
+  await expect(nameField(page)).toHaveValue('My own groove');
+  await page.keyboard.press('Enter');
+  await waitSaved(page);
+  await page.reload();
+  await expect(patternName(page)).toHaveText('My own groove');
+  // The built-in is untouched.
+  await openPicker(page);
+  await expect(option(page, /^Rock 8ths/)).toBeVisible();
+
+  // Keyboard selection from the search field.
+  const search = page.getByRole('searchbox', { name: 'Find pattern' });
+  await search.focus();
+  await search.fill('rock');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  const active = await search.getAttribute('aria-activedescendant');
+  expect(active).toBeTruthy();
+  const label = await page.locator(`[id="${active}"] .bi-name`).textContent();
+  await page.keyboard.press('Enter');
+  await expect(panel(page)).toHaveCount(0);
+  await expect(patternName(page)).toHaveText(label!);
+  await expect(trigger(page)).toBeFocused();
+  await ctx.close();
+});
 
 test.describe('mobile touch', () => {
   test.use(LAYOUTS.mobile);
@@ -566,12 +707,10 @@ test('screenshots', async ({ browser }) => {
     await shot('mix');
 
     if (isMobile(page)) await press(page, page.getByRole('tab', { name: 'Grid' }));
-    await press(page, page.getByRole('button', { name: 'Browse patterns' }));
-    await expect(page.getByRole('dialog', { name: 'Patterns' })).toBeVisible();
-    await page.waitForTimeout(450); // let the sheet animation finish
+    await openPicker(page);
+    await page.waitForTimeout(450);
     await shot('browser');
-    await page.keyboard.press('Escape');
-    await expect(page.getByRole('dialog', { name: 'Patterns' })).toHaveCount(0);
+    await closePicker(page);
 
     // Other grid shapes. Squares keep their size; the grid grows and shrinks.
     const variants: [string, number, number][] = name === 'mobile'

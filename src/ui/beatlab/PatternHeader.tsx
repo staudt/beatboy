@@ -1,64 +1,33 @@
-import { useState } from 'preact/hooks';
-import { IconChevron, IconCopy, IconPencil, IconTrash } from '../common/icons';
-import { Sheet } from '../common/Sheet';
+import { IconCopy, IconTrash } from '../common/icons';
+import { PatternPicker } from '../common/PatternPicker';
 import { SaveStatusChip } from '../common/SaveStatus';
 import {
-  browserOpen,
+  bpmOverrides,
   current,
+  currentId,
   duplicateCurrent,
+  library,
+  newPattern,
   renameCurrent,
-  renameOpen,
   requestDelete,
+  selectPattern,
 } from '../state/lab';
-
-function RenameSheet() {
-  const [name, setName] = useState(current.peek().name);
-  const close = () => (renameOpen.value = false);
-  return (
-    <Sheet title="Rename pattern" onClose={close} className="sheet-small">
-      <form
-        class="form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          renameCurrent(name);
-          close();
-        }}
-      >
-        <input
-          class="input"
-          type="text"
-          value={name}
-          maxLength={48}
-          aria-label="Pattern name"
-          autoComplete="off"
-          onInput={(e) => setName(e.currentTarget.value)}
-        />
-        <div class="sheet-actions">
-          <button type="button" class="btn" onClick={close}>
-            Cancel
-          </button>
-          <button type="submit" class="btn btn-primary">
-            Rename
-          </button>
-        </div>
-      </form>
-    </Sheet>
-  );
-}
 
 export function PatternHeader() {
   const p = current.value;
+  const overrides = bpmOverrides.value;
   return (
     <header class="pattern-header">
-      <button type="button" class="pattern-pick" aria-label="Browse patterns" aria-haspopup="dialog" onClick={() => (browserOpen.value = true)}>
-        <IconChevron />
-        <span class="pattern-name" data-testid="pattern-name">
-          {p.name}
-        </span>
-      </button>
-      <button type="button" class="btn btn-icon" aria-label="Rename pattern" onClick={() => (renameOpen.value = true)}>
-        <IconPencil />
-      </button>
+      <PatternPicker
+        patterns={library.value}
+        currentId={currentId.value}
+        onSelect={selectPattern}
+        onRename={renameCurrent}
+        onNew={newPattern}
+        bpmOf={(q) => overrides[q.id] ?? q.bpm}
+        label="Patterns"
+        nameTestId="pattern-name"
+      />
       <span class="spacer" />
       <button type="button" class="btn btn-icon" aria-label="Duplicate pattern" onClick={duplicateCurrent}>
         <IconCopy />
@@ -74,7 +43,6 @@ export function PatternHeader() {
         <IconTrash />
       </button>
       <SaveStatusChip />
-      {renameOpen.value && <RenameSheet />}
     </header>
   );
 }
