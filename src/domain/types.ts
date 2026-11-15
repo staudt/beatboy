@@ -94,6 +94,11 @@ export interface Pattern {
   mix: Partial<Record<SoundId, TrackMix>>;
   /** Factory patterns are read-only; editing creates a copy. */
   builtIn: boolean;
+  /**
+   * Song-local beat: owned by one song (created by typing beat text in a section). Hidden from the groove library
+   * pickers and the Beat Editor's list; otherwise a normal user pattern. Cleared by "Save as groove".
+   */
+  ownerSongId?: string;
   createdAt: number;
   updatedAt: number;
 }

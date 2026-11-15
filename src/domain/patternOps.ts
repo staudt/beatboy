@@ -283,8 +283,9 @@ export function clearPattern(p: Pattern, now: number = Date.now()): Pattern {
 }
 
 export function duplicatePattern(p: Pattern, now: number = Date.now(), name?: string): Pattern {
+  const { ownerSongId: _owner, ...rest } = p; // a duplicate is a normal library pattern
   return {
-    ...p,
+    ...rest,
     id: crypto.randomUUID(),
     name: name ?? `${p.name} copy`,
     builtIn: false,

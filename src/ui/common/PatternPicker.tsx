@@ -18,6 +18,14 @@ export interface PatternPickerProps {
   label?: string;
   /** data-testid for the trigger's name text. */
   nameTestId?: string;
+  /** Text shown on the trigger instead of the current pattern's name (e.g. "Song beat"). */
+  triggerName?: string;
+  /** Icon-only trigger (the name stays available to assistive tech); used inside the section beat combobox. */
+  compact?: boolean;
+  /** The panel is positioned under this element instead of the trigger. */
+  anchorTo?: () => HTMLElement | null;
+  /** Buttons shown at the top of the panel; choosing one closes the panel. */
+  actions?: { label: string; onClick: () => void }[];
   /** Wording for other kinds of items (songs). */
   words?: { newLabel: string; nameLabel: string; findPlaceholder: string; findLabel: string; empty: string; list: string };
 }
@@ -55,6 +63,10 @@ export function PatternPicker({
   subtitleOf,
   label = 'Patterns',
   nameTestId,
+  triggerName,
+  compact,
+  anchorTo,
+  actions,
   words = BEAT_WORDS,
 }: PatternPickerProps) {
   const cur = patterns.find((p) => p.id === currentId);
@@ -111,7 +123,7 @@ export function PatternPicker({
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
-      const r = trigger.current?.getBoundingClientRect();
+      const r = (anchorTo?.() ?? trigger.current)?.getBoundingClientRect();
       if (!r) return;
       const vw = document.documentElement.clientWidth;
       if (vw < 900) setPos({ top: r.bottom + 4, left: 16, width: vw - 32 });
@@ -210,6 +222,7 @@ export function PatternPicker({
         move(e.key === 'ArrowDown' ? 1 : -1);
       }
     } else if (e.key === 'Enter') {
+      if (t.closest('[data-pp-action]')) return;
       if (inName) {
         e.preventDefault();
         close({ focusTrigger: true });
@@ -262,14 +275,14 @@ export function PatternPicker({
       <button
         ref={trigger}
         type="button"
-        class="pp-trigger"
+        class={compact ? 'pp-trigger pp-compact' : 'pp-trigger'}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`${label}: ${cur?.name ?? ''}`}
+        aria-label={`${label}: ${triggerName ?? cur?.name ?? ''}`}
         onClick={() => (open ? close({ focusTrigger: true }) : doOpen())}
       >
-        <span class="pattern-name" data-testid={nameTestId}>
-          {cur?.name ?? ''}
+        <span class={compact ? 'pattern-name sr-only' : 'pattern-name'} data-testid={nameTestId}>
+          {triggerName ?? cur?.name ?? ''}
         </span>
         <IconChevronDown class="pp-caret" />
       </button>
@@ -285,6 +298,20 @@ export function PatternPicker({
             onKeyDown={onPanelKey}
           >
             <div class="pp-top">
+              {actions?.map((a) => (
+                <button
+                  key={a.label}
+                  type="button"
+                  class="btn pp-new"
+                  data-pp-action=""
+                  onClick={() => {
+                    close();
+                    a.onClick();
+                  }}
+                >
+                  {a.label}
+                </button>
+              ))}
               {onRename && (
                 <label class="pp-field">
                   <span class="label">name</span>

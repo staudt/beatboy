@@ -23,7 +23,19 @@ import type { SongInfo } from '../../engine/songSource';
 import { Autosaver, installLifecycleFlush, type SaveStatus } from '../../storage/autosave';
 import * as drummer from './drummer';
 import { DEFAULT_FILL_ID, DEFAULT_GROOVE_ID } from './drummerLogic';
-import { getRepo, hooks, library, confirmReq, showToast, trackKit } from './lab';
+import { garbageLocalPatterns, forkLocal, isSongLocal, localBeatName, localPatternFor } from '../../domain/songBeats';
+import type { Pattern } from '../../domain/types';
+import {
+  addLibraryPattern,
+  confirmReq,
+  dropLibraryPatterns,
+  getRepo,
+  hooks,
+  library,
+  putLibraryPattern,
+  showToast,
+  trackKit,
+} from './lab';
 import { songBpmToWrite, buildSongConfig, clampStartIndex, newSectionFor, nextSongName, sameInfo } from './songLogic';
 
 // ── state ────────────────────────────────────────────────────────
@@ -86,7 +98,7 @@ export function newSong(): void {
   if (engine.mode === 'song') engine.stop();
   const lib = library.peek();
   const g = drummer.lastGrooveId.peek();
-  const grooveId = g && lib.some((p) => p.id === g) ? g : DEFAULT_GROOVE_ID;
+  const grooveId = g && lib.some((p) => p.id === g && !p.ownerSongId) ? g : DEFAULT_GROOVE_ID;
   const song = createSong({
     name: nextSongName(songs.peek()),
     bpm: drummer.bpm.peek(),
@@ -104,11 +116,24 @@ export function duplicateSong(): void {
   if (!cur) return;
   if (engine.mode === 'song') engine.stop();
   const now = Date.now();
+  const id = crypto.randomUUID();
+  const name = `${cur.name} copy`;
+  const lib = library.peek();
   const copy: Song = {
     ...cur,
-    id: crypto.randomUUID(),
-    name: `${cur.name} copy`,
-    sections: cur.sections.map((s) => ({ ...s, id: crypto.randomUUID(), fill: { ...s.fill } })),
+    id,
+    name,
+    // song-local beats belong to one song: the copy gets its own
+    sections: cur.sections.map((s) => {
+      const sec = { ...s, id: crypto.randomUUID(), fill: { ...s.fill } };
+      const p = lib.find((x) => x.id === s.patternId);
+      if (p && isSongLocal(p)) {
+        const own = forkLocal(p, id, localBeatName({ name }, sec), now);
+        addLibraryPattern(own);
+        sec.patternId = own.id;
+      }
+      return sec;
+    }),
     createdAt: now,
     updatedAt: now,
   };
@@ -135,6 +160,7 @@ export function requestDeleteSong(): void {
       songs.value = rest;
       saver?.scheduleDelete(cur.id);
       enter(rest[0] ?? null);
+      collectLocalBeats();
       showToast(`Deleted ${cur.name}`);
     },
   };
@@ -146,11 +172,17 @@ export function addSectionOfKind(kind: SectionKind): void {
   const song = currentSong.peek();
   if (!song || song.sections.length >= SONG_LIMITS.maxSections) return;
   const section = newSectionFor(song, kind, song.sections.length, DEFAULT_GROOVE_ID);
+  const prev = library.peek().find((p) => p.id === section.patternId);
+  if (prev && isSongLocal(prev)) {
+    const own = forkLocal(prev, song.id, localBeatName(song, section));
+    addLibraryPattern(own);
+    section.patternId = own.id;
+  }
   editSong((s) => addSection(s, section));
 }
 
 export function patchSection(id: string, patch: SectionPatch): void {
-  if (patch.patternId) drummer.lastGrooveId.value = patch.patternId;
+  if (patch.patternId && !library.peek().find((p) => p.id === patch.patternId)?.ownerSongId) drummer.lastGrooveId.value = patch.patternId;
   editSong((s) => updateSection(s, id, patch));
 }
 
@@ -171,8 +203,58 @@ export function moveSectionBy(id: string, d: -1 | 1): void {
 
 /** Copy of the section, inserted right below it. */
 export function duplicateSectionById(id: string): void {
-  editSong((s) => duplicateSection(s, id));
+  const song = currentSong.peek();
+  const i = song?.sections.findIndex((x) => x.id === id) ?? -1;
+  if (!song || i < 0 || song.sections.length >= SONG_LIMITS.maxSections) return;
+  const src = song.sections[i]!;
+  const p = library.peek().find((x) => x.id === src.patternId);
+  // a song-local beat is copied too, so the duplicate's edits never change the original
+  const own = p && isSongLocal(p) ? forkLocal(p, song.id, `${song.name} · ${src.name} copy`) : null;
+  if (own) addLibraryPattern(own);
+  editSong((s) => {
+    const d = duplicateSection(s, id);
+    const dup = d.sections[i + 1];
+    return own && dup ? updateSection(d, dup.id, { patternId: own.id }) : d;
+  });
 }
+
+// ── song-local beats (typed beat text) ───────────────────────────
+/** Deletes song-local beats no section uses (startup and song delete only: never during the section Undo window). */
+export function collectLocalBeats(): void {
+  dropLibraryPatterns(garbageLocalPatterns(library.peek(), songs.peek()));
+}
+
+export type TextApply = { ok: true; warnings: string[] } | { ok: false; error: string };
+
+/** Beat text of a section's current pattern, as one line. */
+export function sectionPattern(sectionId: string): Pattern | undefined {
+  const sec = currentSong.peek()?.sections.find((s) => s.id === sectionId);
+  return sec ? library.peek().find((p) => p.id === sec.patternId) : undefined;
+}
+
+/**
+ * Typed text for a section. A library groove is never changed: the section gets its own song-local copy; a local
+ * beat only this section uses is updated in place; one shared by several sections is forked. Playback reads the
+ * library live, so the change is heard from the section's next bar.
+ */
+export function setSectionText(sectionId: string, text: string, inferFrom?: Pattern | null): TextApply {
+  const song = currentSong.peek();
+  const sec = song?.sections.find((s) => s.id === sectionId);
+  if (!song || !sec) return { ok: false, error: 'No such section' };
+  const base = library.peek().find((p) => p.id === sec.patternId);
+  const r = localPatternFor(song, sec, text, base, Date.now(), inferFrom);
+  if (!r.ok) {
+    const e = r.errors[0]!;
+    return { ok: false, error: `col ${e.col}: ${e.message}` };
+  }
+  if (r.mode === 'inplace') putLibraryPattern(r.pattern);
+  else if (r.mode === 'new') {
+    addLibraryPattern(r.pattern);
+    editSong((s) => updateSection(s, sectionId, { patternId: r.pattern.id }));
+  }
+  return { ok: true, warnings: r.warnings };
+}
+
 
 /** Removes a section (no confirmation); the toast offers Undo for 5 s. */
 export function deleteSectionById(id: string): void {
@@ -309,6 +391,7 @@ async function doInit(): Promise<void> {
       }
       await repo.setSetting('songsSeeded', true);
       songs.value = list;
+      collectLocalBeats();
       const last = await repo.getSetting<string>('currentSongId');
       const pick = list.find((s) => s.id === last) ?? list.find((s) => s.name === 'Practice') ?? list[0] ?? null;
       currentSongId.value = pick?.id ?? null;

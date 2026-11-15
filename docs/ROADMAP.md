@@ -1,15 +1,7 @@
 # Roadmap
 
-Ideas agreed with the user but not built yet, roughly in priority order. Each item lands as its own slice
+Ideas agreed with the user but not built yet (text-first song sections are done: see ARCHITECTURE, "Song-local beats"), roughly in priority order. Each item lands as its own slice
 (working build + check-in).
-
-## Text-first song sections (next up — pending syntax decision)
-- Each section row shows its groove as editable beat text; a saved groove shows as a name chip.
-- Typing creates a song-local beat (a hidden pattern owned by the song; never mutates a shared groove).
-  "Save as groove" promotes it to the library; "Edit" opens it in the Beat Editor.
-- Live feedback while typing: step count, inline errors, ghosted loop continuation.
-- Syntax: space-separated steps, letters together = simultaneous (`kh . sh .`); implemented in the
-  Beat Editor text panel. Open question: uppercase = accent vs. extra sounds.
 
 ## Live performance
 - Full-screen perform view with an edit lock (rows become big tap targets, no accidental edits).

@@ -10,14 +10,18 @@ import {
   newPattern,
   renameCurrent,
   requestDelete,
+  requestSaveAsGroove,
 } from '../state/lab';
 
 export function PatternHeader() {
   const p = current.value;
+  const local = !!p.ownerSongId;
+  // Song beats stay out of the list, except the one being edited (shown under "Song beat").
+  const list = library.value.flatMap((q) => (q.id === p.id && local ? [{ ...q, category: 'Song beat' }] : q.ownerSongId ? [] : [q]));
   return (
     <header class="pattern-header">
       <PatternPicker
-        patterns={library.value}
+        patterns={list}
         currentId={currentId.value}
         onSelect={choosePattern}
         onRename={renameCurrent}
@@ -25,6 +29,16 @@ export function PatternHeader() {
         label="Patterns"
         nameTestId="pattern-name"
       />
+      {local && (
+        <>
+          <span class="tag" data-testid="song-beat-tag" title="This beat belongs to a song">
+            song beat
+          </span>
+          <button type="button" class="btn" onClick={() => requestSaveAsGroove(p.id)}>
+            Save as groove
+          </button>
+        </>
+      )}
       <span class="spacer" />
       <button type="button" class="btn btn-icon" aria-label="Duplicate pattern" onClick={duplicateCurrent}>
         <IconCopy />

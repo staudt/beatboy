@@ -254,7 +254,7 @@ export function parseBeatText(text: string, opts: { timeSig: TimeSignature; step
  * groove prints 2 tokens per beat, a 16th-note one 4, a triplet one 3; one line per 4 beats. Notes that are off
  * the grid cannot be written and are counted in `droppedOffGrid`.
  */
-export function formatBeatText(p: Pattern): { text: string; droppedOffGrid: number; resolution: Resolution } {
+export function formatBeatText(p: Pattern, opts: { lineBreaks?: boolean } = {}): { text: string; droppedOffGrid: number; resolution: Resolution } {
   const st = stepTicks(p.timeSig, p.stepsPerBeat);
   const spb = p.stepsPerBeat;
   const totalSteps = p.timeSig.num * p.bars * spb;
@@ -301,7 +301,9 @@ export function formatBeatText(p: Pattern): { text: string; droppedOffGrid: numb
     beatTexts.push(tokens.join(' '));
   }
   // One space between tokens, two between beats (one when each beat is a single token); a line per 4 beats.
-  for (let k = 0; k < beatTexts.length; k += 4) lines.push(`${beatTexts.slice(k, k + 4).join(d > 1 ? '  ' : ' ')} |`);
+  const sep = d > 1 ? '  ' : ' ';
+  if (opts.lineBreaks === false) lines.push(beatTexts.join(sep)); // one line, no bar lines
+  else for (let k = 0; k < beatTexts.length; k += 4) lines.push(`${beatTexts.slice(k, k + 4).join(sep)} |`);
   return { text: lines.join('\n'), droppedOffGrid: dropped, resolution: resolutionOf(d, spb) };
 }
 

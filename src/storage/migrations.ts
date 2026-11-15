@@ -125,6 +125,7 @@ export function validatePattern(raw: unknown, version: number = PATTERN_SCHEMA_V
     notes,
     mix,
     builtIn: raw.builtIn,
+    ...(typeof raw.ownerSongId === 'string' && raw.ownerSongId !== '' && !raw.builtIn ? { ownerSongId: raw.ownerSongId } : {}),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };

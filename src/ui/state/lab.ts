@@ -2,6 +2,7 @@ import { computed, effect, signal } from '@preact/signals';
 import { engine, type EngineMode } from '../../audio/engine';
 import { factoryPatterns } from '../../domain/factory';
 import { addBeat, duplicatePattern, createPattern, lastBeatHasNotes, removeLastBeat, rename } from '../../domain/patternOps';
+import { isSongLocal, promoteToGroove } from '../../domain/songBeats';
 import { patternTicks, stepTicks } from '../../domain/time';
 import type { Pattern, SoundId } from '../../domain/types';
 import { Autosaver, installLifecycleFlush, type SaveStatus } from '../../storage/autosave';
@@ -55,6 +56,8 @@ export const kitStatus = signal<KitStatus>('idle');
 export const toast = signal<ToastMsg | null>(null);
 export const confirmReq = signal<ConfirmReq | null>(null);
 export const settingsOpen = signal(false);
+/** "Save as groove" sheet for a song-local beat (null = closed). */
+export const saveGrooveReq = signal<{ id: string; name: string } | null>(null);
 export const velPopover = signal<VelPopover | null>(null);
 export const ready = signal(false);
 /** Unsaved text-editor draft; null = follow the pattern. */
@@ -94,6 +97,39 @@ let persistAsked = false;
 
 function save(p: Pattern | null): void {
   if (p && !p.builtIn) saver?.schedule(p);
+}
+
+// ── library helpers for song-local beats (songs.ts) ──────────────
+/** Adds a pattern to the library without touching the editor's selection. */
+export function addLibraryPattern(p: Pattern): void {
+  library.value = [...library.peek(), p];
+  save(p);
+}
+/** Replaces a pattern (same id) in the library without touching the editor's selection. */
+export function putLibraryPattern(p: Pattern): void {
+  library.value = library.peek().map((x) => (x.id === p.id ? p : x));
+  save(p);
+}
+/** Deletes user patterns (song-local garbage collection). The editor moves off a deleted pattern. */
+export function dropLibraryPatterns(ids: readonly string[]): void {
+  if (ids.length === 0) return;
+  const gone = new Set(ids);
+  library.value = library.peek().filter((p) => p.builtIn || !gone.has(p.id));
+  if (gone.has(currentId.peek())) currentId.value = DEFAULT_PATTERN_ID;
+  for (const id of ids) saver?.scheduleDelete(id);
+}
+
+export function requestSaveAsGroove(id: string): void {
+  const p = findPattern(library.peek(), id);
+  if (p && isSongLocal(p)) saveGrooveReq.value = { id, name: p.name };
+}
+/** Promotes a song-local beat to the groove library (sections keep pointing at it). */
+export function saveAsGroove(id: string, name: string): void {
+  const p = findPattern(library.peek(), id);
+  if (!p || !isSongLocal(p)) return;
+  const q = promoteToGroove(p, name);
+  putLibraryPattern(q);
+  showToast(`Saved as groove ${q.name}`);
 }
 
 // ── toast ────────────────────────────────────────────────────────

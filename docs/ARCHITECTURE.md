@@ -110,6 +110,34 @@ built-in pattern "No drums (click only)" (`f-click-only`) makes a section a pure
 - Keys (not while typing): Space play/stop, F fill, Right/PageDown next, Left/PageUp prev, B break, L loop, C click,
   T tap, Up/Down BPM.
 
+## Song-local beats (typed section text)
+
+Each section row is `line 1 controls` and `line 2 = [beat combobox] [− × n +]`. The combobox is a monospace text field
+holding the section pattern as ONE line of beat text (`formatBeatText(p, { lineBreaks: false })`), with a small name tag
+("Rock 8ths" or "song beat"; on narrow rows the tag moves to the caption line below the field, which also shows
+"4 beats · 8ths" or the first error as "col N: message"). Its ▾ opens the groove picker with the actions
+"Save as groove…" (song beats only) and "Open in Beat Editor", then the saved grooves.
+
+- **Data**: `Pattern.ownerSongId?` marks a pattern owned by one song. It is a normal user pattern (patterns store,
+  autosave, playable, editable) hidden from the groove pickers (`grooves`/`fills` in drummer.ts, the section and default
+  fill pickers) and from the Beat Editor list (except while it is the open pattern, shown under "Song beat" with a
+  "Save as groove" button). The storage validator keeps the field; no schema bump (additive, old records have no owner).
+  `duplicatePattern` drops it (a duplicate is a library pattern).
+- **Rules** (pure, `domain/songBeats.ts`, applied by `songs.setSectionText`): typing over a library groove creates a
+  local copy (name "<Song> · <Section>", feel and mix copied) and points the section at it, the groove is never touched;
+  a local beat only this section uses is updated in place; a local beat used by 2+ sections (or owned by another song) is
+  forked. Text is parsed live (250 ms debounce, Enter/blur flush); invalid text shows the error, keeps playing the last
+  valid beat and saves nothing; Escape reverts. The reading of the text (beats per bar for the resolution inference) uses
+  the pattern the typing session started with, so adding steps does not re-read earlier ones as 16ths.
+- **Copies**: duplicating a section, the add-section chips and duplicating a song fork song-local beats, so edits stay
+  independent. Choosing a groove never deletes the previous local beat.
+- **GC**: `garbageLocalPatterns` (owned patterns that no section/fill of their song references, or whose song is gone) runs
+  once after songs and patterns are loaded and after deleting a song; never during the section-delete Undo window.
+- **Playback**: the engine reads patterns live at every collect, so an edit is heard within the look-ahead (~120 ms),
+  notes already scheduled are untouched; a changed beat count takes effect at the next bar.
+- **Save as groove** (sheet) clears `ownerSongId` (category "My beats"); sections keep referencing it.
+  **Open in Beat Editor** selects the pattern even while a song plays (`link.openInEditor`).
+
 ## Sound
 
 - One kit = one MP3 **sprite** plus `kit.json` (start/duration/gain per sound), ~250 KB.

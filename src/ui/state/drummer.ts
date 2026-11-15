@@ -20,8 +20,8 @@ export const click = signal<{ enabled: boolean; volume: number }>({ ...D.click }
 export const crashAfterFill = signal<boolean>(D.crashAfterFill);
 export const lastGrooveId = signal<string | null>(D.lastGrooveId);
 
-export const grooves = computed(() => library.value.filter((p) => p.kind === 'groove'));
-export const fills = computed(() => library.value.filter((p) => p.kind === 'fill'));
+export const grooves = computed(() => library.value.filter((p) => p.kind === 'groove' && !p.ownerSongId));
+export const fills = computed(() => library.value.filter((p) => p.kind === 'fill' && !p.ownerSongId));
 
 function currentSettings(): DrummerSettings {
   return {
@@ -116,7 +116,7 @@ async function doInit(): Promise<void> {
   try {
     // Users of the old Groove mode keep their tempo, click and count-in (legacy `groove` record).
     const raw = (await repo.getSetting<unknown>(SETTINGS_KEY)) ?? (await repo.getSetting<unknown>(LEGACY_KEY));
-    const ids = new Set(library.peek().filter((p) => p.kind === 'groove').map((p) => p.id));
+    const ids = new Set(library.peek().filter((p) => p.kind === 'groove' && !p.ownerSongId).map((p) => p.id));
     const s = sanitizeDrummerSettings(raw, ids);
     bpm.value = s.bpm;
     countInBars.value = s.countInBars;

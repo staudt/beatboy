@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { SECTION_KINDS, SECTION_LABELS, SONG_LIMITS, type Section } from '../../domain/song';
+import { formatBeatText } from '../../domain/notation';
 import { feelOf } from '../../domain/patternOps';
+import { isSongLocal, parseSectionText } from '../../domain/songBeats';
 import { patternTicks } from '../../domain/time';
 import type { Pattern } from '../../domain/types';
 import { IconCopy, IconLoop, IconMinus, IconPlus, IconTrash } from '../common/icons';
 import { PatternPicker } from '../common/PatternPicker';
 import { fills, grooves } from '../state/drummer';
 import { isDoubleTap, isTap, LONG_PRESS_MS, TAP_SLOP, type TapPoint } from '../state/songLogic';
-import { library } from '../state/lab';
+import { library, requestSaveAsGroove } from '../state/lab';
+import { openInEditor } from '../state/link';
 import {
   addSectionOfKind,
   currentSong,
@@ -19,6 +22,7 @@ import {
   playingSectionIndex,
   selectedSectionId,
   setDefaultFill,
+  setSectionText,
   songInfo,
   songPlaying,
   tapSection,
@@ -112,6 +116,119 @@ function SectionLabel({ section, editing, onDone }: { section: Section; editing:
   );
 }
 
+const BEAT_DEBOUNCE = 250;
+
+/** The section's beat as one line of text. Typing applies it live (debounced): see setSectionText for the song-local rules. */
+function BeatCombo({ section, pattern }: { section: Section; pattern: Pattern | undefined }) {
+  const local = isSongLocal(pattern);
+  const combo = useRef<HTMLDivElement>(null);
+  const fmt = pattern ? formatBeatText(pattern, { lineBreaks: false }) : null;
+  const text = fmt?.text ?? '';
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(text);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const lastApplied = useRef(text);
+  const ctx = useRef<Pattern | undefined>(pattern); // the pattern when typing began: keeps the reading of the text stable
+  const cancelled = useRef(false);
+  const apply = (v: string) => {
+    clearTimeout(timer.current);
+    timer.current = undefined;
+    if (v === lastApplied.current) return;
+    if (setSectionText(section.id, v, ctx.current).ok) lastApplied.current = v;
+  };
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const shown = editing ? value : text;
+  const parsed = editing ? parseSectionText(pattern, value, ctx.current) : null;
+  const error = parsed && !parsed.ok ? `col ${parsed.errors[0]!.col}: ${parsed.errors[0]!.message}` : null;
+  let info = '';
+  if (parsed?.ok) {
+    const pad = /Padded (\d+)/.exec(parsed.warnings[0] ?? '')?.[1];
+    info = `${parsed.beats} beat${parsed.beats === 1 ? '' : 's'} · ${parsed.resolution}${pad ? ` · +${pad} rest${pad === '1' ? '' : 's'}` : ''}`;
+  } else if (!parsed && pattern && fmt) {
+    info = `${pattern.timeSig.num} beat${pattern.timeSig.num === 1 ? '' : 's'} · ${fmt.resolution}`;
+  }
+  const tag = local ? 'song beat' : (pattern?.name ?? 'missing groove');
+  const actions = [
+    ...(local ? [{ label: 'Save as groove…', onClick: () => requestSaveAsGroove(section.patternId) }] : []),
+    ...(pattern ? [{ label: 'Open in Beat Editor', onClick: () => openInEditor(section.patternId) }] : []),
+  ];
+  return (
+    <div class="sc-main">
+      <div class={`sc-combo${error ? ' is-invalid' : ''}`} ref={combo}>
+        <span class="sc-tag" data-testid="beat-tag" title={tag}>
+          {tag}
+        </span>
+        <input
+          class="sc-text"
+          type="text"
+          value={shown}
+          spellcheck={false}
+          autocomplete="off"
+          enterkeyhint="done"
+          ref={(el) => {
+            if (el) {
+              el.setAttribute('autocorrect', 'off');
+              el.setAttribute('autocapitalize', 'off');
+            }
+          }}
+          aria-label={`Beat for ${section.name}`}
+          aria-invalid={error ? 'true' : undefined}
+          data-testid="beat-text"
+          onFocus={() => {
+            cancelled.current = false;
+            ctx.current = pattern;
+            lastApplied.current = text;
+            setValue(text);
+            setEditing(true);
+          }}
+          onInput={(e) => {
+            const v = e.currentTarget.value;
+            setValue(v);
+            clearTimeout(timer.current);
+            timer.current = setTimeout(() => apply(v), BEAT_DEBOUNCE);
+          }}
+          onBlur={(e) => {
+            if (!cancelled.current) apply(e.currentTarget.value);
+            clearTimeout(timer.current);
+            setEditing(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.currentTarget.blur();
+            } else if (e.key === 'Escape') {
+              e.stopPropagation();
+              cancelled.current = true;
+              clearTimeout(timer.current);
+              setValue(text);
+              e.currentTarget.blur();
+            }
+          }}
+        />
+        <PatternPicker
+          patterns={grooves.value}
+          currentId={section.patternId}
+          onSelect={(id) => patchSection(section.id, { patternId: id })}
+          subtitleOf={beatsLabel}
+          label="Section groove"
+          triggerName={local ? 'Song beat' : undefined}
+          compact
+          anchorTo={() => combo.current}
+          actions={actions}
+        />
+      </div>
+      <p class={error ? 'sc-cap sc-err' : 'sc-cap'}>
+        <span class="sc-tag sc-tag-cap" data-testid="beat-tag" title={tag}>
+          {tag}
+        </span>
+        <span class="sc-capt" data-testid={error ? 'beat-error' : 'beat-info'} role={error ? 'alert' : undefined}>
+          {error ?? (info || '\u00a0')}
+        </span>
+      </p>
+    </div>
+  );
+}
+
 const CONTROL = '[data-row-control], button, input, select, textarea, a, label, .pp, .pp-panel, [role=listbox], [role=option], [role=dialog]';
 /** Did this event come from an interactive control (not the row itself)? composedPath: a picker option removes itself on select, so the target may already be detached. */
 const fromControl = (e: Event, row: Element): boolean => e.composedPath().some((n) => n instanceof HTMLElement && n !== row && n.matches(CONTROL));
@@ -138,6 +255,7 @@ interface RowProps {
 
 function SectionRow({ section, index, count, current, selected, queued, shift, dragging, onHandleDown }: RowProps) {
   const groove = library.value.find((p) => p.id === section.patternId);
+  const local = isSongLocal(groove);
   const [editing, setEditing] = useState(false);
   const press = useRef<Press | null>(null);
   const lastTap = useRef<(TapPoint & { onLabel: boolean }) | null>(null);
@@ -149,7 +267,7 @@ function SectionRow({ section, index, count, current, selected, queued, shift, d
     clearTimeout(press.current?.timer);
     press.current = null;
   };
-  const label = `${index + 1}. ${section.name}, ${groove?.name ?? 'missing groove'}, plays ${section.bars} time${section.bars === 1 ? '' : 's'}`;
+  const label = `${index + 1}. ${section.name}, ${local ? 'song beat' : (groove?.name ?? 'missing groove')}, plays ${section.bars} time${section.bars === 1 ? '' : 's'}`;
   return (
     <li
       class={`sc${current ? ' is-current' : ''}${selected ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}`}
@@ -264,13 +382,7 @@ function SectionRow({ section, index, count, current, selected, queued, shift, d
         </button>
       </div>
       <div class="sc-l2">
-        <PatternPicker
-          patterns={grooves.value}
-          currentId={section.patternId}
-          onSelect={(id) => patchSection(section.id, { patternId: id })}
-          subtitleOf={beatsLabel}
-          label="Section groove"
-        />
+        <BeatCombo section={section} pattern={groove} />
         <BarsEditor section={section} beats={groove ? Math.max(1, Math.round(patternTicks(groove) / 480)) : 4} />
       </div>
     </li>

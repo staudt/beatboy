@@ -3,6 +3,7 @@ import { useEffect } from 'preact/hooks';
 import { SongView } from './assistant/SongView';
 import { BeatLab } from './beatlab/BeatLab';
 import { ConfirmSheet } from './common/ConfirmSheet';
+import { SaveGrooveSheet } from './common/SaveGrooveSheet';
 import { IconBot, IconGrid } from './common/icons';
 import { Toast } from './common/Toast';
 import { isDesktop } from './media';
@@ -134,6 +135,7 @@ export function App() {
       {!desktop && <Tabs where="bottom" />}
       <Toast />
       <ConfirmSheet />
+      <SaveGrooveSheet />
     </div>
   );
 }

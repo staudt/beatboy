@@ -10,7 +10,7 @@ import type { Pattern } from '../../domain/types';
 import * as drummer from './drummer';
 import * as lab from './lab';
 import * as songs from './songs';
-import { route, type Route } from '../router';
+import { navigate, route, type Route } from '../router';
 import { editorPlayAction, routeChangeAction } from './linkLogic';
 
 /** Editor Play/Stop (button and Space). Call from a user gesture. */
@@ -32,6 +32,14 @@ function playingSectionPatternId(): string | null {
   return i === null ? null : (songs.currentSong.peek()?.sections[i]?.patternId ?? null);
 }
 
+/** Pattern the next Drummer -> Editor switch must select (the Edit buttons), overriding the playing-section link. */
+let forcedEditorId: string | null = null;
+/** Opens a pattern in the Beat Editor (from the section rows); a playing song keeps playing. */
+export function openInEditor(id: string): void {
+  forcedEditorId = id;
+  navigate('editor');
+}
+
 let inited = false;
 export function initLink(): void {
   if (inited) return;
@@ -47,7 +55,10 @@ export function initLink(): void {
       editorId: lab.currentId.peek(),
       songPatternId: playingSectionPatternId(),
     });
-    if (a.selectEditor) lab.selectPattern(a.selectEditor);
+    const forced = forcedEditorId;
+    forcedEditorId = null;
+    const sel = from === 'drummer' && to === 'editor' && forced ? forced : a.selectEditor;
+    if (sel) lab.selectPattern(sel);
     if (a.stop) engine.stop();
   });
   lab.hooks.onCopied = (from: Pattern, copy: Pattern) => songs.followCopy(from.id, copy.id);
