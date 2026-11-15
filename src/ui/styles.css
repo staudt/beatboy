@@ -2404,3 +2404,25 @@ button.chip {
   min-width: 0;
   text-align: left;
 }
+
+/* ── About & credits (settings sheet) ── */
+.credits {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.credits summary {
+  cursor: pointer;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+}
+.credits p {
+  margin: 8px 0 0;
+}
+.credits a {
+  color: var(--text);
+}

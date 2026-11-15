@@ -214,7 +214,28 @@ function SettingsSheet() {
         </label>
         <DefaultFill />
       </div>
+      <Credits />
     </Sheet>
+  );
+}
+
+/** Credits for bundled sounds, font and code (see public/licenses/). */
+function Credits() {
+  const base = import.meta.env.BASE_URL;
+  return (
+    <details class="credits">
+      <summary class="label">About &amp; credits</summary>
+      <p>
+        Drum sounds from <a href="https://github.com/sfzinstruments/virtuosity_drums" target="_blank" rel="noopener">Virtuosity Drums</a> by
+        Versilian Studios; clap from <a href="https://github.com/august-byrne/phazite-sounds" target="_blank" rel="noopener">Phazite Sounds</a> (from the
+        Versilian Community Sample Library). All samples are CC0 1.0 (public domain).{' '}
+        <a href={`${base}licenses/ASSET_LICENSES.md`} target="_blank" rel="noopener">Sample sources</a>
+      </p>
+      <p>
+        Font: JetBrains Mono (SIL Open Font License 1.1). Built with Preact, Preact Signals and idb (MIT / ISC).{' '}
+        <a href={`${base}licenses/THIRD_PARTY_NOTICES.txt`} target="_blank" rel="noopener">Third-party notices</a>
+      </p>
+    </details>
   );
 }
 

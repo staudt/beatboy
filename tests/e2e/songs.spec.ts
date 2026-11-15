@@ -775,4 +775,22 @@ test.describe('settings', () => {
     await expect(dlg.getByRole('slider', { name: 'Click volume' })).toBeVisible();
     await expect(dlg.getByRole('checkbox', { name: /Crash after fill/ })).toBeChecked();
   });
+
+  test('credits name the sample sources and link to license files served by the site', async ({ page }) => {
+    await open(page);
+    await press(page, page.getByRole('button', { name: 'Drummer settings' }));
+    const dlg = page.getByRole('dialog', { name: 'Drummer settings' });
+    await dlg.getByText('About & credits').click();
+    await expect(dlg.getByText(/Virtuosity Drums/)).toBeVisible();
+    await expect(dlg.getByText(/CC0 1\.0/)).toBeVisible();
+    for (const [name, needle] of [
+      ['Sample sources', 'Versilian Studios'],
+      ['Third-party notices', 'SIL OPEN FONT LICENSE'],
+    ] as const) {
+      const href = await dlg.getByRole('link', { name }).getAttribute('href');
+      const res = await page.request.get(new URL(href!, page.url()).href);
+      expect(res.ok(), name).toBe(true);
+      expect((await res.text()).toUpperCase()).toContain(needle.toUpperCase());
+    }
+  });
 });
