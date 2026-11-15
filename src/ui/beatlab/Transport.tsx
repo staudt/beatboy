@@ -1,5 +1,6 @@
 import { PATTERN_LIMITS } from '../../domain/types';
 import { IconMinus, IconPlay, IconPlus, IconStop } from '../common/icons';
+import { isDesktop } from '../media';
 import { bpm, current, kitStatus, playing, settingsOpen, setTempo, tap, togglePlay } from '../state/lab';
 
 export function Transport() {
@@ -7,6 +8,20 @@ export function Transport() {
   const b = bpm.value;
   const swing = Math.round(current.value.swing * 100);
   const kit = kitStatus.value;
+  const desktop = isDesktop.value;
+  // Desktop: inline between "−" and the BPM number. Mobile: its own full-width row.
+  const slider = (
+    <input
+      class="range tempo-slider"
+      type="range"
+      min={PATTERN_LIMITS.minBpm}
+      max={PATTERN_LIMITS.maxBpm}
+      step={1}
+      value={b}
+      aria-label="Tempo slider"
+      onInput={(e) => setTempo(Number(e.currentTarget.value))}
+    />
+  );
   const commit = (el: HTMLInputElement) => {
     const v = Number(el.value);
     if (Number.isFinite(v) && v > 0) setTempo(Math.min(PATTERN_LIMITS.maxBpm, Math.max(PATTERN_LIMITS.minBpm, v)));
@@ -26,6 +41,7 @@ export function Transport() {
         <button type="button" class="btn btn-icon" aria-label="Tempo down" disabled={b <= PATTERN_LIMITS.minBpm} onClick={() => setTempo(b - 1)}>
           <IconMinus />
         </button>
+        {desktop && slider}
         <label class="tempo-field">
           <input
             class="tempo-input"
@@ -44,16 +60,7 @@ export function Transport() {
           <IconPlus />
         </button>
       </div>
-      <input
-        class="range tempo-slider"
-        type="range"
-        min={PATTERN_LIMITS.minBpm}
-        max={PATTERN_LIMITS.maxBpm}
-        step={1}
-        value={b}
-        aria-label="Tempo slider"
-        onInput={(e) => setTempo(Number(e.currentTarget.value))}
-      />
+      {!desktop && slider}
       <button type="button" class="btn btn-tap" aria-label="Tap tempo" onPointerDown={() => tap()}  onClick={(e) => e.detail === 0 && tap()}>
         TAP
       </button>

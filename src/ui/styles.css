@@ -1263,6 +1263,7 @@ button.chip {
   .lab-top .tempo-slider {
     order: 0;
     flex: 0 0 200px;
+    margin: 0 8px;
   }
 
   .swing-chip {
