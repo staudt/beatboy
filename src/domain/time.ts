@@ -40,12 +40,25 @@ export function stepsPerBar(ts: TimeSignature, stepsPerBeat: number): number {
   return ts.num * stepsPerBeat;
 }
 
-export function patternTicks(p: Pick<Pattern, 'timeSig' | 'bars'>): number {
+/** Loop length in steps (grid squares): the explicit `steps` when set, else whole beats × bars. */
+export function patternSteps(p: Pick<Pattern, 'timeSig' | 'bars' | 'stepsPerBeat'> & { steps?: number }): number {
+  return p.steps ?? stepsPerBar(p.timeSig, p.stepsPerBeat) * p.bars;
+}
+
+/** Loop length in ticks. */
+export function patternTicks(p: Pick<Pattern, 'timeSig' | 'bars'> & { steps?: number; stepsPerBeat?: number }): number {
+  if (p.steps !== undefined && p.stepsPerBeat) return p.steps * stepTicks(p.timeSig, p.stepsPerBeat);
   return barTicks(p.timeSig) * p.bars;
 }
 
-export function patternSteps(p: Pick<Pattern, 'timeSig' | 'bars' | 'stepsPerBeat'>): number {
-  return stepsPerBar(p.timeSig, p.stepsPerBeat) * p.bars;
+/** Length as a person says it: whole beats "4 beats", anything else in squares "3 steps". */
+export function lengthLabel(p: Pick<Pattern, 'timeSig' | 'bars' | 'stepsPerBeat'> & { steps?: number }): string {
+  const n = patternSteps(p);
+  if (n % p.stepsPerBeat === 0) {
+    const b = n / p.stepsPerBeat;
+    return `${b} beat${b === 1 ? '' : 's'}`;
+  }
+  return `${n} step${n === 1 ? '' : 's'}`;
 }
 
 /** Seconds per tick when `bpm` pulses (see pulseTicks) happen per minute. */

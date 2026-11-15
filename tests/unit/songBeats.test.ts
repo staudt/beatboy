@@ -4,6 +4,7 @@ import { formatBeatText, parseBeatText } from '../../src/domain/notation';
 import { createPattern, duplicatePattern } from '../../src/domain/patternOps';
 import { forkLocal, garbageLocalPatterns, isSongLocal, localPatternFor, promoteToGroove } from '../../src/domain/songBeats';
 import { addSection, createSection, createSong } from '../../src/domain/songOps';
+import { patternSteps, patternTicks } from '../../src/domain/time';
 import { validatePattern } from '../../src/storage/migrations';
 
 const rock = factoryPatterns().find((p) => p.id === 'f-rock-8ths')!;
@@ -27,7 +28,8 @@ describe('localPatternFor', () => {
     expect(r.pattern.builtIn).toBe(false);
     expect(r.pattern.category).toBe('My beats');
     expect(r.pattern.stepsPerBeat).toBe(rock.stepsPerBeat);
-    expect(r.pattern.timeSig.num).toBe(4);
+    expect(r.pattern.timeSig.num).toBe(1); // 4 steps = one beat
+    expect(patternSteps(r.pattern)).toBe(4);
     expect(Object.keys(r.pattern.notes).sort()).toEqual(['hatClosed', 'kick', 'snare']);
     expect(rock.ownerSongId).toBeUndefined();
   });
@@ -74,15 +76,40 @@ describe('localPatternFor', () => {
     expect(bad.ok).toBe(false);
   });
 
-  it('the typing session reading (inferFrom) keeps the starting beat count', () => {
+  it('every typed step is one square: the loop is exactly as long as the text', () => {
     const song = mkSong(rock.id);
-    const four = localPatternFor(song, song.sections[0]!, 'kh . sh . kh . sh .', rock);
-    if (!four.ok) throw new Error('x');
-    expect(four.pattern.timeSig.num).toBe(4); // 8 tokens at 4 beats = 8ths
-    const song2 = mkSong(four.pattern.id);
-    // the pattern is now 4 beats; 5 tokens read against 4 beats would be 16ths / 2 beats...
-    const plain = localPatternFor(song2, song2.sections[0]!, 'kh . sh . k', four.pattern);
-    expect(plain.ok && plain.pattern.timeSig.num).toBe(2);
+    const three = localPatternFor(song, song.sections[0]!, 's k s', rock);
+    if (!three.ok) throw new Error('x');
+    expect(patternSteps(three.pattern)).toBe(3);
+    expect(patternTicks(three.pattern)).toBe(360);
+    expect(three.pattern).toMatchObject({ steps: 3, timeSig: { num: 1, den: 4 } });
+    expect(three.warnings).toEqual([]);
+    const song2 = mkSong(three.pattern.id);
+    const own = { ...three.pattern, ownerSongId: 'S1' };
+    const seven = localPatternFor(song2, song2.sections[0]!, 'kh h hs h  k . s', own);
+    expect(seven.ok && seven.mode).toBe('inplace');
+    expect(seven.ok && patternSteps(seven.pattern)).toBe(7);
+    const sixteen = localPatternFor(song, song.sections[0]!, 'kh . sh . kh . sh . kh . sh . kh . sh .', rock);
+    expect(sixteen.ok && patternSteps(sixteen.pattern)).toBe(16);
+    expect(sixteen.ok && sixteen.pattern.timeSig.num).toBe(4);
+    expect(sixteen.ok && sixteen.pattern.steps).toBeUndefined();
+  });
+
+  it('empty text is an error for a section', () => {
+    const song = mkSong(rock.id);
+    const r = localPatternFor(song, song.sections[0]!, '  ', rock);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors[0]!.message).toBe('Type at least one step');
+  });
+
+  it('triplet grooves read each step as a triplet square', () => {
+    const slow = factoryPatterns().find((p) => p.id === 'f-slow-blues')!;
+    const song = mkSong(slow.id);
+    const r = localPatternFor(song, song.sections[0]!, 'k . s', slow);
+    if (!r.ok) throw new Error('x');
+    expect(patternSteps(r.pattern)).toBe(3);
+    expect(patternTicks(r.pattern)).toBe(480);
+    expect(r.pattern.notes.snare!.map((n) => n.tick)).toEqual([320]);
   });
 });
 
@@ -115,10 +142,10 @@ describe('promote / fork / format', () => {
       const { text } = formatBeatText(p, { lineBreaks: false });
       expect(text).not.toContain('\n');
       expect(text).not.toContain('|');
-      const r = parseBeatText(text, { timeSig: p.timeSig, stepsPerBeat: p.stepsPerBeat });
-      const ref = parseBeatText(formatBeatText(p).text, { timeSig: p.timeSig, stepsPerBeat: p.stepsPerBeat });
+      const r = parseBeatText(text, { stepsPerBeat: p.stepsPerBeat });
+      const ref = parseBeatText(formatBeatText(p).text, { stepsPerBeat: p.stepsPerBeat });
       expect(r.ok && ref.ok && r.notes).toEqual(ref.ok ? ref.notes : null);
-      expect(r.ok && r.beats).toBe(p.timeSig.num);
+      expect(r.ok && r.steps).toBe(patternSteps(p));
     }
   });
 });

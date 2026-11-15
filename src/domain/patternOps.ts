@@ -144,47 +144,82 @@ function quantizeNotes(notes: Notes, step: number, end: number): Notes {
   return out;
 }
 
+/** Fields describing a loop of `steps` squares: `timeSig.num` = beats covering it, `steps` kept only for partial beats. */
+function lengthFields(steps: number, spb: number): Pick<Pattern, 'timeSig' | 'bars'> & { steps?: number } {
+  return {
+    timeSig: { num: Math.ceil(steps / spb), den: 4 },
+    bars: 1,
+    ...(steps % spb === 0 ? {} : { steps }),
+  };
+}
+
+/** `p` without its (partial-beat) `steps`: the rest of the fields are untouched. */
+function withoutSteps(p: Pattern): Pattern {
+  const { steps: _steps, ...rest } = p;
+  return rest;
+}
+
+/** Longest loop in steps for a grid of `spb` squares per beat. */
+export const maxStepsFor = (spb: number): number => PATTERN_LIMITS.maxBeats * spb;
+
 /**
- * Length of the loop in beats (1..32): one bar of N beats (`bars` becomes 1, so any multi-bar pattern is
- * flattened with every tick unchanged). Shrinking drops the notes beyond the new end.
+ * Length of the loop in steps (grid squares, 1 .. 32 beats' worth): any number, not just whole beats. `bars` becomes 1
+ * (a multi-bar pattern is flattened with every tick unchanged). Shrinking drops the notes beyond the new end.
  */
-export function setBeats(p: Pattern, beats: number, now: number = Date.now()): Pattern {
-  const n = clamp(Math.round(beats), PATTERN_LIMITS.minBeats, PATTERN_LIMITS.maxBeats);
-  const timeSig: TimeSignature = { num: n, den: 4 };
-  const end = barTicks(timeSig);
+export function setSteps(p: Pattern, steps: number, now: number = Date.now()): Pattern {
+  const spb = p.stepsPerBeat;
+  const n = clamp(Math.round(steps), PATTERN_LIMITS.minSteps, maxStepsFor(spb));
+  const end = n * stepTicks({ num: 1, den: 4 }, spb);
   const notes: Notes = {};
   for (const id of SOUND_IDS) {
     const out = (p.notes[id] ?? []).filter((x) => x.tick < end).map((x) => ({ tick: x.tick, vel: x.vel }));
     if (out.length > 0) notes[id] = out;
   }
-  return touch(p, { timeSig, bars: 1, notes }, now);
+  return touch(withoutSteps(p), { ...lengthFields(n, spb), notes }, now);
 }
 
-/** Appends one empty beat (max 32). Returns `p` when already full. */
+/** Length of the loop in whole beats (1..32). See `setSteps`. */
+export function setBeats(p: Pattern, beats: number, now: number = Date.now()): Pattern {
+  const n = clamp(Math.round(beats), PATTERN_LIMITS.minBeats, PATTERN_LIMITS.maxBeats);
+  return setSteps(p, n * p.stepsPerBeat, now);
+}
+
+/** Appends one beat's worth of empty squares (4 straight / 3 triplet), up to 32 beats' worth. Returns `p` when already full. */
 export function addBeat(p: Pattern, now: number = Date.now()): Pattern {
-  return p.timeSig.num >= PATTERN_LIMITS.maxBeats ? p : setBeats(p, p.timeSig.num + 1, now);
+  const cur = patternSteps(p);
+  const next = Math.min(maxStepsFor(p.stepsPerBeat), cur + p.stepsPerBeat);
+  return next === cur ? p : setSteps(p, next, now);
 }
 
-/** Removes the last beat and its notes (min 1 beat). Returns `p` when only one is left. */
+/** Removes the last beat's worth of squares (4 / 3) and their notes; never below 1 step. Returns `p` at 1 step. */
 export function removeLastBeat(p: Pattern, now: number = Date.now()): Pattern {
-  return p.timeSig.num <= PATTERN_LIMITS.minBeats ? p : setBeats(p, p.timeSig.num - 1, now);
+  const cur = patternSteps(p);
+  const next = Math.max(PATTERN_LIMITS.minSteps, cur - p.stepsPerBeat);
+  return next === cur ? p : setSteps(p, next, now);
 }
 
-/** True when the last beat contains any note (used to confirm before removing it). */
+/** True when the squares `removeLastBeat` would remove contain any note (used to confirm before removing). */
 export function lastBeatHasNotes(p: Pattern): boolean {
   const end = patternTicks(p);
-  const start = end - beatTicks(p.timeSig);
+  const start = Math.max(PATTERN_LIMITS.minSteps, patternSteps(p) - p.stepsPerBeat) * stepTicks(p.timeSig, p.stepsPerBeat);
   return SOUND_IDS.some((id) => (p.notes[id] ?? []).some((n) => n.tick >= start && n.tick < end));
 }
 
 /**
- * Steps per beat: 4 (straight 16ths) or 3 (triplets). Notes are quantized to the new grid so
- * none are ever invisible: nearest step (ties go earlier), collisions keep the loudest velocity.
+ * Steps per beat: 4 (straight 16ths) or 3 (triplets). A loop of whole beats keeps its beats; a partial one converts
+ * proportionally (rounded, min 1 step). Notes are quantized to the new grid so none are ever invisible: nearest step
+ * (ties go earlier), collisions keep the loudest velocity.
  */
 export function setStepsPerBeat(p: Pattern, n: number, now: number = Date.now()): Pattern {
   if (!PATTERN_LIMITS.stepsPerBeat.includes(n)) return p;
-  const notes = quantizeNotes(p.notes, stepTicks(p.timeSig, n), patternTicks(p));
-  return touch(p, { stepsPerBeat: n, notes }, now);
+  const old = p.stepsPerBeat;
+  const cur = patternSteps(p);
+  const steps =
+    cur % old === 0
+      ? (cur / old) * n
+      : clamp(Math.round((cur * n) / old), PATTERN_LIMITS.minSteps, maxStepsFor(n));
+  const notes = quantizeNotes(p.notes, stepTicks({ num: 1, den: 4 }, n), steps * stepTicks({ num: 1, den: 4 }, n));
+  return touch(withoutSteps(p), { stepsPerBeat: n, ...lengthFields(steps, n), notes }, now);
 }
 
 export function feelOf(p: Pick<Pattern, 'stepsPerBeat'>): Feel {

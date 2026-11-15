@@ -2550,3 +2550,25 @@ button.chip {
 .credits a {
   color: var(--text);
 }
+
+/* Song-beat bar under the Beat Editor header (keeps the name visible on phones). */
+.ph-songbeat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  min-width: 0;
+}
+.ph-songbeat-hint {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ph-songbeat .ph-save {
+  white-space: nowrap;
+  min-height: 40px;
+}

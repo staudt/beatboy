@@ -87,3 +87,13 @@ describe('PatternLoopSource', () => {
     expect(s.timeSig()).toEqual({ num: 4, den: 4 });
   });
 });
+
+describe('PatternLoopSource with a partial-beat length', () => {
+  it('loops every 3 steps (360 ticks) and every 2 triplet steps (320)', () => {
+    const three = mkPattern({ steps: 3, timeSig: { num: 1, den: 4 }, notes: { snare: [{ tick: 0, vel: 90 }, { tick: 240, vel: 90 }], kick: [{ tick: 120, vel: 90 }] } });
+    const out = collect(new PatternLoopSource(() => three), 0, 1080);
+    expect(out.filter((n) => n.sound === 'snare').map((n) => n.tick)).toEqual([0, 240, 360, 600, 720, 960]);
+    const tri = mkPattern({ steps: 2, stepsPerBeat: 3, timeSig: { num: 1, den: 4 }, notes: { kick: [{ tick: 0, vel: 90 }, { tick: 160, vel: 90 }] } });
+    expect(collect(new PatternLoopSource(() => tri), 0, 960).map((n) => n.tick)).toEqual([0, 160, 320, 480, 640, 800]);
+  });
+});

@@ -2,15 +2,17 @@ import { describe, expect, it } from 'vitest';
 import snapshot from './fixtures/factory-notes.json';
 import { FACTORY_SPECS, factoryPatterns } from '../../src/domain/factory';
 import { parseBeatText } from '../../src/domain/notation';
+import { patternSteps, patternTicks } from '../../src/domain/time';
 import { noteCount } from '../../src/domain/patternOps';
 
 describe('factory patterns', () => {
-  it('all parse into exactly their beat count with no warnings', () => {
+  it('all are written at full resolution: one token per square, exactly their beats long', () => {
     for (const s of FACTORY_SPECS) {
-      const r = parseBeatText(s.text, { timeSig: s.timeSig ?? { num: 4, den: 4 }, stepsPerBeat: s.stepsPerBeat });
+      const r = parseBeatText(s.text, { stepsPerBeat: s.stepsPerBeat });
       expect(r.ok, s.id).toBe(true);
       if (r.ok) {
         expect(r.warnings, s.id).toEqual([]);
+        expect(r.steps, s.id).toBe((s.timeSig?.num ?? 4) * s.stepsPerBeat);
         expect(r.beats, s.id).toBe(s.timeSig?.num ?? 4);
       }
     }
@@ -60,13 +62,17 @@ describe('factory patterns', () => {
   });
 
   it('notes are identical to the snapshot taken before the syntax change', () => {
-    const snap = snapshot as Record<string, { timeSig: unknown; stepsPerBeat: number; notes: unknown }>;
+    const snap = snapshot as Record<string, { timeSig: { num: number }; stepsPerBeat: number; notes: unknown }>;
     const ps = factoryPatterns();
     expect(Object.keys(snap).sort()).toEqual(ps.map((p) => p.id).sort());
     for (const p of ps) {
       expect(p.notes, p.id).toEqual(snap[p.id]!.notes);
       expect(p.timeSig, p.id).toEqual(snap[p.id]!.timeSig);
       expect(p.stepsPerBeat, p.id).toBe(snap[p.id]!.stepsPerBeat);
+      // same length as before: whole beats, no explicit steps
+      expect(p.steps, p.id).toBeUndefined();
+      expect(patternSteps(p), p.id).toBe(snap[p.id]!.timeSig.num * snap[p.id]!.stepsPerBeat);
+      expect(patternTicks(p), p.id).toBe(snap[p.id]!.timeSig.num * 480);
     }
   });
 });

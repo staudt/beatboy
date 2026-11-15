@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { SECTION_KINDS, SECTION_LABELS, SONG_LIMITS, type Section } from '../../domain/song';
-import { formatBeatText } from '../../domain/notation';
+import { formatBeatText, stepsCaption } from '../../domain/notation';
 import { feelOf } from '../../domain/patternOps';
 import { isSongLocal, parseSectionText } from '../../domain/songBeats';
-import { patternTicks } from '../../domain/time';
+import { lengthLabel, patternSteps, patternTicks } from '../../domain/time';
 import type { Pattern } from '../../domain/types';
 import { IconCopy, IconLoop, IconMinus, IconPlus, IconTrash } from '../common/icons';
 import { PatternPicker } from '../common/PatternPicker';
@@ -28,13 +28,14 @@ import {
   tapSection,
 } from '../state/songs';
 
-const beatsLabel = (p: Pattern) => `${p.timeSig.num} beat${p.timeSig.num === 1 ? '' : 's'} · ${feelOf(p)}`;
+const beatsLabel = (p: Pattern) => `${lengthLabel(p)} · ${feelOf(p)}`;
 
-function BarsEditor({ section, beats }: { section: Section; beats: number }) {
-  const total = beats * section.bars;
+/** `pass` = one play of the groove ("4 beats", "3 steps"); shown in the tooltip unless it's a plain 4-beat bar. */
+function BarsEditor({ section, pass }: { section: Section; pass: string }) {
   const set = (v: number) => patchSection(section.id, { bars: v });
+  const times = `${section.bars} time${section.bars === 1 ? '' : 's'}`;
   return (
-    <div class="stepper sc-stepper" role="group" aria-label="Repeats" title={`Plays the groove ${section.bars} time${section.bars === 1 ? '' : 's'}${beats !== 4 ? ` (${total} beats)` : ''}`}>
+    <div class="stepper sc-stepper" role="group" aria-label="Repeats" title={`Plays the groove ${times}${pass !== '4 beats' ? ` (${pass} each)` : ''}`}>
       <button type="button" class="btn btn-icon" aria-label="Plays fewer" disabled={section.bars <= SONG_LIMITS.minBars} onClick={() => set(section.bars - 1)}>
         <IconMinus />
       </button>
@@ -128,25 +129,20 @@ function BeatCombo({ section, pattern }: { section: Section; pattern: Pattern | 
   const [value, setValue] = useState(text);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastApplied = useRef(text);
-  const ctx = useRef<Pattern | undefined>(pattern); // the pattern when typing began: keeps the reading of the text stable
   const cancelled = useRef(false);
   const apply = (v: string) => {
     clearTimeout(timer.current);
     timer.current = undefined;
     if (v === lastApplied.current) return;
-    if (setSectionText(section.id, v, ctx.current).ok) lastApplied.current = v;
+    if (setSectionText(section.id, v).ok) lastApplied.current = v;
   };
   useEffect(() => () => clearTimeout(timer.current), []);
   const shown = editing ? value : text;
-  const parsed = editing ? parseSectionText(pattern, value, ctx.current) : null;
+  const parsed = editing ? parseSectionText(pattern, value) : null;
   const error = parsed && !parsed.ok ? `col ${parsed.errors[0]!.col}: ${parsed.errors[0]!.message}` : null;
   let info = '';
-  if (parsed?.ok) {
-    const pad = /Padded (\d+)/.exec(parsed.warnings[0] ?? '')?.[1];
-    info = `${parsed.beats} beat${parsed.beats === 1 ? '' : 's'} · ${parsed.resolution}${pad ? ` · +${pad} rest${pad === '1' ? '' : 's'}` : ''}`;
-  } else if (!parsed && pattern && fmt) {
-    info = `${pattern.timeSig.num} beat${pattern.timeSig.num === 1 ? '' : 's'} · ${fmt.resolution}`;
-  }
+  if (parsed?.ok) info = stepsCaption(parsed.steps, pattern?.stepsPerBeat ?? 4);
+  else if (!parsed && pattern) info = stepsCaption(patternSteps(pattern), pattern.stepsPerBeat);
   const tag = local ? 'song beat' : (pattern?.name ?? 'missing groove');
   const actions = [
     ...(local ? [{ label: 'Save as groove…', onClick: () => requestSaveAsGroove(section.patternId) }] : []),
@@ -176,7 +172,6 @@ function BeatCombo({ section, pattern }: { section: Section; pattern: Pattern | 
           data-testid="beat-text"
           onFocus={() => {
             cancelled.current = false;
-            ctx.current = pattern;
             lastApplied.current = text;
             setValue(text);
             setEditing(true);
@@ -383,7 +378,7 @@ function SectionRow({ section, index, count, current, selected, queued, shift, d
       </div>
       <div class="sc-l2">
         <BeatCombo section={section} pattern={groove} />
-        <BarsEditor section={section} beats={groove ? Math.max(1, Math.round(patternTicks(groove) / 480)) : 4} />
+        <BarsEditor section={section} pass={groove ? lengthLabel(groove) : '4 beats'} />
       </div>
     </li>
   );

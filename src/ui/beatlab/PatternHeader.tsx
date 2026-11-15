@@ -19,6 +19,7 @@ export function PatternHeader() {
   // Song beats stay out of the list, except the one being edited (shown under "Song beat").
   const list = library.value.flatMap((q) => (q.id === p.id && local ? [{ ...q, category: 'Song beat' }] : q.ownerSongId ? [] : [q]));
   return (
+    <>
     <header class="pattern-header">
       <PatternPicker
         patterns={list}
@@ -29,16 +30,6 @@ export function PatternHeader() {
         label="Patterns"
         nameTestId="pattern-name"
       />
-      {local && (
-        <>
-          <span class="tag" data-testid="song-beat-tag" title="This beat belongs to a song">
-            song beat
-          </span>
-          <button type="button" class="btn" onClick={() => requestSaveAsGroove(p.id)}>
-            Save as groove
-          </button>
-        </>
-      )}
       <span class="spacer" />
       <button type="button" class="btn btn-icon" aria-label="Duplicate pattern" onClick={duplicateCurrent}>
         <IconCopy />
@@ -55,5 +46,18 @@ export function PatternHeader() {
       </button>
       <SaveStatusChip />
     </header>
+    {local && (
+      // Own line under the header so the beat's name keeps its room on phones.
+      <div class="ph-songbeat">
+        <span class="tag" data-testid="song-beat-tag" title="This beat belongs to a song">
+          song beat
+        </span>
+        <span class="ph-songbeat-hint">only used in its song</span>
+        <button type="button" class="btn ph-save" onClick={() => requestSaveAsGroove(p.id)}>
+          Save as groove
+        </button>
+      </div>
+    )}
+    </>
   );
 }

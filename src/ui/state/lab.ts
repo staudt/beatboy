@@ -3,7 +3,7 @@ import { engine, type EngineMode } from '../../audio/engine';
 import { factoryPatterns } from '../../domain/factory';
 import { addBeat, duplicatePattern, createPattern, lastBeatHasNotes, removeLastBeat, rename } from '../../domain/patternOps';
 import { isSongLocal, promoteToGroove } from '../../domain/songBeats';
-import { patternTicks, stepTicks } from '../../domain/time';
+import { patternSteps, patternTicks, stepTicks } from '../../domain/time';
 import type { Pattern, SoundId } from '../../domain/types';
 import { Autosaver, installLifecycleFlush, type SaveStatus } from '../../storage/autosave';
 import { PatternRepo, requestPersistentStorage } from '../../storage/patternRepo';
@@ -64,7 +64,8 @@ export const ready = signal(false);
 export const textDraft = signal<string | null>(null);
 
 /** Timeline shape as primitives so cells re-render only when the structure changes. */
-export const beatCount = computed(() => current.value.timeSig.num);
+/** Loop length in squares (steps); a partial last beat is possible. */
+export const stepCount = computed(() => patternSteps(current.value));
 export const stepsPerBeatSig = computed(() => current.value.stepsPerBeat);
 
 /** Appends one empty beat. */
@@ -72,16 +73,20 @@ export function addBeatAction(): void {
   editCurrent((p) => addBeat(p));
 }
 
-/** Removes the last beat; asks first when that beat has notes. */
+/** Removes the last beat's worth of squares (min 1 step); asks first when they have notes. */
 export function removeBeatAction(): void {
   const p = current.peek();
-  if (p.timeSig.num <= 1) return;
+  const cur = patternSteps(p);
+  const spb = p.stepsPerBeat;
+  const next = Math.max(1, cur - spb);
+  if (next === cur) return;
   if (!lastBeatHasNotes(p)) {
     editCurrent((q) => removeLastBeat(q));
     return;
   }
+  const whole = cur % spb === 0 && next % spb === 0;
   confirmReq.value = {
-    title: `Remove beat ${p.timeSig.num}?`,
+    title: whole ? `Remove beat ${cur / spb}?` : next + 1 === cur ? `Remove step ${cur}?` : `Remove steps ${next + 1}-${cur}?`,
     body: 'It has notes.',
     confirmLabel: 'Remove',
     onConfirm: () => editCurrent((q) => removeLastBeat(q)),

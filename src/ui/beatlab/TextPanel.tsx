@@ -1,12 +1,13 @@
 import { useComputed, useSignal } from '@preact/signals';
 import { useEffect, useRef } from 'preact/hooks';
-import { applyBeatText, formatBeatText, parseBeatText, type ParseResult } from '../../domain/notation';
+import { applyBeatText, formatBeatText, parseBeatText, stepsCaption, type ParseResult } from '../../domain/notation';
+import { patternSteps } from '../../domain/time';
 import { SOUND_IDS } from '../../domain/types';
 import { SOUNDS } from '../../domain/sounds';
 import { current, editCurrent, showToast, textDraft } from '../state/lab';
 
 const RULES =
-  'Spaces separate steps; letters written together sound together (kh = kick + hat) · . or - rest · UPPERCASE accent · (s) ghost · [ … ]*2 repeat · | is cosmetic · # comment · write one step per beat, 8th or 16th';
+  'Spaces separate steps; letters written together sound together (kh = kick + hat) · . or - rest · UPPERCASE accent · (s) ghost · [ … ]*2 repeat · | is cosmetic · # comment · every step is one square (a 16th, or a triplet step) and the loop is exactly as long as you type';
 
 function CheatSheet() {
   return (
@@ -34,7 +35,7 @@ export function TextPanel() {
   // Debounced parse of the draft (the formatted text is always valid).
   const parsed = useSignal<{ text: string; ctx: string; result: ParseResult } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const ctx = `${p.id}|${p.timeSig.num}/${p.timeSig.den}|${p.stepsPerBeat}`;
+  const ctx = `${p.id}|${p.stepsPerBeat}`;
 
   useEffect(() => {
     clearTimeout(timer.current);
@@ -44,7 +45,7 @@ export function TextPanel() {
       parsed.value = {
         text: draft,
         ctx,
-        result: parseBeatText(draft, { timeSig: cur.timeSig, stepsPerBeat: cur.stepsPerBeat }),
+        result: parseBeatText(draft, { stepsPerBeat: cur.stepsPerBeat }),
       };
     }, 150);
     return () => clearTimeout(timer.current);
@@ -74,7 +75,7 @@ export function TextPanel() {
   if (!dirty) {
     status = (
       <p class="parse ok" role="status">
-        ✓ {p.timeSig.num} beat{p.timeSig.num === 1 ? '' : 's'} · read as {formatted.value.resolution}
+        ✓ {stepsCaption(patternSteps(p), p.stepsPerBeat)}
       </p>
     );
   } else if (!fresh) {
@@ -86,7 +87,7 @@ export function TextPanel() {
   } else if (fresh.ok) {
     status = (
       <p class="parse ok" role="status">
-        ✓ {fresh.beats} beat{fresh.beats === 1 ? '' : 's'} · read as {fresh.resolution}
+        ✓ {fresh.steps === 0 ? `${stepsCaption(patternSteps(p), p.stepsPerBeat)} (empty: notes cleared)` : stepsCaption(fresh.steps, p.stepsPerBeat)}
         {fresh.warnings.length > 0 && <span class="parse-warn"> · {fresh.warnings[0]}</span>}
       </p>
     );

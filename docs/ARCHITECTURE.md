@@ -18,9 +18,18 @@ DOM or Web Audio imports and are fully unit-tested in Node.
 - Integer **ticks**, `TPQ = 480` per quarter note. A beat is one `1/den` note (`beatTicks = 480·4/den`).
 - Patterns store sparse notes `{tick, vel}` per sound. The step grid is a *view*:
   `stepTicks = beatTicks / stepsPerBeat`.
-- **Beats + feel model**: a Beat Editor pattern is one loop of N beats (1–32, the BEATS control at the top right of
-  the editor). Every pattern has `timeSig = {num: N, den: 4}` and `bars = 1` (the field stays for the engine and
-  later songs, where bar grouping will live). The grid is always 16ths: `stepsPerBeat` is 4 (FEEL = Straight, 4
+- **Beats + feel model**: a Beat Editor pattern is one loop of N beats (1–32). Every pattern has
+  `timeSig = {num: N, den: 4}` and `bars = 1` (the field stays for the engine and later songs, where bar grouping will
+  live). **Length in steps**: the loop can be any number of squares, not only whole beats (`s k s` is a 3-step loop).
+  `Pattern.steps?` holds the length only when it is not a whole number of beats (then `timeSig.num = ceil(steps /
+  stepsPerBeat)`); otherwise it is absent and the length is `num × stepsPerBeat × bars`. Always read lengths through
+  `patternSteps` / `patternTicks` (`domain/time.ts`), never from `timeSig`: the engine loop, song bars (one bar = one
+  pass of the groove, so a 3-step groove makes a 360-tick bar), fills, the editor grids, the formatter and the
+  validator all do. Limits: 1 step to 32 beats' worth. Editor `+` / `−` add / remove one beat's worth of squares (4
+  straight, 3 triplet; 3 → 7 → 11, min 1 step); the stepper reads "4 beats" or "3 steps". Changing FEEL keeps the
+  beats of a whole-beat loop and converts a partial one proportionally (rounded, min 1 step). Songs: clicks are one per
+  beat from each bar start (a 3-step bar has just its accent) and the count-in bar is `max(start bar, 4 beats)`.
+  Storage schema v4 adds `steps` (identity migration from v3). The grid is always 16ths: `stepsPerBeat` is 4 (FEEL = Straight, 4
   squares per beat; 8th-note grooves leave every other square empty) or 3 (FEEL = Triplet: shuffle, 6/8, 12/8).
   Changing FEEL quantizes notes to the new grid (nearest step, ties earlier, collisions keep the loudest), so no note
   is ever invisible. Adding a beat appends an empty beat; removing one drops its notes (the UI confirms first).
@@ -115,7 +124,7 @@ built-in pattern "No drums (click only)" (`f-click-only`) makes a section a pure
 Each section row is `line 1 controls` and `line 2 = [beat combobox] [− × n +]`. The combobox is a monospace text field
 holding the section pattern as ONE line of beat text (`formatBeatText(p, { lineBreaks: false })`), with a small name tag
 ("Rock 8ths" or "song beat"; on narrow rows the tag moves to the caption line below the field, which also shows
-"4 beats · 8ths" or the first error as "col N: message"). Its ▾ opens the groove picker with the actions
+"4 steps · 1 beat" / "3 steps" or the first error as "col N: message"). Its ▾ opens the groove picker with the actions
 "Save as groove…" (song beats only) and "Open in Beat Editor", then the saved grooves.
 
 - **Data**: `Pattern.ownerSongId?` marks a pattern owned by one song. It is a normal user pattern (patterns store,
@@ -127,8 +136,9 @@ holding the section pattern as ONE line of beat text (`formatBeatText(p, { lineB
   local copy (name "<Song> · <Section>", feel and mix copied) and points the section at it, the groove is never touched;
   a local beat only this section uses is updated in place; a local beat used by 2+ sections (or owned by another song) is
   forked. Text is parsed live (250 ms debounce, Enter/blur flush); invalid text shows the error, keeps playing the last
-  valid beat and saves nothing; Escape reverts. The reading of the text (beats per bar for the resolution inference) uses
-  the pattern the typing session started with, so adding steps does not re-read earlier ones as 16ths.
+  valid beat and saves nothing; Escape reverts. Every typed step is one square (a 16th, or a triplet step for triplet
+  grooves) and the loop is exactly as long as the text, so `kh h hs h` is one beat and `s k s` a 3-step beat; the
+  section's × n plays it n times. Empty text is an error ("Type at least one step").
 - **Copies**: duplicating a section, the add-section chips and duplicating a song fork song-local beats, so edits stay
   independent. Choosing a groove never deletes the previous local beat.
 - **GC**: `garbageLocalPatterns` (owned patterns that no section/fill of their song references, or whose song is gone) runs

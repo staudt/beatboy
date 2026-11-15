@@ -1,14 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { applyBeatText, formatBeatText, parseBeatText } from '../../src/domain/notation';
-import { createPattern } from '../../src/domain/patternOps';
-import { SOUND_IDS, VELOCITY, type NoteEvent, type Pattern, type SoundId, type TimeSignature } from '../../src/domain/types';
-import { patternSteps, stepTicks } from '../../src/domain/time';
+import { applyBeatText, formatBeatText, parseBeatText, stepsCaption } from '../../src/domain/notation';
+import { createPattern, setSteps } from '../../src/domain/patternOps';
+import { SOUND_IDS, VELOCITY, type NoteEvent, type Pattern, type SoundId } from '../../src/domain/types';
+import { patternSteps, patternTicks, stepTicks } from '../../src/domain/time';
 
-const T44 = { num: 4, den: 4 } as const;
-const p4 = (text: string) => parseBeatText(text, { timeSig: T44, stepsPerBeat: 4 });
-/** 8 tokens per bar are inferred as 8ths on the 16th grid. */
-const p2 = (text: string) => parseBeatText(text, { timeSig: T44, stepsPerBeat: 4 });
-const p3 = (text: string) => parseBeatText(text, { timeSig: T44, stepsPerBeat: 3 });
+/** Every token is one square: a 16th (spb 4) or a triplet step (spb 3). */
+const p4 = (text: string) => parseBeatText(text, { stepsPerBeat: 4 });
+const p2 = p4;
+const p3 = (text: string) => parseBeatText(text, { stepsPerBeat: 3 });
 
 function ok(r: ReturnType<typeof parseBeatText>) {
   if (!r.ok) throw new Error('expected ok: ' + JSON.stringify(r.errors));
@@ -24,10 +23,9 @@ describe('tokens', () => {
   it('spaces separate steps; letters together sound together', () => {
     const r = ok(p4('kh . sh .'));
     expect(r.steps).toBe(4);
-    expect(r.resolution).toBe('quarters');
     expect(ticks(r.notes, 'kick')).toEqual([0]);
-    expect(ticks(r.notes, 'snare')).toEqual([960]);
-    expect(ticks(r.notes, 'hatClosed')).toEqual([0, 960]);
+    expect(ticks(r.notes, 'snare')).toEqual([240]);
+    expect(ticks(r.notes, 'hatClosed')).toEqual([0, 240]);
   });
   it('three sounds in one step', () => {
     const r = ok(p4('ksh . . .'));
@@ -43,16 +41,16 @@ describe('tokens', () => {
   });
   it('letters: h and x closed hat, o open hat, b kick, case-insensitive lookup', () => {
     const r = ok(p4('h x o b'));
-    expect(ticks(r.notes, 'hatClosed')).toEqual([0, 480]);
-    expect(ticks(r.notes, 'hatOpen')).toEqual([960]);
-    expect(ticks(r.notes, 'kick')).toEqual([1440]);
+    expect(ticks(r.notes, 'hatClosed')).toEqual([0, 120]);
+    expect(ticks(r.notes, 'hatOpen')).toEqual([240]);
+    expect(ticks(r.notes, 'kick')).toEqual([360]);
     expect(ok(p4('B . . .')).notes.kick).toEqual([{ tick: 0, vel: VELOCITY.accent }]);
   });
   it('accents and ghosts inside a token', () => {
     const r = ok(p4('Kh . k(s) (s)'));
-    expect(r.notes.kick).toEqual([{ tick: 0, vel: VELOCITY.accent }, { tick: 960, vel: VELOCITY.normal }]);
+    expect(r.notes.kick).toEqual([{ tick: 0, vel: VELOCITY.accent }, { tick: 240, vel: VELOCITY.normal }]);
     expect(r.notes.hatClosed).toEqual([{ tick: 0, vel: VELOCITY.normal }]);
-    expect(r.notes.snare).toEqual([{ tick: 960, vel: VELOCITY.ghost }, { tick: 1440, vel: VELOCITY.ghost }]);
+    expect(r.notes.snare).toEqual([{ tick: 240, vel: VELOCITY.ghost }, { tick: 360, vel: VELOCITY.ghost }]);
   });
   it('same sound twice in a token keeps max', () => {
     expect(ok(p4('kK(k) . . .')).notes.kick).toEqual([{ tick: 0, vel: VELOCITY.accent }]);
@@ -69,41 +67,60 @@ describe('tokens', () => {
     expect(r.steps).toBe(4);
     expect(r.notes.snare).toHaveLength(1);
     const e = ok(p4('  # nothing \n'));
-    expect(e).toMatchObject({ beats: 4, steps: 0, notes: {} });
+    expect(e).toMatchObject({ beats: 0, steps: 0, notes: {} });
     expect(ok(p4('k . k .\r\ns . s .\r\n')).steps).toBe(8);
   });
 });
 
-describe('8th-note rock', () => {
-  const rock = 'kh h sh h kh kh sh h';
-  it('parses as 8ths on the 16th grid', () => {
-    const r = ok(p2(rock));
-    expect(r).toMatchObject({ beats: 4, steps: 8, resolution: '8ths' });
-    expect(ticks(r.notes, 'kick')).toEqual([0, 960, 1200]);
-    expect(ticks(r.notes, 'snare')).toEqual([480, 1440]);
-    expect(ticks(r.notes, 'hatClosed')).toEqual([0, 1, 2, 3, 4, 5, 6, 7].map((i) => i * 240));
+describe('every step is one square; the loop is as long as the text', () => {
+  it('kh h hs h = 4 steps (one beat), 16ths', () => {
+    const r = ok(p4('kh h hs h'));
+    expect(r).toMatchObject({ steps: 4, beats: 1, warnings: [] });
+    expect(ticks(r.notes, 'hatClosed')).toEqual([0, 120, 240, 360]);
+    expect(ticks(r.notes, 'snare')).toEqual([240]);
+  });
+  it('s k s = 3 steps (no padding, no warning)', () => {
+    const r = ok(p4('s k s'));
+    expect(r).toMatchObject({ steps: 3, beats: 0.75, warnings: [] });
+    expect(ticks(r.notes, 'snare')).toEqual([0, 240]);
+    expect(ticks(r.notes, 'kick')).toEqual([120]);
+  });
+  it('an 8th groove is written with dots: 8 steps = 2 beats', () => {
+    const r = ok(p4('kh . h .  sh . h .'));
+    expect(r.steps).toBe(8);
+    expect(ticks(r.notes, 'kick')).toEqual([0]);
+    expect(ticks(r.notes, 'snare')).toEqual([480]);
   });
   it('bar lines and double spaces do not change the result', () => {
-    expect(ok(p2('| ' + rock + ' |'))).toMatchObject({ beats: 4, resolution: '8ths' });
-    expect(ok(p2('kh h  sh h  kh kh  sh h |')).notes).toEqual(ok(p2(rock)).notes);
-    expect(ok(p2(`${rock} |\n${rock} |`))).toMatchObject({ beats: 4, resolution: '16ths' });
-    const eight = parseBeatText(`${rock} |\n${rock} |`, { timeSig: { num: 8, den: 4 }, stepsPerBeat: 4 });
-    expect(ok(eight)).toMatchObject({ beats: 8, resolution: '8ths' });
+    const plain = ok(p4('kh . sh . kh . sh .'));
+    expect(ok(p4('| kh . sh . kh . sh . |')).notes).toEqual(plain.notes);
+    expect(ok(p4('kh .  sh .  kh .  sh . |')).steps).toBe(8);
+  });
+  it('triplet feel: each step is a triplet square (160 ticks)', () => {
+    const r = ok(p3('k . . s . . k . . s . . |'));
+    expect(r).toMatchObject({ steps: 12, beats: 4 });
+    expect(ticks(r.notes, 'snare')).toEqual([3 * 160, 9 * 160]);
+    expect(ok(p3('k s')).steps).toBe(2);
+    expect(ok(p3('k . h h . s')).beats).toBe(2);
+  });
+  it('a long pattern of up to 32 beats', () => {
+    expect(ok(p4(Array(128).fill('k').join(' '))).steps).toBe(128);
+    expect(ok(p3(Array(96).fill('k').join(' '))).beats).toBe(32);
   });
 });
 
 describe('repeats', () => {
   it('[..]*2', () => {
     const r = ok(p2('[kh h sh h]*2'));
-    expect(r.beats).toBe(4);
+    expect(r.beats).toBe(2);
     expect(r.steps).toBe(8);
-    expect(ticks(r.notes, 'kick')).toEqual([0, 960]);
-    expect(ticks(r.notes, 'snare')).toEqual([480, 1440]);
+    expect(ticks(r.notes, 'kick')).toEqual([0, 480]);
+    expect(ticks(r.notes, 'snare')).toEqual([240, 720]);
   });
   it('[kh .]*4 |', () => {
     const r = ok(p2('[kh .]*4 |'));
     expect(r.steps).toBe(8);
-    expect(r.beats).toBe(4);
+    expect(r.beats).toBe(2);
     expect(r.notes.kick).toHaveLength(4);
   });
   it('whitespace around *', () => {
@@ -115,7 +132,7 @@ describe('repeats', () => {
   });
   it('brackets may touch tokens', () => {
     const r = ok(p2('[kh . sh .]*2'));
-    expect(r).toMatchObject({ steps: 8, beats: 4 });
+    expect(r).toMatchObject({ steps: 8, beats: 2 });
     expect(r.notes).toEqual(ok(p2('[ kh . sh . ]*2')).notes);
     expect(ok(p2('[kh|.|sh|.|]*2')).notes).toEqual(r.notes);
   });
@@ -134,7 +151,7 @@ describe('repeats', () => {
   it('N=0, N=65, N=64', () => {
     expect(fail(p2('[k]*0'))[0]!.message).toMatch(/between 1 and 64/);
     expect(fail(p2('[k]*65'))[0]!.message).toMatch(/between 1 and 64/);
-    expect(ok(p2('[k]*64')).beats).toBe(16); // 64 tokens at 16ths
+    expect(ok(p2('[k]*64')).steps).toBe(64);
   });
   it('unmatched brackets', () => {
     expect(fail(p2('k ] x'))[0]).toMatchObject({ line: 1, col: 3 });
@@ -174,58 +191,11 @@ describe('errors', () => {
   it('bad repeat reports line/col', () => {
     expect(fail(p2('k [h .] s'))[0]).toMatchObject({ line: 1, col: 7 });
   });
-  it('too many beats', () => {
-    const e = fail(p4(Array(33 * 4).fill('k').join(' ')));
-    expect(e[0]!.message).toBe('Too many beats: maximum is 32');
-    expect(ok(p4(Array(32 * 4).fill('k').join(' '))).beats).toBe(32);
-  });
-});
-
-describe('beat count and resolution inference', () => {
-  const at = (text: string, beats: number, spb: number) => parseBeatText(text, { timeSig: { num: beats, den: 4 }, stepsPerBeat: spb });
-  it('tokens = beats x d for an allowed d: that d is used (4 beats, straight)', () => {
-    expect(ok(at('k s k s', 4, 4))).toMatchObject({ resolution: 'quarters', beats: 4 });
-    const e = ok(at('kh h  sh h  kh kh  sh h |', 4, 4));
-    expect(e).toMatchObject({ resolution: '8ths', beats: 4 });
-    expect(ticks(e.notes, 'kick')).toEqual([0, 960, 1200]);
-    expect(ok(at('k . . . k . . . k . . . k . . .', 4, 4))).toMatchObject({ resolution: '16ths', beats: 4 });
-  });
-  it('the current beat count decides between readings of the same text', () => {
-    const text = 'k . s . k . s . k . s . k . s .'; // 16 tokens
-    expect(ok(at(text, 4, 4))).toMatchObject({ resolution: '16ths', beats: 4 });
-    expect(ok(at(text, 8, 4))).toMatchObject({ resolution: '8ths', beats: 8 });
-    expect(ok(at(text, 16, 4))).toMatchObject({ resolution: 'quarters', beats: 16 });
-  });
-  it('otherwise full resolution; the beat count follows the text', () => {
-    const r = ok(at('k . . . k . . . k . . . k . . . k . . . k . . .', 4, 4)); // 24 tokens, not 4 * d
-    expect(r).toMatchObject({ resolution: '16ths', beats: 6, warnings: [] });
-    const pad = ok(at('k . s . k', 4, 4));
-    expect(pad).toMatchObject({ resolution: '16ths', beats: 2 });
-    expect(pad.warnings).toEqual(['Padded 3 rests to complete beat 2']);
-    expect(ok(at('k', 4, 4)).warnings).toEqual(['Padded 3 rests to complete beat 1']);
-  });
-  it('triplet feel: 12 tokens = triplets, 4 = quarters (4 beats)', () => {
-    const t = ok(at('k . . s . . k . . s . . |', 4, 3));
-    expect(t.resolution).toBe('triplets');
-    expect(ticks(t.notes, 'snare')).toEqual([3 * 160, 9 * 160]);
-    const q = ok(at('k s k s |', 4, 3));
-    expect(q.resolution).toBe('quarters');
-    expect(ticks(q.notes, 'snare')).toEqual([480, 1440]);
-    expect(ok(at('k . s . k . s .', 4, 3))).toMatchObject({ resolution: 'triplets', beats: 3 }); // 8 tokens: 3 beats, padded
-  });
-  it('2 beats x 3 (6/8 feel)', () => {
-    const r = ok(at('k . h h . s', 2, 3));
-    expect(r).toMatchObject({ resolution: 'triplets', beats: 2 });
-    expect(ticks(r.notes, 'snare')).toEqual([5 * 160]);
-  });
-  it('3 beats, straight: 6 tokens = 8ths, 3 = quarters', () => {
-    const r = ok(at('k . s . k . |', 3, 4));
-    expect(r.resolution).toBe('8ths');
-    expect(ticks(r.notes, 'snare')).toEqual([480]);
-    expect(ok(at('k s k', 3, 4)).resolution).toBe('quarters');
-  });
-  it('a long pattern of up to 32 beats', () => {
-    expect(ok(at('k . '.repeat(32), 32, 4))).toMatchObject({ resolution: '8ths', beats: 32 });
+  it('too many steps', () => {
+    const e = fail(p4(Array(129).fill('k').join(' ')));
+    expect(e[0]!.message).toBe('Too many steps: maximum is 128 (32 beats)');
+    expect(fail(p3(Array(97).fill('k').join(' ')))[0]!.message).toBe('Too many steps: maximum is 96 (32 beats)');
+    expect(ok(p4(Array(128).fill('k').join(' '))).beats).toBe(32);
   });
 });
 
@@ -237,8 +207,8 @@ describe('formatBeatText', () => {
     for (const i of [2, 6]) notes.snare!.push({ tick: i * 240, vel: 96 });
     return createPattern({ stepsPerBeat: 4, notes }, 0);
   };
-  it('8th rock', () => {
-    expect(formatBeatText(rock())).toEqual({ text: 'kh h  sh h  kh kh  sh h |', droppedOffGrid: 0, resolution: '8ths' });
+  it('always prints one token per square (8th rock gets dots)', () => {
+    expect(formatBeatText(rock())).toEqual({ text: 'kh . h .  sh . h .  kh . kh .  sh . h . |', droppedOffGrid: 0 });
   });
   it('16ths', () => {
     const p = createPattern({
@@ -249,15 +219,13 @@ describe('formatBeatText', () => {
       },
     });
     expect(formatBeatText(p).text).toBe('kh . h .  sh . h h  . . . .  . . . . |');
-    expect(formatBeatText(p).resolution).toBe('16ths');
-    const r = ok(p4(formatBeatText(p).text));
-    expect(r.notes).toEqual(p.notes);
+    expect(ok(p4(formatBeatText(p).text)).notes).toEqual(p.notes);
   });
   it('hits of a step come in sound order with canonical letters', () => {
     const p = createPattern({ notes: { hatClosed: [{ tick: 0, vel: 96 }], kick: [{ tick: 0, vel: 96 }], sidestick: [{ tick: 0, vel: 96 }] } });
-    expect(formatBeatText(p).text).toBe('kjh . . . |');
+    expect(formatBeatText(p).text).toBe('kjh . . .  . . . .  . . . .  . . . . |');
   });
-  it('accent / ghost / order / multi-bar / empty', () => {
+  it('accent / ghost / lines of four beats / empty', () => {
     const p = createPattern({
       timeSig: { num: 8, den: 4 },
       notes: {
@@ -266,14 +234,22 @@ describe('formatBeatText', () => {
         crash: [{ tick: 1920 + 480, vel: 120 }],
       },
     });
-    expect(formatBeatText(p).text).toBe('K(s) . . . |\nk C . . |');
-    expect(formatBeatText(createPattern()).text).toBe('. . . . |');
+    const dots = '. . . .  . . . .  . . . .';
+    expect(formatBeatText(p).text).toBe(`K(s) . . .  ${dots} |\nk . . .  C . . .  . . . .  . . . . |`);
+    expect(formatBeatText(createPattern()).text).toBe('. . . .  . . . .  . . . .  . . . . |');
+  });
+  it('a partial last beat prints only its squares', () => {
+    const p = setSteps(createPattern({ notes: { snare: [{ tick: 0, vel: 96 }, { tick: 240, vel: 96 }], kick: [{ tick: 120, vel: 96 }] } }, 0), 3, 0);
+    expect(formatBeatText(p).text).toBe('s k s |');
+    expect(formatBeatText(p, { lineBreaks: false }).text).toBe('s k s');
+    const seven = setSteps(p, 7, 0);
+    expect(formatBeatText(seven, { lineBreaks: false }).text).toBe('s k s .  . . .');
   });
   it('drops off-grid notes', () => {
     const p = createPattern({ notes: { kick: [{ tick: 0, vel: 96 }, { tick: 50, vel: 96 }] } });
     const f = formatBeatText(p);
     expect(f.droppedOffGrid).toBe(1);
-    expect(f.text).toBe('k . . . |'); // the one note on the grid is a quarter
+    expect(f.text.startsWith('k . . .')).toBe(true);
   });
 });
 
@@ -281,7 +257,7 @@ describe('applyBeatText', () => {
   it('replaces notes, keeps the rest', () => {
     const p = createPattern({ name: 'Keep', mix: { kick: { gain: 0.5, muted: true } }, notes: { ride: [{ tick: 0, vel: 96 }] } }, 1);
     const before = structuredClone(p);
-    const r = applyBeatText(p, 'kh h sh h kh kh sh h', 99);
+    const r = applyBeatText(p, 'kh . h .  sh . h .  kh . kh .  sh . h .', 99);
     if (!r.ok) throw new Error('fail');
     expect(r.pattern.timeSig).toEqual({ num: 4, den: 4 });
     expect(r.pattern.bars).toBe(1);
@@ -292,16 +268,28 @@ describe('applyBeatText', () => {
     expect(r.warnings).toEqual([]);
     expect(p).toEqual(before);
   });
-  it('changes the beat count when the text does not fit the current one', () => {
+  it('the loop becomes exactly as long as the text', () => {
     const p = createPattern();
-    const r = applyBeatText(p, 'k . . . '.repeat(12), 99); // 48 tokens
+    const r = applyBeatText(p, 'k . . . '.repeat(12), 99); // 48 steps
     if (!r.ok) throw new Error('fail');
     expect(r.pattern.timeSig.num).toBe(12);
-    expect(r.pattern.bars).toBe(1);
-    expect(r.pattern.stepsPerBeat).toBe(4);
-    const e = applyBeatText(createPattern({ timeSig: { num: 8, den: 4 } }), 'k . s . k . s . k . s . k . s .', 99);
-    if (!e.ok) throw new Error('fail');
-    expect(e.pattern.timeSig.num).toBe(8); // 16 tokens at 8 beats: 8ths
+    expect(r.pattern.steps).toBeUndefined();
+    const three = applyBeatText(p, 's k s', 99);
+    if (!three.ok) throw new Error('fail');
+    expect(three.pattern).toMatchObject({ steps: 3, timeSig: { num: 1, den: 4 }, bars: 1 });
+    expect(patternSteps(three.pattern)).toBe(3);
+    expect(patternTicks(three.pattern)).toBe(360);
+    const eight = applyBeatText(p, 'k . s . k . s .', 99);
+    if (!eight.ok) throw new Error('fail');
+    expect(eight.pattern.timeSig.num).toBe(2); // 8 steps = 2 beats, not 4
+    expect(patternTicks(eight.pattern)).toBe(960);
+  });
+  it('empty text clears the notes and keeps the length', () => {
+    const p = createPattern({ timeSig: { num: 3, den: 4 }, notes: { kick: [{ tick: 0, vel: 96 }] } });
+    const r = applyBeatText(p, '  # nothing\n', 5);
+    if (!r.ok) throw new Error('fail');
+    expect(r.pattern.notes).toEqual({});
+    expect(r.pattern.timeSig.num).toBe(3);
   });
   it('reports errors', () => {
     const r = applyBeatText(createPattern(), 'q');
@@ -320,48 +308,51 @@ describe('round trip', () => {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  it('parse(format(p)) reproduces notes and beats (200 random patterns)', () => {
+  it('parse(format(p)) reproduces notes and steps (300 random patterns, 1..128 straight / 1..96 triplet steps)', () => {
     const rand = rng(12345);
     const pick = <T,>(a: readonly T[]): T => a[Math.floor(rand() * a.length)]!;
     const vels = [VELOCITY.ghost, VELOCITY.normal, VELOCITY.accent];
-    for (let n = 0; n < 200; n++) {
-      const timeSig: TimeSignature = { num: 1 + Math.floor(rand() * 32), den: 4 };
+    for (let n = 0; n < 300; n++) {
       const stepsPerBeat = pick([3, 4] as const);
-      const p = createPattern({ timeSig, stepsPerBeat }, 0);
-      const st = stepTicks(timeSig, stepsPerBeat);
-      const total = patternSteps(p);
+      const steps = 1 + Math.floor(rand() * (stepsPerBeat === 4 ? 128 : 96));
+      const p = setSteps(createPattern({ stepsPerBeat }, 0), steps, 0);
+      expect(patternSteps(p)).toBe(steps);
+      const st = stepTicks(p.timeSig, stepsPerBeat);
       const density = rand();
-      const unit = pick(stepsPerBeat === 4 ? [1, 2, 4] : [1, 3]); // exercises every coarseness
       const notes: Pattern['notes'] = {};
       for (const id of SOUND_IDS) {
         if (rand() < 0.5) continue;
         const arr: NoteEvent[] = [];
-        for (let s = 0; s < total; s += unit) if (rand() < density * 0.5) arr.push({ tick: s * st, vel: pick(vels) });
+        for (let s = 0; s < steps; s++) if (rand() < density * 0.5) arr.push({ tick: s * st, vel: pick(vels) });
         if (arr.length) notes[id] = arr;
       }
       p.notes = notes;
-      const f = formatBeatText(p);
-      expect(f.droppedOffGrid).toBe(0);
-      const r = parseBeatText(f.text, { timeSig, stepsPerBeat });
-      if (!r.ok) throw new Error(`case ${n}: ${f.text}\n${JSON.stringify(r.errors)}`);
-      expect(r.notes).toEqual(notes);
-      expect(r.beats).toBe(timeSig.num);
-      expect(r.warnings).toEqual([]);
-      expect(r.resolution).toBe(f.resolution);
+      for (const lineBreaks of [true, false]) {
+        const f = formatBeatText(p, { lineBreaks });
+        expect(f.droppedOffGrid).toBe(0);
+        const r = parseBeatText(f.text, { stepsPerBeat });
+        if (!r.ok) throw new Error(`case ${n}: ${f.text}\n${JSON.stringify(r.errors)}`);
+        expect(r.notes).toEqual(notes);
+        expect(r.steps).toBe(steps);
+        const back = applyBeatText(p, f.text, 0);
+        if (!back.ok) throw new Error('apply');
+        expect(patternSteps(back.pattern)).toBe(steps);
+        expect(back.pattern.notes).toEqual(notes);
+      }
     }
   });
   it('puts four beats on a line', () => {
     const p = createPattern({ timeSig: { num: 6, den: 4 }, notes: { kick: [{ tick: 0, vel: 96 }, { tick: 2400, vel: 96 }] } }, 0);
-    expect(formatBeatText(p).text).toBe('k . . . |\n. k |');
+    const lines = formatBeatText(p).text.split('\n');
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toBe('k . . .  . . . .  . . . .  . . . . |');
+    expect(lines[1]).toBe('. . . .  k . . . |'); // tick 2400 = step 20 = beat 6, square 1
   });
-  it('prints each pattern at its coarsest resolution', () => {
-    const at = (ticks: number[], spb: number) =>
-      formatBeatText(createPattern({ stepsPerBeat: spb, notes: { kick: ticks.map((tick) => ({ tick, vel: 96 })) } }, 0));
-    expect(at([0, 480], 4).resolution).toBe('quarters');
-    expect(at([0, 240], 4).resolution).toBe('8ths');
-    expect(at([0, 120], 4).resolution).toBe('16ths');
-    expect(at([0, 480], 3).resolution).toBe('quarters');
-    expect(at([0, 160], 3).resolution).toBe('triplets');
-    expect(at([], 4).text).toBe('. . . . |');
+  it('stepsCaption', () => {
+    expect(stepsCaption(4, 4)).toBe('4 steps · 1 beat');
+    expect(stepsCaption(3, 4)).toBe('3 steps');
+    expect(stepsCaption(16, 4)).toBe('16 steps · 4 beats');
+    expect(stepsCaption(12, 3)).toBe('12 steps · 4 beats (triplets)');
+    expect(stepsCaption(2, 3)).toBe('2 steps (triplets)');
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { barTicks, beatTicks, pulseTicks, secondsPerTick, swingOffset, stepTicks, stepsPerBar } from '../../src/domain/time';
+import { lengthLabel, patternSteps, patternTicks, barTicks, beatTicks, pulseTicks, secondsPerTick, swingOffset, stepTicks, stepsPerBar } from '../../src/domain/time';
 import type { TimeSignature } from '../../src/domain/types';
 
 const ts = (num: number, den: TimeSignature['den']): TimeSignature => ({ num, den });
@@ -62,5 +62,26 @@ describe('swingOffset', () => {
   });
   it('ignores bad beat lengths', () => {
     expect(swingOffset(120, 0, 0.7)).toBe(0);
+  });
+});
+
+describe('pattern length in steps', () => {
+  const p = (over: object = {}) => ({ timeSig: ts(4, 4), bars: 1, stepsPerBeat: 4, ...over });
+  it('without steps: whole beats x bars', () => {
+    expect(patternSteps(p())).toBe(16);
+    expect(patternTicks(p())).toBe(1920);
+    expect(patternSteps(p({ stepsPerBeat: 3, timeSig: ts(2, 4) }))).toBe(6);
+  });
+  it('steps win: 3 straight steps = 360 ticks, 2 triplet steps = 320', () => {
+    expect(patternSteps(p({ steps: 3, timeSig: ts(1, 4) }))).toBe(3);
+    expect(patternTicks(p({ steps: 3, timeSig: ts(1, 4) }))).toBe(360);
+    expect(patternTicks(p({ steps: 2, stepsPerBeat: 3, timeSig: ts(1, 4) }))).toBe(320);
+    expect(patternTicks(p({ steps: 7, timeSig: ts(2, 4) }))).toBe(840);
+  });
+  it('lengthLabel', () => {
+    expect(lengthLabel(p())).toBe('4 beats');
+    expect(lengthLabel(p({ timeSig: ts(1, 4), steps: 4 }))).toBe('1 beat');
+    expect(lengthLabel(p({ timeSig: ts(1, 4), steps: 3 }))).toBe('3 steps');
+    expect(lengthLabel(p({ timeSig: ts(1, 4), steps: 1 }))).toBe('1 step');
   });
 });

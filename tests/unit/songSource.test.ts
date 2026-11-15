@@ -687,16 +687,60 @@ describe('per-section bar length (bar = one pass of the groove)', () => {
     expect(src.infoAt(3000)).toMatchObject({ sectionIndex: 1, barInSection: 0, beatsPerBar: 4 });
   });
 
-  it('count-in uses the start section groove length', () => {
+  it('count-in uses the start section groove length, at least 4 beats', () => {
     const w = mk([sec('waltz', 1), sec('pA', 1)], { countInBars: 2, click: { enabled: true, volume: 0.5 } });
-    expect(w.src.startTick()).toBe(-2 * 1440);
-    const out = collect(w.src, -2 * 1440, 0);
+    expect(w.src.startTick()).toBe(-2 * 1920); // 3-beat waltz: the count-in bar is 4 beats
+    const out = collect(w.src, -2 * 1920, 0);
     expect(clicks(out).map((n) => `${n.tick}:${n.sound}`)).toEqual([
-      '-2880:clickAccent', '-2400:click', '-1920:click', '-1440:clickAccent', '-960:click', '-480:click',
+      '-3840:clickAccent', '-3360:click', '-2880:click', '-2400:click',
+      '-1920:clickAccent', '-1440:click', '-960:click', '-480:click',
     ]);
-    expect(w.src.infoAt(-1000)).toMatchObject({ countIn: 3, beatsPerBar: 3 });
+    expect(w.src.infoAt(-1000)).toMatchObject({ countIn: 3, beatsPerBar: 4 });
     const f = mk([sec('pA', 1), sec('waltz', 1)], { countInBars: 1 }, {}, { startSection: 1 });
-    expect(f.src.startTick()).toBe(-1440);
+    expect(f.src.startTick()).toBe(-1920);
+    const long = mk([sec('p8', 1)], { countInBars: 1 });
+    expect(long.src.startTick()).toBe(-3840); // longer grooves keep their own length
+  });
+
+  describe('grooves that are not whole beats', () => {
+    const three = mkPattern({ id: 'three', steps: 3, timeSig: { num: 1, den: 4 }, notes: { snare: notes([0, 240]), kick: notes([120]) } });
+    const five = mkPattern({ id: 'five', steps: 5, timeSig: { num: 2, den: 4 }, notes: { kick: notes([0]), snare: notes([480]) } });
+    lib.three = three;
+    lib.five = five;
+
+    it('a 3-step groove makes a 360-tick bar', () => {
+      const { src } = mk([sec('three', 4), sec('pA', 1)], { click: { enabled: true, volume: 0.5 } });
+      const out = playTo(src, 0, 4 * 360 + 1920, 360);
+      expect(ticksOf(out, 'snare').filter((t) => t < 1440)).toEqual([0, 240, 360, 600, 720, 960, 1080, 1320]);
+      expect(ticksOf(out, 'kick').filter((t) => t < 1440)).toEqual([120, 480, 840, 1200]);
+      // one click per beat from each bar start: just the accent of each 3-step bar
+      const c = out.filter((n) => n.sound.startsWith('click') && n.tick < 1440).map((n) => `${n.tick}:${n.sound}`);
+      expect(c).toEqual(['0:clickAccent', '360:clickAccent', '720:clickAccent', '1080:clickAccent']);
+      expect(src.infoAt(400)).toMatchObject({ sectionIndex: 0, barInSection: 1, beatsPerBar: 1 });
+      expect(src.infoAt(1440)).toMatchObject({ sectionIndex: 1, barInSection: 0, beatsPerBar: 4 });
+    });
+
+    it('a 5-step groove: 600-tick bars, clicks counted from each bar start', () => {
+      const { src } = mk([sec('five', 2), sec('pA', 1)], { click: { enabled: true, volume: 0.5 } });
+      const out = playTo(src, 0, 1200, 300);
+      expect(ticksOf(out, 'kick').filter((t) => t < 1200)).toEqual([0, 600]);
+      const c = out.filter((n) => n.sound.startsWith('click') && n.tick < 1200).map((n) => `${n.tick}:${n.sound}`);
+      expect(c).toEqual(['0:clickAccent', '480:click', '600:clickAccent', '1080:click']);
+    });
+
+    it('count-in of a 3-step start section is 4 beats', () => {
+      const w = mk([sec('three', 1)], { countInBars: 1, click: { enabled: true, volume: 0.5 } });
+      expect(w.src.startTick()).toBe(-1920);
+      const out = collect(w.src, -1920, 0);
+      expect(clicks(out).map((n) => n.tick)).toEqual([-1920, -1440, -960, -480]);
+    });
+
+    it('a fill longer than the bar still ends at the bar end', () => {
+      const { src } = mk([sec('three', 2, { fill: { enabled: true, patternId: 'fill4' } }), sec('pA', 1)], {});
+      const out = playTo(src, 0, 720 + 1920, 360);
+      // fill4 (1920 ticks) ends where the 360-tick bar ends (720): only its last 360 ticks are heard (fill tick 1680 at 480)
+      expect(ticksOf(out, 'tomMid').filter((t) => t < 720)).toEqual([480]);
+    });
   });
 
   it('8-beat groove x2 with a 4-beat fill: groove plays 4 beats, the fill covers the last 4', () => {

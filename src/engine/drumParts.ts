@@ -14,18 +14,28 @@ export const KICK_VEL = 110;
 
 const mod = (a: number, n: number) => ((a % n) + n) % n;
 
-/** Count-in clicks for ticks in [from, min(to, 0)): accent on bar downbeats, always audible. */
+/** Shortest count-in bar: a groove shorter than 4 beats (e.g. a 3-step beat) would give a uselessly short count-in. */
+export const MIN_COUNT_IN_BAR = 4 * BEAT;
+
+/**
+ * Count-in clicks for ticks in [from, min(to, 0)): bars of `bar` ticks end at tick 0, a click on every beat from each
+ * bar start, accent on bar starts, always audible.
+ */
 export function collectCountIn(from: number, to: number, bar: number, volume: number, out: NoteOut[]): void {
   const gain = Math.max(volume, COUNT_IN_MIN_GAIN);
   const end = Math.min(to, 0);
-  for (let t = Math.ceil(from / BEAT) * BEAT; t < end; t += BEAT) {
-    out.push({ tick: t, offsetTicks: 0, sound: mod(t, bar) === 0 ? 'clickAccent' : 'click', vel: CLICK_VEL, gain });
+  if (end <= from || bar <= 0) return;
+  for (let k = Math.ceil(-from / bar); k >= 1; k--) {
+    const barStart = -k * bar;
+    for (let t = barStart; t < barStart + bar && t < end; t += BEAT) {
+      if (t >= from) out.push({ tick: t, offsetTicks: 0, sound: t === barStart ? 'clickAccent' : 'click', vel: CLICK_VEL, gain });
+    }
   }
 }
 
-/** One click per beat in [from, to); 'clickAccent' where (tick - origin) is a multiple of `bar`. Never swung. */
+/** One click per beat (480 ticks) counted from `origin` (the bar start) in [from, to); 'clickAccent' on the origin beat of each `bar`. Never swung. */
 export function collectClicks(from: number, to: number, bar: number, volume: number, out: NoteOut[], origin = 0): void {
-  for (let t = Math.ceil(from / BEAT) * BEAT; t < to; t += BEAT) {
+  for (let t = origin + Math.ceil((from - origin) / BEAT) * BEAT; t < to; t += BEAT) {
     out.push({
       tick: t,
       offsetTicks: 0,

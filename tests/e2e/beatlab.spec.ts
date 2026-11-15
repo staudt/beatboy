@@ -54,7 +54,7 @@ const beatsOut = (page: Page): Locator => page.getByRole('group', { name: 'Beats
 async function setBeats(page: Page, beats: number): Promise<void> {
   const out = beatsOut(page);
   for (let guard = 0; guard < 40; guard++) {
-    const cur = Number(await out.textContent());
+    const cur = parseInt((await out.textContent()) ?? '0', 10);
     if (cur === beats) break;
     const down = cur > beats;
     await press(page, page.getByRole('button', { name: `Beats ${down ? 'down' : 'up'}` }));
@@ -63,7 +63,7 @@ async function setBeats(page: Page, beats: number): Promise<void> {
       if (await ok.isVisible().catch(() => false)) await press(page, ok);
     }
   }
-  await expect(out).toHaveText(String(beats));
+  await expect(out).toHaveText(`${beats} beat${beats === 1 ? '' : 's'}`);
 }
 
 async function setFeel(page: Page, feel: 'Straight' | 'Triplet'): Promise<void> {
@@ -232,14 +232,14 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await openSettings(page);
       await openText(page);
       const box = page.getByRole('textbox', { name: 'Beat text' });
-      await box.fill('kh h sh h kh kh sh h');
-      await expect(page.locator('.parse.ok')).toContainText('✓ 4 beats · read as 8ths');
+      await box.fill('kh . h .  sh . h .  kh . kh .  sh . h .');
+      await expect(page.locator('.parse.ok')).toContainText('✓ 16 steps · 4 beats');
       await press(page, page.getByRole('button', { name: 'Apply' }));
       await expect(page.getByRole('button', { name: 'Apply' })).toBeDisabled();
 
       if (isMobile(page)) await press(page, page.getByRole('tab', { name: 'Grid' }));
       await press(page, pad(page, 'Kick'));
-      // 8th-note text lands on every other square of the 16th grid.
+      // 8th-note text (written with its rests) lands on every other square of the 16th grid.
       for (const s of [0, 8, 10]) await expect(cell(page, 'kick', s)).toHaveAttribute('aria-pressed', 'true');
       await expect(cell(page, 'kick', 4)).toHaveAttribute('aria-pressed', 'false');
       await press(page, pad(page, 'Snare'));
@@ -252,7 +252,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await box.fill('k h\nk q');
       await expect(page.locator('.parse.err')).toContainText("Line 2, col 3: Unknown sound 'q'");
       await box.fill('k . . . '.repeat(33));
-      await expect(page.locator('.parse.err')).toContainText('Too many beats: maximum is 32');
+      await expect(page.locator('.parse.err')).toContainText('Too many steps: maximum is 128 (32 beats)');
       await expect(page.getByRole('button', { name: 'Apply' })).toBeDisabled();
       await press(page, page.getByRole('button', { name: 'Revert' }));
       await expect(page.locator('.parse.ok')).toBeVisible();
@@ -309,10 +309,10 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
 
       // An empty last beat is removed without asking.
       await press(page, page.getByRole('button', { name: 'Beats up' }));
-      await expect(beatsOut(page)).toHaveText('5');
+      await expect(beatsOut(page)).toHaveText('5 beats');
       await expect(page.locator('[data-cell][data-sound="kick"]')).toHaveCount(20);
       await press(page, page.getByRole('button', { name: 'Beats down' }));
-      await expect(beatsOut(page)).toHaveText('4');
+      await expect(beatsOut(page)).toHaveText('4 beats');
       await expect(page.getByRole('dialog')).toHaveCount(0);
 
       await press(page, cell(page, 'kick', 0));
@@ -322,7 +322,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       for (const s of [16, 17, 18, 19]) await expect(cell(page, 'kick', s)).toHaveAttribute('aria-pressed', 'false');
       await expect(cell(page, 'kick', 14)).toHaveAttribute('aria-pressed', 'true');
       await press(page, page.getByRole('button', { name: 'Beats down' }));
-      await expect(beatsOut(page)).toHaveText('4');
+      await expect(beatsOut(page)).toHaveText('4 beats');
       await expect(page.getByRole('dialog')).toHaveCount(0);
 
       await press(page, page.getByRole('button', { name: 'Beats down' }));
@@ -330,10 +330,10 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(dlg).toBeVisible();
       await expect(dlg).toContainText('It has notes.');
       await press(page, dlg.getByRole('button', { name: 'Cancel' }));
-      await expect(beatsOut(page)).toHaveText('4');
+      await expect(beatsOut(page)).toHaveText('4 beats');
       await press(page, page.getByRole('button', { name: 'Beats down' }));
       await press(page, page.getByRole('dialog').getByRole('button', { name: 'Remove' }));
-      await expect(beatsOut(page)).toHaveText('3');
+      await expect(beatsOut(page)).toHaveText('3 beats');
       await expect(page.locator('[data-cell][data-sound="kick"]')).toHaveCount(12);
       await expect(cell(page, 'kick', 0)).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('button', { name: 'Beats up' })).toBeEnabled();

@@ -3,7 +3,7 @@ import type { Pattern } from '../domain/types';
 import type { Song } from '../domain/song';
 
 export const DB_VERSION = 2;
-export const PATTERN_SCHEMA_VERSION = 3;
+export const PATTERN_SCHEMA_VERSION = 4;
 
 export const SONG_SCHEMA_VERSION = 1;
 

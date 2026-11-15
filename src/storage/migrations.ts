@@ -7,7 +7,7 @@ import {
   type SoundId,
   type TrackMix,
 } from '../domain/types';
-import { barTicks } from '../domain/time';
+import { barTicks, stepTicks } from '../domain/time';
 import { toBeatGrid } from '../domain/patternOps';
 import { SECTION_KINDS, SECTION_LABELS, SONG_LIMITS, type Section, type SectionKind, type Song } from '../domain/song';
 import { PATTERN_SCHEMA_VERSION, SONG_SCHEMA_VERSION } from './db';
@@ -33,6 +33,8 @@ const STEPS: Record<number, (r: Rec) => Rec> = {
     }
     return out;
   },
+  // v3 -> v4: patterns may have an explicit `steps` length (partial beats). Existing records need no change.
+  3: (r) => r,
 };
 
 const V2_STEPS: readonly number[] = [1, 2, 3, 4];
@@ -61,7 +63,7 @@ function cleanString(v: unknown, fallback: string): string {
   return t || fallback;
 }
 
-/** Validates a record. v1 (legacy) accepts any meter/grid; v2 requires den 4; v3 (current) also requires 3 or 4 steps per beat and a single bar of 1..32 beats. */
+/** Validates a record. v1 (legacy) accepts any meter/grid; v2 requires den 4; v3 also requires 3 or 4 steps per beat and a single bar of 1..32 beats; v4 (current) may carry `steps`, the loop length in squares (1..32 beats' worth). */
 export function validatePattern(raw: unknown, version: number = PATTERN_SCHEMA_VERSION): Pattern | null {
   if (!isRec(raw)) return null;
   if (typeof raw.id !== 'string' || raw.id === '') return null;
@@ -70,7 +72,7 @@ export function validatePattern(raw: unknown, version: number = PATTERN_SCHEMA_V
   if (!isRec(ts)) return null;
   if (!isInt(ts.num) || ts.num < 1 || ts.num > 32) return null;
   if (!isInt(ts.den) || ![2, 4, 8, 16].includes(ts.den)) return null;
-  const timeSig = { num: ts.num, den: ts.den as BeatUnit };
+  let timeSig = { num: ts.num, den: ts.den as BeatUnit };
   const legacy = version < 2;
   if (!legacy && (ts.den !== 4 || ts.num > PATTERN_LIMITS.maxBeats)) return null;
   if (version >= 3 && raw.bars !== 1) return null;
@@ -84,7 +86,14 @@ export function validatePattern(raw: unknown, version: number = PATTERN_SCHEMA_V
   if (!isRec(raw.notes)) return null;
 
   const bars = raw.bars;
-  const maxTick = barTicks(timeSig) * bars;
+  // v4: an explicit loop length in steps (partial beats); timeSig.num becomes the beats covering it.
+  let steps: number | undefined;
+  if (version >= 4 && raw.steps !== undefined) {
+    if (!isInt(raw.steps) || raw.steps < PATTERN_LIMITS.minSteps || raw.steps > PATTERN_LIMITS.maxBeats * raw.stepsPerBeat) return null;
+    timeSig = { num: Math.ceil(raw.steps / raw.stepsPerBeat), den: 4 };
+    if (raw.steps % raw.stepsPerBeat !== 0) steps = raw.steps;
+  }
+  const maxTick = steps !== undefined ? steps * stepTicks(timeSig, raw.stepsPerBeat) : barTicks(timeSig) * bars;
 
   const notes: Pattern['notes'] = {};
   for (const [key, list] of Object.entries(raw.notes)) {
@@ -119,6 +128,7 @@ export function validatePattern(raw: unknown, version: number = PATTERN_SCHEMA_V
     kind: raw.kind,
     timeSig,
     bars,
+    ...(steps !== undefined ? { steps } : {}),
     stepsPerBeat: raw.stepsPerBeat,
     swing: clamp(raw.swing, PATTERN_LIMITS.minSwing, PATTERN_LIMITS.maxSwing),
     bpm: clamp(raw.bpm, PATTERN_LIMITS.minBpm, PATTERN_LIMITS.maxBpm),

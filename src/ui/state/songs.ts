@@ -237,12 +237,12 @@ export function sectionPattern(sectionId: string): Pattern | undefined {
  * beat only this section uses is updated in place; one shared by several sections is forked. Playback reads the
  * library live, so the change is heard from the section's next bar.
  */
-export function setSectionText(sectionId: string, text: string, inferFrom?: Pattern | null): TextApply {
+export function setSectionText(sectionId: string, text: string): TextApply {
   const song = currentSong.peek();
   const sec = song?.sections.find((s) => s.id === sectionId);
   if (!song || !sec) return { ok: false, error: 'No such section' };
   const base = library.peek().find((p) => p.id === sec.patternId);
-  const r = localPatternFor(song, sec, text, base, Date.now(), inferFrom);
+  const r = localPatternFor(song, sec, text, base, Date.now());
   if (!r.ok) {
     const e = r.errors[0]!;
     return { ok: false, error: `col ${e.col}: ${e.message}` };

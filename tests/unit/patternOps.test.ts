@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as ops from '../../src/domain/patternOps';
-import { secondsPerTick } from '../../src/domain/time';
+import { patternSteps, patternTicks, secondsPerTick } from '../../src/domain/time';
 import { DEFAULT_MIX, VELOCITY, type Pattern } from '../../src/domain/types';
 
 const NOW = 1000;
@@ -199,14 +199,66 @@ describe('addBeat / removeLastBeat / lastBeatHasNotes', () => {
     ops.addBeat(q);
     expect(q).toEqual(before);
   });
-  it('removeLastBeat drops the last beat and its notes, min 1', () => {
+  it('removeLastBeat drops the last beat and its notes, min 1 step', () => {
     const p = base({ notes: { kick: [{ tick: 0, vel: 100 }], snare: [{ tick: 1500, vel: 90 }] } });
     const q = ops.removeLastBeat(p);
     expect(q.timeSig.num).toBe(3);
+    expect(q.steps).toBeUndefined();
     expect(nt(q)).toEqual([[0, 100]]);
     expect(q.notes.snare).toBeUndefined();
-    const one = base({ timeSig: { num: 1, den: 4 } });
-    expect(ops.removeLastBeat(one)).toBe(one);
+    const one = base({ timeSig: { num: 1, den: 4 } }); // 4 steps: removing a beat's worth leaves the minimum, 1 step
+    const o = ops.removeLastBeat(one);
+    expect(patternSteps(o)).toBe(1);
+    expect(o.steps).toBe(1);
+    expect(ops.removeLastBeat(o)).toBe(o);
+  });
+  it('partial lengths: + appends 4 (straight) / 3 (triplet) squares, - removes them', () => {
+    const three = ops.setSteps(base({ notes: { kick: [{ tick: 0, vel: 100 }], snare: [{ tick: 240, vel: 90 }] } }), 3);
+    expect(three).toMatchObject({ steps: 3, timeSig: { num: 1, den: 4 }, bars: 1 });
+    expect(patternTicks(three)).toBe(360);
+    const seven = ops.addBeat(three, LATER);
+    expect(patternSteps(seven)).toBe(7);
+    expect(seven).toMatchObject({ steps: 7, timeSig: { num: 2, den: 4 } });
+    expect(ops.addBeat(seven).steps).toBe(11);
+    const back = ops.removeLastBeat(seven);
+    expect(patternSteps(back)).toBe(3);
+    expect(ops.removeLastBeat(back)).toMatchObject({ steps: 1, timeSig: { num: 1 } });
+    expect(ops.lastBeatHasNotes(three)).toBe(true); // squares 0..2 (min 1 step -> removes from step 1): snare at step 2
+    const ninth = ops.setSteps(base(), 8);
+    expect(ninth.steps).toBeUndefined(); // 8 steps = 2 whole beats
+    expect(ops.addBeat(ninth)).toMatchObject({ timeSig: { num: 3 } });
+    const tri = ops.setSteps(base({ stepsPerBeat: 3 }), 2);
+    expect(patternTicks(tri)).toBe(320);
+    expect(patternSteps(ops.addBeat(tri))).toBe(5);
+  });
+  it('setSteps clamps (1 .. 32 beats worth) and trims notes', () => {
+    const p = base({ notes: { kick: [{ tick: 0, vel: 100 }, { tick: 1440, vel: 90 }] } });
+    expect(patternSteps(ops.setSteps(p, 0))).toBe(1);
+    expect(patternSteps(ops.setSteps(p, 999))).toBe(128);
+    expect(patternSteps(ops.setSteps(base({ stepsPerBeat: 3 }), 999))).toBe(96);
+    expect(nt(ops.setSteps(p, 5))).toEqual([[0, 100]]);
+    expect(ops.addBeat(ops.setSteps(p, 128))).toEqual(ops.setSteps(p, 128));
+  });
+  it('setBeats clears a partial length', () => {
+    const q = ops.setBeats(ops.setSteps(base(), 3), 2);
+    expect(q.steps).toBeUndefined();
+    expect(patternSteps(q)).toBe(8);
+  });
+  it('setFeel keeps whole beats; partial lengths convert proportionally (min 1)', () => {
+    const four = base();
+    expect(patternSteps(ops.setFeel(four, 'triplet'))).toBe(12);
+    expect(patternSteps(ops.setFeel(ops.setFeel(four, 'triplet'), 'straight'))).toBe(16);
+    const three = ops.setSteps(base({ notes: { kick: [{ tick: 0, vel: 100 }], snare: [{ tick: 240, vel: 90 }] } }), 3);
+    const t = ops.setFeel(three, 'triplet');
+    expect(patternSteps(t)).toBe(2); // round(3 * 3 / 4)
+    expect(t.steps).toBe(2);
+    expect(patternTicks(t)).toBe(320);
+    expect(t.notes.kick).toEqual([{ tick: 0, vel: 100 }]);
+    expect(t.notes.snare).toEqual([{ tick: 160, vel: 90 }]);
+    const one = ops.setSteps(base(), 1);
+    expect(patternSteps(ops.setFeel(one, 'triplet'))).toBe(1); // round(0.75) = 1
+    const five = ops.setSteps(base({ stepsPerBeat: 3 }), 5);
+    expect(patternSteps(ops.setFeel(five, 'straight'))).toBe(7); // round(6.67)
   });
   it('lastBeatHasNotes', () => {
     expect(ops.lastBeatHasNotes(base({ notes: { kick: [{ tick: 0, vel: 100 }] } }))).toBe(false);

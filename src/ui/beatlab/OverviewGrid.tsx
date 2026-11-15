@@ -1,6 +1,7 @@
 import { useSignalEffect } from '@preact/signals';
 import { useRef } from 'preact/hooks';
 import { getStep, hasNotes } from '../../domain/patternOps';
+import { patternSteps } from '../../domain/time';
 import { SOUNDS } from '../../domain/sounds';
 import { SOUND_IDS } from '../../domain/types';
 import { laneView, scrollLaneToStep } from '../laneScroll';
@@ -71,7 +72,7 @@ export function OverviewGrid() {
                   if (t) scrollLaneToStep(Number(t.dataset.ovStep));
                 }}
               >
-                {Array.from({ length: p.timeSig.num * spb }, (_, i) => (
+                {Array.from({ length: patternSteps(p) }, (_, i) => (
                   <i
                     key={i}
                     data-ov-step={i}

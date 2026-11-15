@@ -1,5 +1,6 @@
 import { isDesktop } from '../media';
 import { feelOf } from '../../domain/patternOps';
+import { lengthLabel } from '../../domain/time';
 import { current, labView, settingsOpen, type LabView } from '../state/lab';
 import { FullGrid } from './FullGrid';
 import { MixPanel } from './MixPanel';
@@ -51,7 +52,7 @@ function Summary() {
       onClick={() => (settingsOpen.value = !open)}
     >
       <span>
-        {p.timeSig.num} beat{p.timeSig.num === 1 ? '' : 's'} · {feelOf(p)}
+        {lengthLabel(p)} · {feelOf(p)}
       </span>
       <IconGear width={18} height={18} />
     </button>

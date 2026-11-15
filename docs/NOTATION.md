@@ -2,7 +2,7 @@
 
 Beat Editor's **Text** panel lets you type a pattern instead of tapping it. **Spaces separate steps; letters written together sound together.** `kh . sh .` is a step with kick + closed hat, a rest, a step with snare + closed hat, and a rest.
 
-Parsing is done by `parseBeatText` in `src/domain/notation.ts`; `formatBeatText` writes a pattern back out as text. The grid is always 16ths (4 squares per beat, **Straight**) or triplets (3 squares per beat, **Triplet**); a pattern is a loop of N beats (1 to 32). Whether one step is a quarter, an 8th or a 16th depends on how many steps you write (see *Resolution*).
+Parsing is done by `parseBeatText` in `src/domain/notation.ts`; `formatBeatText` writes a pattern back out as text. **Every step is exactly one square of the grid**: a 16th when the pattern's feel is **Straight** (4 squares per beat), one triplet step when it is **Triplet** (3 per beat). **The loop is exactly as long as the steps you type**, with no padding to whole beats and no guessing of 8ths or quarters: `kh h hs h` is 4 steps (one beat), `s k s` is a 3-step loop (three quarters of a beat), `kh . h . sh . h .` is 8 steps (two beats, an 8th feel). Write a `.` for every square you want silent. The longest loop is 32 beats' worth (128 straight / 96 triplet steps).
 
 ## Grammar
 
@@ -21,29 +21,22 @@ comment  = "#" … end of line           (ignored)
 - A step is either **one rest** or **one or more hits written together**. `k.` (rest and hit in one step) is an error, so is `k---`: write `k . . .`.
 - The **bar line** `|` is cosmetic and ignored. It may stand alone or touch steps (`kh|`).
 - `[` and `]` may touch steps: `[kh . sh .]*2`. Repeats do not nest; the count is 1 to 64.
-- Maximum 32 beats.
+- Maximum 128 steps (Straight) or 96 steps (Triplet), i.e. 32 beats.
 - `+` is **not supported**: use letters together (`kh`, not `k+h`). The error says so.
 - One-word, one-character-per-square patterns (like typeabeat's `skxkskxk`) are **not supported**; separate the steps with spaces.
 
-## Resolution (you need not type every rest)
+## Timing (each step is one square)
 
-Let T be the number of steps in the text, N the pattern's current number of beats and S its squares per beat (4 Straight, 3 Triplet). The text may be written with **d steps per beat** for any d that divides S:
+Step *i* (counting from 0) lands on square *i*: tick `i × 120` when Straight, `i × 160` when Triplet. The loop length is the number of steps (repeats expanded, bar lines ignored).
 
-| Feel | d | Written as | Squares between steps |
-|------|---|-----------|------------------------|
-| Straight | 4 | 16ths | 0 |
-| Straight | 2 | 8ths | 1 empty square |
-| Straight | 1 | quarters | 3 empty squares |
-| Triplet | 3 | triplets | 0 |
-| Triplet | 1 | quarters | 2 empty squares |
+| Text | Feel | Steps | Loop |
+|------|------|-------|------|
+| `kh h hs h` | Straight | 4 | 1 beat of 16ths |
+| `s k s` | Straight | 3 | 360 ticks: plays 3 squares, then starts over |
+| `kh . h .  sh . h .` | Straight | 8 | 2 beats (8th-note feel: rests fill the odd squares) |
+| `k . . s . . k . . s . .` | Triplet | 12 | 4 beats of triplets |
 
-Step *i* lands on square *i · S/d*. The reading is chosen like this:
-
-1. If T = N × d for an allowed d, that d is used and the beat count stays N (so 8 steps at 4 beats are 8ths, 16 steps at 4 beats are 16ths, 16 steps at 8 beats are 8ths).
-2. Otherwise the text is read at full resolution (d = S) and the beat count follows the text: N becomes ceil(T / S), the last beat is padded with rests and a warning says so. More than 32 beats is an error.
-3. Empty text keeps the current length.
-
-Applying text can therefore change the beat count. The status line reports the choice, e.g. `✓ 4 beats · read as 8ths`.
+Applying text sets the pattern's length to exactly that many steps (so the beat count can change); empty text clears the notes and keeps the length. In a song's section field an empty text is an error ("Type at least one step"). The status line reports e.g. `✓ 4 steps · 1 beat`, `✓ 3 steps`, `✓ 12 steps · 4 beats (triplets)`.
 
 ## Velocity
 
@@ -88,10 +81,18 @@ Errors are reported with line and column (1-based, counted over the raw text inc
 
 ## Examples
 
-Rock beat in 8ths (4 beats, 2 steps per beat):
+Rock beat in 8ths (4 beats, an empty square between every two hits):
 
 ```
-kh h  sh h  kh kh  sh h |
+kh . h .  sh . h .  kh . kh .  sh . h . |
+```
+
+A 3-step loop (snare, kick, snare), one beat of 16ths, and a kick-snare 8th groove:
+
+```
+s k s
+kh h hs h
+k . . .  s . . .
 ```
 
 Eight beats in 16ths with a ghost note and an accent (a line per four beats, cosmetic):
@@ -105,9 +106,9 @@ Repeat with a comment:
 
 ```
 # four on the floor
-[ kh h ]*4 |        # 8ths: kick on every beat
+[ kh . h . ]*4 |        # 4 steps x 4 = 16 steps = 4 beats
 ```
 
 ## Round trip
 
-`formatBeatText` writes the pattern at the **coarsest resolution that represents every note exactly**: an 8th-note groove prints 2 steps per beat (`kh h  sh h  kh kh  sh h |`), a pattern with 16ths prints 4, a triplet one 3, and a quarter-note one a single step per beat. There is one space between steps, two between beats (one when each beat is a single step), a line break after every four beats, and each line ends with ` |`. Hits in a step are written together in sound order with canonical letters, accents uppercase, ghosts in parentheses. Because the formatted text always has T = N × d, parsing it gives the same pattern back (`parse(format(p)) = p`). Notes that do not sit on the current grid cannot be written as text; the Text panel warns when applying would drop them.
+`formatBeatText` always writes **one token per square** (rests are `.`), a space between tokens and two between beats; a partial last beat just has fewer tokens (`s k s . . . .` is not produced for a 3-step loop: it prints `s k s`). A line break after every four beats, each line ending in ` |` (the song section field uses one line without bar lines). Hits in a step are written together in sound order with canonical letters, accents uppercase, ghosts in parentheses. Because every token is a square, `parse(format(p)) = p` (notes and length). Notes that do not sit on the current grid cannot be written as text; the Text panel warns when applying would drop them.

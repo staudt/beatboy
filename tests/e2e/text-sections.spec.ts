@@ -9,6 +9,7 @@ import {
   expect,
   goDrummer,
   goEditor,
+  isMobile,
   log,
   newSong,
   open,
@@ -27,6 +28,11 @@ import {
 const field = (card: Locator) => card.getByTestId('beat-text');
 const chip = (card: Locator) => card.getByRole('button', { name: /^Section groove:/ });
 const info = (card: Locator) => card.getByTestId('beat-info');
+
+/** Every step is one 16th square: kick + hat on beat 1, snare + hat on beat 3 (tick 960) of a 16-step, 4-beat beat. */
+const A = 'kh . . .  . . . .  sh . . .  . . . .';
+/** Kicks on beats 1 and 3. */
+const B = 'k . . .  . . . .  k . . .  . . . .';
 
 /** Commit the text (Enter blurs) and wait for the field to show the canonical text. */
 async function typeBeat(card: Locator, text: string) {
@@ -101,18 +107,18 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
     test('1. typing makes a song beat, plays it, and leaves the groove alone', async ({ page }) => {
       const c = await freshSong(page);
       await expect(chip(c)).toContainText('Rock 8ths');
-      await expect(info(c)).toHaveText('4 beats · 8ths');
+      await expect(info(c)).toHaveText('16 steps · 4 beats');
       await expect(field(c)).toHaveAttribute('aria-label', 'Beat for Verse');
       await field(c).click();
       await field(c).press('ControlOrMeta+a');
       await page.keyboard.press('Backspace');
-      await field(c).pressSequentially('kh . sh .'); // Space must type a space, not start the song
-      await expect(field(c)).toHaveValue('kh . sh .');
+      await field(c).pressSequentially('kh . . . . . . . sh . . . . . . .'); // Space must type a space, not start the song
+      await expect(field(c)).toHaveValue('kh . . . . . . . sh . . . . . . .');
       await expect(stopBtn(page)).toHaveCount(0);
-      await expect(info(c)).toHaveText('4 beats · quarters');
+      await expect(info(c)).toHaveText('16 steps · 4 beats');
       await field(c).press('Enter');
       await expect(chip(c)).toContainText('Song beat');
-      await expect(field(c)).toHaveValue('kh . sh .');
+      await expect(field(c)).toHaveValue(A);
       await waitSaved(page);
       await expect.poll(async () => (await owned(page)).length).toBe(1);
       const [own] = await owned(page);
@@ -132,21 +138,21 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await press(page, chip(c));
       await press(page, page.getByRole('dialog', { name: 'Section groove' }).getByRole('option', { name: /^Rock 8ths/ }));
       await expect(chip(c)).toContainText('Rock 8ths');
-      await expect(info(c)).toHaveText('4 beats · 8ths');
-      await expect(field(c)).not.toHaveValue('kh . sh .');
+      await expect(info(c)).toHaveText('16 steps · 4 beats');
+      await expect(field(c)).not.toHaveValue(A);
       // the song beat is kept until the next start (picking a groove never deletes it)
       expect((await owned(page)).length).toBe(1);
     });
 
     test('2. editing while playing is heard within the look-ahead, bar by bar, with no glitch', async ({ page }) => {
       const c = await freshSong(page);
-      await typeBeat(c, 'kh . sh .');
+      await typeBeat(c, A);
       await press(page, c.getByRole('button', { name: 'Loop this section' }));
       await clearLog(page);
       await press(page, play(page));
       await expect(stopBtn(page)).toBeVisible();
       await expect.poll(async () => at(await log(page), BAR, 'kick'), { timeout: 5000 }).toBeTruthy();
-      await typeBeat(c, 'k . k .');
+      await typeBeat(c, B);
       await expect(chip(c)).toContainText('Song beat'); // in place: still the one beat
       await expect.poll(async () => byBar(await log(page)).get(5)?.join(), { timeout: 8000 }).toBe('0:kick,960:kick');
       const es = await log(page);
@@ -165,7 +171,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
 
     test('3. invalid text shows an error, keeps the last beat, saves nothing; Escape reverts', async ({ page }) => {
       const c = await freshSong(page);
-      await typeBeat(c, 'kh . sh .');
+      await typeBeat(c, A);
       await waitSaved(page);
       await press(page, c.getByRole('button', { name: 'Loop this section' }));
       await clearLog(page);
@@ -179,20 +185,20 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect.poll(async () => at(await log(page), BAR, 'kick'), { timeout: 5000 }).toBeTruthy();
       for (const [, v] of [...byBar(await log(page)).entries()].slice(0, -1)) expect(v).toEqual(['0:hatClosed', '0:kick', '960:hatClosed', '960:snare']);
       await field(c).press('Escape');
-      await expect(field(c)).toHaveValue('kh . sh .');
+      await expect(field(c)).toHaveValue(A);
       await expect(c.getByTestId('beat-error')).toHaveCount(0);
       await expect(field(c)).not.toBeFocused();
       // blur with invalid text: dropped with a note
       await field(c).fill('kh . q .');
       await page.getByRole('region', { name: 'Drummer', exact: true }).click({ position: { x: 2, y: 2 } }).catch(() => {});
       await field(c).evaluate((el) => (el as HTMLInputElement).blur());
-      await expect(field(c)).toHaveValue('kh . sh .');
+      await expect(field(c)).toHaveValue(A);
       await press(page, stopBtn(page));
     });
 
     test('4. save as groove: named, listed in pickers and the editor, section keeps it', async ({ page }) => {
       const c = await freshSong(page);
-      await typeBeat(c, 'kh . sh .');
+      await typeBeat(c, A);
       const other = c; // same card: the chip lists grooves only
       expect(await grooveNames(page, other)).not.toContain('Song 1 · Verse');
       await press(page, chip(c));
@@ -209,7 +215,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(page.getByRole('dialog', { name: 'Section groove' }).getByRole('button', { name: 'Save as groove…' })).toHaveCount(0);
       await page.keyboard.press('Escape');
       expect(await grooveNames(page, c)).toContain('Backbeat quarters');
-      await expect(field(c)).toHaveValue('kh . sh .');
+      await expect(field(c)).toHaveValue(A);
       await expect.poll(async () => (await owned(page)).length, { timeout: 5000 }).toBe(0);
       expect((await dbPatterns(page)).some((p) => p.name === 'Backbeat quarters')).toBe(true);
       await goEditor(page);
@@ -220,7 +226,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
 
     test('5. Edit opens the beat in the Beat Editor; changing it there changes the song beat', async ({ page }) => {
       const c = await freshSong(page);
-      await typeBeat(c, 'kh . sh .');
+      await typeBeat(c, A);
       await expect(c.locator('[data-testid=beat-tag]:visible')).toHaveText('song beat');
       await press(page, chip(c));
       await press(page, page.getByRole('dialog', { name: 'Section groove' }).getByRole('button', { name: 'Open in Beat Editor' }));
@@ -237,39 +243,39 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await cell.first().scrollIntoViewIfNeeded();
       await press(page, cell.first());
       await goDrummer(page);
-      await expect(field(c)).toHaveValue('kh . ksh .');
+      await expect(field(c)).toHaveValue('kh . . .  . . . .  ksh . . .  . . . .');
     });
 
     test('6. duplicating a section gives the copy its own beat', async ({ page }) => {
       const c = await freshSong(page);
-      await typeBeat(c, 'kh . sh .');
+      await typeBeat(c, A);
       await press(page, c.getByRole('button', { name: 'Duplicate section' }));
       await expect(cards(page)).toHaveCount(2);
       const copy = cards(page).nth(1);
       await expect(chip(copy)).toContainText('Song beat');
-      await expect(field(copy)).toHaveValue('kh . sh .');
-      await typeBeat(copy, 'k . k .');
-      await expect(field(copy)).toHaveValue('k . k .');
-      await expect(field(c)).toHaveValue('kh . sh .');
+      await expect(field(copy)).toHaveValue(A);
+      await typeBeat(copy, B);
+      await expect(field(copy)).toHaveValue(B);
+      await expect(field(c)).toHaveValue(A);
       await waitSaved(page);
       await expect.poll(async () => (await owned(page)).length).toBe(2);
       // add-section chips copy the last section's local beat too
       await press(page, page.getByRole('button', { name: 'Add Chorus', exact: true }));
       await expect(cards(page)).toHaveCount(3);
-      await expect(field(cards(page).nth(2))).toHaveValue('k . k .');
-      await typeBeat(cards(page).nth(2), 'k k k k');
-      await expect(field(copy)).toHaveValue('k . k .');
+      await expect(field(cards(page).nth(2))).toHaveValue(B);
+      await typeBeat(cards(page).nth(2), 'k . . .  k . . .  k . . .  k . . .');
+      await expect(field(copy)).toHaveValue(B);
     });
 
     test('7. song beats persist; deleting the song garbage-collects them; startup GC drops orphans', async ({ page }) => {
       const c = await freshSong(page);
-      await typeBeat(c, 'kh . sh .');
+      await typeBeat(c, A);
       await waitSaved(page);
       await expect.poll(async () => (await owned(page)).length).toBe(1);
       await page.waitForTimeout(600);
       await page.reload();
       await expect(play(page)).toBeVisible();
-      await expect(field(cards(page).nth(0))).toHaveValue('kh . sh .');
+      await expect(field(cards(page).nth(0))).toHaveValue(A);
       await expect(chip(cards(page).nth(0))).toContainText('Song beat');
       expect((await owned(page)).length).toBe(1);
 
@@ -314,7 +320,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
 
     test('8. pickers (section, default fill, editor list) never list song beats', async ({ page }) => {
       const c = await freshSong(page);
-      await typeBeat(c, 'kh . sh .');
+      await typeBeat(c, A);
       expect(await grooveNames(page, c)).not.toContain('Song 1 · Verse');
       await press(page, page.getByRole('button', { name: 'Drummer settings' }));
       await press(page, page.getByRole('button', { name: /^Default fill:/ }));
@@ -329,15 +335,88 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await page.keyboard.press('Escape');
     });
 
+    test('10. kh h hs h is a one-beat loop of 16ths: notes every 0.125 s at 120 BPM', async ({ page }) => {
+      const c = await freshSong(page);
+      await setBpm(page, 120);
+      await field(c).fill('kh h hs h');
+      await expect(info(c)).toHaveText('4 steps · 1 beat');
+      await field(c).press('Enter');
+      await expect(field(c)).toHaveValue('kh h sh h');
+      await expect(chip(c)).toContainText('Song beat');
+      await press(page, c.getByRole('button', { name: 'Loop this section' }));
+      await clearLog(page);
+      await press(page, play(page));
+      await expect(stopBtn(page)).toBeVisible();
+      await expect.poll(async () => (await log(page)).filter((e) => e.sound === 'hatClosed').length, { timeout: 8000 }).toBeGreaterThanOrEqual(12);
+      await press(page, stopBtn(page));
+      const hats = (await log(page)).filter((e) => e.sound === 'hatClosed').sort((a, b) => a.tick - b.tick).slice(0, 12);
+      hats.forEach((h, i) => {
+        expect(Math.round(h.tick)).toBe(i * 120);
+        expect(h.time - hats[0]!.time).toBeCloseTo(i * 0.125, 2);
+      });
+      const snares = (await log(page)).filter((e) => e.sound === 'snare').map((e) => Math.round(e.tick));
+      expect(snares.slice(0, 3)).toEqual([240, 720, 1200]);
+    });
+
+    test('11. s k s is a 3-step loop; the Beat Editor shows 3 squares and + makes 7', async ({ page }) => {
+      const c = await freshSong(page);
+      await setBpm(page, 120);
+      await field(c).fill('s k s');
+      await expect(info(c)).toHaveText('3 steps');
+      await field(c).press('Enter');
+      await expect(field(c)).toHaveValue('s k s');
+      await press(page, c.getByRole('button', { name: 'Loop this section' }));
+      await clearLog(page);
+      await press(page, play(page));
+      await expect(stopBtn(page)).toBeVisible();
+      await expect.poll(async () => (await log(page)).filter((e) => e.sound === 'snare').length, { timeout: 8000 }).toBeGreaterThanOrEqual(8);
+      mkdirSync('test-results/screenshots', { recursive: true });
+      await page.screenshot({ path: `test-results/screenshots/${name}-song-3step.png`, fullPage: true });
+      await press(page, stopBtn(page));
+      const es = (await log(page)).filter((e) => !e.sound.startsWith('click')).sort((a, b) => a.tick - b.tick || a.sound.localeCompare(b.sound));
+      const snares = es.filter((e) => e.sound === 'snare');
+      expect(snares.slice(0, 6).map((e) => Math.round(e.tick))).toEqual([0, 240, 360, 600, 720, 960]);
+      expect(es.filter((e) => e.sound === 'kick').slice(0, 3).map((e) => Math.round(e.tick))).toEqual([120, 480, 840]);
+      // one pass = 3 steps = 0.375 s at 120 BPM
+      expect(snares[2]!.time - snares[0]!.time).toBeCloseTo(0.375, 2);
+      expect(snares[4]!.time - snares[2]!.time).toBeCloseTo(0.375, 2);
+
+      await press(page, chip(c));
+      await press(page, page.getByRole('dialog', { name: 'Section groove' }).getByRole('button', { name: 'Open in Beat Editor' }));
+      await expect(page.getByTestId('pattern-name')).toHaveText('Song 1 · Verse');
+      const group = page.getByRole('group', { name: 'Beats', exact: true });
+      await expect(group.locator('output')).toHaveText('3 steps');
+      const snare = page.locator('[data-cell][data-sound="snare"]');
+      if (isMobile(page)) await press(page, page.getByRole('button', { name: 'Snare pad' }));
+      await expect(snare).toHaveCount(3);
+      await page.screenshot({ path: `test-results/screenshots/${name}-editor-3step.png`, fullPage: true });
+      await press(page, page.getByRole('button', { name: 'Beats up' }));
+      await expect(group.locator('output')).toHaveText('7 steps');
+      await expect(snare).toHaveCount(7);
+      await page.screenshot({ path: `test-results/screenshots/${name}-editor-7step.png`, fullPage: true });
+      await press(page, page.getByRole('button', { name: 'Beats up' }));
+      await expect(group.locator('output')).toHaveText('11 steps');
+      await goDrummer(page);
+      await expect(field(c)).toHaveValue('s k s .  . . . .  . . .');
+    });
+
+    test('12. empty text is an error for a section', async ({ page }) => {
+      const c = await freshSong(page);
+      await field(c).fill('   ');
+      await expect(c.getByTestId('beat-error')).toHaveText('col 1: Type at least one step');
+      await field(c).press('Escape');
+      await expect(info(c)).toHaveText('16 steps · 4 beats');
+    });
+
     test('9. screenshot', async ({ page }) => {
       mkdirSync('test-results/screenshots', { recursive: true });
       await open(page);
       await newSong(page);
       await setBars(page, 0, 4);
-      await typeBeat(cards(page).nth(0), 'kh . sh .');
+      await typeBeat(cards(page).nth(0), A);
       for (const k of ['Chorus', 'Bridge']) await press(page, page.getByRole('button', { name: `Add ${k}`, exact: true }));
       await expect(cards(page)).toHaveCount(3);
-      await field(cards(page).nth(2)).fill('Kh h  (s) h  kh h  s');
+      await field(cards(page).nth(2)).fill('s k s');
       await field(cards(page).nth(2)).press('Enter');
       await field(cards(page).nth(1)).click();
       await field(cards(page).nth(1)).pressSequentially('kh . sh . k');
@@ -358,7 +437,7 @@ test.describe('row layout across widths', () => {
       await open(page);
       await newSong(page);
       await setBars(page, 0, 4);
-      await typeBeat(cards(page).nth(0), 'kh . sh .');
+      await typeBeat(cards(page).nth(0), A);
       await press(page, page.getByRole('button', { name: 'Add Chorus', exact: true }));
       await expect(cards(page)).toHaveCount(2);
       await field(cards(page).nth(1)).fill('kh . q .'); // error caption visible too

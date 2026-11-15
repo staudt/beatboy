@@ -1,7 +1,8 @@
 import type { Section, Song } from './song';
 import type { Pattern } from './types';
 import { parseBeatText, type NotationError, type ParseResult } from './notation';
-import { createPattern, duplicatePattern } from './patternOps';
+import { createPattern, duplicatePattern, setSteps } from './patternOps';
+import { patternSteps } from './time';
 
 /**
  * Song-local beats: patterns owned by one song (`ownerSongId`), created by typing beat text into a section.
@@ -16,13 +17,15 @@ export const localBeatName = (song: Pick<Song, 'name'>, section: Pick<Section, '
 /** Sections of the song that use the pattern as their groove. */
 export const sectionsUsing = (song: Song, patternId: string): number => song.sections.filter((s) => s.patternId === patternId).length;
 
-/** The pattern whose feel and beat count text is read against (a placeholder 4-beat straight pattern when the groove is missing). */
+/** The pattern whose feel the text is read against (a placeholder straight pattern when the groove is missing). */
 const baseOrBlank = (base: Pattern | null | undefined): Pattern => base ?? createPattern({ name: 'Beat' });
 
-/** Parses section text against the section's current pattern (feel and beat count drive the resolution inference). */
-export function parseSectionText(base: Pattern | null | undefined, text: string, inferFrom?: Pattern | null): ParseResult {
-  const b = baseOrBlank(base);
-  return parseBeatText(text, { timeSig: baseOrBlank(inferFrom ?? base).timeSig, stepsPerBeat: b.stepsPerBeat });
+const NO_STEPS: NotationError = { line: 1, col: 1, message: 'Type at least one step' };
+
+/** Parses section text against the section's pattern (its feel decides the square: 16th or triplet). Empty text is an error. */
+export function parseSectionText(base: Pattern | null | undefined, text: string): ParseResult {
+  const r = parseBeatText(text, { stepsPerBeat: baseOrBlank(base).stepsPerBeat });
+  return r.ok && r.steps === 0 ? { ok: false, errors: [NO_STEPS] } : r;
 }
 
 export type LocalBeatResult =
@@ -47,18 +50,15 @@ export function localPatternFor(
   text: string,
   base?: Pattern | null,
   now: number = Date.now(),
-  /** Pattern whose feel and beat count steer the resolution inference (default: `base`); a typing session keeps its starting pattern here so the reading stays stable while the beat count changes. */
-  inferFrom?: Pattern | null,
 ): LocalBeatResult {
   const b = baseOrBlank(base);
-  const ctx = baseOrBlank(inferFrom ?? base);
-  const parsed = parseBeatText(text, { timeSig: ctx.timeSig, stepsPerBeat: b.stepsPerBeat });
+  const parsed = parseSectionText(b, text);
   if (!parsed.ok) return parsed;
   const res = {
-    pattern: { ...b, timeSig: { num: parsed.beats, den: 4 as const }, bars: 1, notes: parsed.notes, updatedAt: now },
+    pattern: { ...setSteps(b, parsed.steps, now), notes: parsed.notes, updatedAt: now },
     warnings: parsed.warnings,
   };
-  const same = JSON.stringify(res.pattern.notes) === JSON.stringify(b.notes) && res.pattern.timeSig.num === b.timeSig.num;
+  const same = JSON.stringify(res.pattern.notes) === JSON.stringify(b.notes) && patternSteps(res.pattern) === patternSteps(b);
   if (same && base) return { ok: true, pattern: base, mode: 'same', warnings: res.warnings };
   const own = !!base && isSongLocal(base) && base.ownerSongId === song.id && sectionsUsing(song, base.id) <= 1;
   if (own) return { ok: true, pattern: res.pattern, mode: 'inplace', warnings: res.warnings };

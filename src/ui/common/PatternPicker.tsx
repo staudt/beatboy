@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Pattern } from '../../domain/types';
 import { feelOf } from '../../domain/patternOps';
+import { lengthLabel } from '../../domain/time';
 import { isDesktop } from '../media';
 import { IconChevronDown, IconPlus } from './icons';
 
@@ -268,7 +269,7 @@ export function PatternPicker({
   const activeOpt = activeId && flat.some((p) => p.id === activeId) ? optId(activeId) : undefined;
   const subtitle = (p: Pattern) =>
     subtitleOf?.(p) ??
-    `${p.timeSig.num} beat${p.timeSig.num === 1 ? '' : 's'} · ${feelOf(p)}${p.builtIn ? ' · built-in' : ''}`;
+    `${lengthLabel(p)} · ${feelOf(p)}${p.builtIn ? ' · built-in' : ''}`;
 
   return (
     <div class="pp">

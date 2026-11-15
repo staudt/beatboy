@@ -9,6 +9,7 @@ import {
   collectClicks,
   collectCountIn,
   collectFillTail,
+  MIN_COUNT_IN_BAR,
 } from './drumParts';
 import { collectLoopNotes } from './patternSource';
 import type { EventSource, NoteOut } from './types';
@@ -155,7 +156,7 @@ export class SongSource implements EventSource {
 
   startTick(): number {
     const cfg = this.getConfig();
-    return -cfg.countInBars * this.barLenFor(cfg, this.startSec(cfg));
+    return -cfg.countInBars * this.countInBar(cfg);
   }
 
   reset(): void {
@@ -184,6 +185,11 @@ export class SongSource implements EventSource {
     const pat = sec ? cfg.getPattern(sec.patternId) : null;
     const len = pat ? patternTicks(pat) : 0;
     return len > 0 ? len : 4 * BEAT;
+  }
+
+  /** Count-in bar: the start section's bar length, but at least 4 beats (a 3-step groove would make a uselessly short count-in). */
+  private countInBar(cfg: SongConfig): number {
+    return Math.max(this.barLenFor(cfg, this.startSec(cfg)), MIN_COUNT_IN_BAR);
   }
 
   // ───────────────────────── planning ─────────────────────────
@@ -438,7 +444,7 @@ export class SongSource implements EventSource {
     if (to <= from) return;
     const cfg = this.getConfig();
     const vol = cfg.click.volume;
-    if (from < 0) collectCountIn(from, to, this.barLenFor(cfg, this.startSec(cfg)), vol, out);
+    if (from < 0) collectCountIn(from, to, this.countInBar(cfg), vol, out);
     if (to <= 0) return;
     const lo = Math.max(from, 0);
     this.planUpTo(to);
@@ -531,7 +537,7 @@ export class SongSource implements EventSource {
     if (tick < 0) {
       const si = secs.length ? Math.min(this.startSection, secs.length - 1) : 0;
       const sec = secs[si];
-      const barLen = this.barLenFor(cfg, sec);
+      const barLen = this.countInBar(cfg);
       const bpb = Math.max(1, Math.round(barLen / BEAT));
       const bar = Math.floor(tick / barLen);
       return {

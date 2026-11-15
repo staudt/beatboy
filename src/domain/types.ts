@@ -82,6 +82,12 @@ export interface Pattern {
   timeSig: TimeSignature;
   /** Length in bars. Beat Lab patterns always use 1 bar of `timeSig.num` beats. */
   bars: number;
+  /**
+   * Loop length in steps (grid squares) when it is NOT a whole number of beats (e.g. 3 for `s k s`); absent =
+   * `timeSig.num × stepsPerBeat × bars`. When present, `timeSig.num` = ceil(steps / stepsPerBeat) (the beats covering it).
+   * Always read the length through `patternSteps` / `patternTicks` (time.ts), never from `timeSig`.
+   */
+  steps?: number;
   /** Grid resolution: steps per beat, 4 (straight 16ths) or 3 (triplet feel). */
   stepsPerBeat: number;
   /** 8th-note swing: where the "&" lands in the beat. 0.5 = straight, 0.67 = shuffle, 0.75 = hard. Ignored in triplet feel. */
@@ -109,6 +115,8 @@ export const PATTERN_LIMITS = {
   /** Total beats in the loop (the UI "BEATS" stepper): a pattern is one bar of N beats. */
   minBeats: 1,
   maxBeats: 32,
+  /** Shortest loop in steps (one square). The longest is maxBeats × stepsPerBeat. */
+  minSteps: 1,
   /** Bars are kept for the engine/songs; Beat Lab patterns always have exactly 1. */
   minBars: 1,
   maxBars: 8,

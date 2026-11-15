@@ -181,4 +181,33 @@ describe('storage migrations/validation', () => {
       expect(validatePattern(g)).toBeNull();
     }
   });
+
+  describe('steps (v4)', () => {
+    const three = (): Pattern => ({ ...base(), timeSig: { num: 1, den: 4 }, steps: 3, notes: { kick: [{ tick: 0, vel: 96 }, { tick: 240, vel: 96 }] } });
+    it('keeps a partial length and old records unchanged', () => {
+      expect(validatePattern(three())).toEqual(three());
+      expect(migratePattern({ ...three(), schemaVersion: 4 })).toEqual(three());
+      expect(validatePattern(base())).not.toHaveProperty('steps');
+      expect(migratePattern({ ...base(), schemaVersion: 3 })).toEqual(base());
+    });
+    it('notes at or beyond the length are dropped; timeSig.num follows the steps', () => {
+      const r = validatePattern({ ...three(), timeSig: { num: 9, den: 4 }, notes: { kick: [{ tick: 240, vel: 96 }, { tick: 360, vel: 96 }] } })!;
+      expect(r.timeSig.num).toBe(1);
+      expect(r.notes.kick).toEqual([{ tick: 240, vel: 96 }]);
+    });
+    it('whole-beat steps are normalized away', () => {
+      const r = validatePattern({ ...base(), timeSig: { num: 9, den: 4 }, steps: 8 })!;
+      expect(r.steps).toBeUndefined();
+      expect(r.timeSig.num).toBe(2);
+    });
+    it('bounds: 1 .. 32 beats worth, integers', () => {
+      expect(validatePattern({ ...three(), steps: 1 })?.steps).toBe(1);
+      expect(validatePattern({ ...three(), steps: 0 })).toBeNull();
+      expect(validatePattern({ ...three(), steps: 2.5 })).toBeNull();
+      expect(validatePattern({ ...three(), steps: 127 })?.steps).toBe(127);
+      expect(validatePattern({ ...three(), steps: 129 })).toBeNull();
+      expect(validatePattern({ ...three(), stepsPerBeat: 3, steps: 97 })).toBeNull();
+      expect(validatePattern({ ...three(), stepsPerBeat: 3, steps: 95 })?.timeSig.num).toBe(32);
+    });
+  });
 });
