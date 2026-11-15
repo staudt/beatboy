@@ -1,11 +1,13 @@
 import { useEffect } from 'preact/hooks';
+import { GrooveView } from './assistant/GrooveView';
 import { BeatLab } from './beatlab/BeatLab';
 import { ConfirmSheet } from './common/ConfirmSheet';
 import { IconBot, IconGrid } from './common/icons';
 import { Toast } from './common/Toast';
 import { isDesktop } from './media';
 import { navigate, route, type Route } from './router';
-import { initLab, prepareAudio, ready, togglePlay } from './state/lab';
+import * as groove from './state/groove';
+import { initLab, playing as labPlaying, prepareAudio, ready, togglePlay } from './state/lab';
 
 const TABS: { id: Route; label: string; icon: typeof IconGrid }[] = [
   { id: 'assistant', label: 'Assistant', icon: IconBot },
@@ -26,19 +28,12 @@ function Tabs({ where }: { where: 'top' | 'bottom' }) {
         >
           <t.icon width={20} height={20} />
           <span>{t.label}</span>
+          {(t.id === 'lab' ? labPlaying.value : groove.playing.value) && (
+            <i class="tab-dot" data-testid={`playing-${t.id}`} aria-label="playing" role="img" />
+          )}
         </button>
       ))}
     </nav>
-  );
-}
-
-function Assistant() {
-  return (
-    <section class="assistant card" aria-label="Drum Assistant">
-      <span class="chip chip-builtin">Coming next iteration</span>
-      <h2>Drum Assistant</h2>
-      <p>Drum Assistant — songs, sections and a performance view — arrive in the next iteration.</p>
-    </section>
   );
 }
 
@@ -55,17 +50,38 @@ function isTypingTarget(t: EventTarget | null): boolean {
 export function App() {
   useEffect(() => {
     void initLab();
+    void groove.initGroove();
     // First gesture warms up audio + loads the kit.
     const warm = () => prepareAudio();
     document.addEventListener('pointerdown', warm, { once: true, capture: true });
     let spaceHandled = false;
     const onKey = (e: KeyboardEvent) => {
-      if (e.code !== 'Space' || e.repeat) return;
+      if (e.repeat && e.code === 'Space') return;
       const t = e.target as HTMLElement | null;
-      if (isTypingTarget(t) || route.value !== 'lab') return;
-      e.preventDefault();
-      spaceHandled = true;
-      togglePlay();
+      if (isTypingTarget(t) || t?.closest('.pp-panel')) return;
+      const assistant = route.value === 'assistant';
+      if (e.code === 'Space') {
+        e.preventDefault();
+        spaceHandled = true;
+        if (assistant) groove.togglePlay();
+        else togglePlay();
+        return;
+      }
+      if (!assistant || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'f' || e.key === 'F') {
+        if (e.repeat) return;
+        e.preventDefault();
+        groove.fill();
+      } else if (e.key === 't' || e.key === 'T') {
+        if (e.repeat) return;
+        e.preventDefault();
+        groove.tap();
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        // Sliders, selects and fields keep their own arrow-key behavior.
+        if (t?.closest('input, select, textarea, [role=listbox]')) return;
+        e.preventDefault();
+        groove.nudgeBpm(e.key === 'ArrowUp' ? 1 : -1);
+      }
     };
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space' && spaceHandled) {
@@ -91,7 +107,7 @@ export function App() {
           <Tabs where="top" />
         </header>
       )}
-      <main class="view">{route.value === 'lab' ? ready.value ? <BeatLab /> : <p class="boot">Loading…</p> : <Assistant />}</main>
+      <main class="view">{route.value === 'lab' ? ready.value ? <BeatLab /> : <p class="boot">Loading…</p> : <GrooveView />}</main>
       {!desktop && <Tabs where="bottom" />}
       <Toast />
       <ConfirmSheet />

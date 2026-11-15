@@ -112,14 +112,14 @@ async function waitSaved(page: Page): Promise<void> {
 }
 
 async function open(page: Page): Promise<void> {
-  await page.goto('./');
+  await page.goto('./#/lab');
   await expect(patternName(page)).toBeVisible();
 }
 
 test('loads at the sub-path with same-origin requests only and the default pattern', async ({ page }) => {
   const urls: string[] = [];
   page.on('request', (req) => urls.push(req.url()));
-  await page.goto('./');
+  await page.goto('./#/lab');
   await expect(patternName(page)).toHaveText('Rock 8ths');
   await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
   expect(page.url().startsWith(`${ORIGIN}beatboy/`)).toBe(true);
@@ -594,7 +594,7 @@ test('desktop: click-drag paints a row and Space toggles playback', async ({ bro
   const errors: string[] = [];
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('./');
+  await page.goto('./#/lab');
   await expect(patternName(page)).toBeVisible();
   const a = (await cell(page, 'tomHigh', 0).boundingBox())!;
   const b = (await cell(page, 'tomHigh', 5).boundingBox())!;
@@ -617,7 +617,7 @@ test('desktop: click-drag paints a row and Space toggles playback', async ({ bro
 test('desktop: Space plays/stops even when a button, step, slider or stepper has focus', async ({ browser }) => {
   const ctx = await browser.newContext(LAYOUTS.desktop);
   const page = await ctx.newPage();
-  await page.goto('./');
+  await page.goto('./#/lab');
   await expect(patternName(page)).toBeVisible();
   const play = page.getByRole('button', { name: 'Play' });
   const stop = page.getByRole('button', { name: 'Stop' });
@@ -654,7 +654,7 @@ for (const layout of ['mobile', 'desktop'] as const) {
   test(`${layout}: tempo slider sets BPM`, async ({ browser }) => {
     const ctx = await browser.newContext(LAYOUTS[layout]);
     const page = await ctx.newPage();
-    await page.goto('./');
+    await page.goto('./#/lab');
     await expect(patternName(page)).toBeVisible();
     const slider = page.getByRole('slider', { name: 'Tempo slider' });
     await expect(slider).toBeVisible();
@@ -666,10 +666,10 @@ for (const layout of ['mobile', 'desktop'] as const) {
   });
 }
 
-test('assistant tab shows the iteration placeholder', async ({ page }) => {
+test('assistant tab is reachable from the lab', async ({ page }) => {
   await open(page);
   await page.getByRole('button', { name: /Assistant/ }).click();
-  await expect(page.getByText('arrive in the next iteration')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Drum Assistant' })).toBeVisible();
   await expect(page).toHaveURL(/#\/assistant$/);
 });
 
@@ -681,7 +681,7 @@ test('screenshots', async ({ browser }) => {
     const errors: string[] = [];
     page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto('./');
+    await page.goto('./#/lab');
     await expect(patternName(page)).toBeVisible();
     const shot = (n: string) => page.screenshot({ path: `test-results/screenshots/${name}-${n}.png`, fullPage: true });
 

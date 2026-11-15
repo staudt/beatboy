@@ -1384,11 +1384,6 @@ button.chip {
   border-radius: 18px;
 }
 
-.assistant {
-  margin-left: auto;
-  margin-right: auto;
-}
-
 .card h2 {
   font-family: var(--font-mono);
   letter-spacing: 0.1em;
@@ -1593,6 +1588,366 @@ button.chip {
 
   .toast {
     bottom: 28px;
+  }
+}
+
+/* ── Drum Assistant (groove) ───────────────────────────────────── */
+.tab {
+  position: relative;
+}
+
+.tab-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--play);
+  box-shadow: 0 0 8px var(--play);
+  animation: dot-pulse 1.2s ease-in-out infinite;
+}
+
+.tabs-bottom .tab-dot {
+  position: absolute;
+  top: 8px;
+  left: calc(50% + 22px);
+}
+
+@keyframes dot-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.gv {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 10px 16px 0;
+  min-height: 100%;
+  align-content: start;
+}
+
+.gv-title {
+  text-align: center;
+}
+
+.gv-main,
+.gv-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.gv-bpm {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+}
+
+.gv-bpm-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.gv-step {
+  width: 60px;
+  height: 60px;
+  flex: none;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.gv-bpm-input {
+  width: 4.2ch;
+  min-width: 0;
+  flex: 0 1 auto;
+  text-align: center;
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid var(--line);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: clamp(64px, 22vw, 96px);
+  line-height: 1.05;
+  padding: 0;
+  color: var(--text);
+}
+
+.gv-bpm-input:focus {
+  border-bottom-color: var(--play);
+  outline: none;
+}
+
+.gv-bpm-label {
+  margin-top: -2px;
+}
+
+.gv-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.gv-slider-row .range {
+  flex: 1;
+  min-width: 0;
+}
+
+.gv-lamps-area {
+  min-height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gv-lamps {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.gv-lamp {
+  flex: 1 1 0;
+  max-width: 64px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #3a3631, #1f1d1b);
+  border: 2px solid var(--line);
+  box-shadow: inset 0 3px 6px rgb(0 0 0 / 0.6);
+  transition: background 50ms, box-shadow 50ms;
+}
+
+.gv-lamp.is-accent {
+  border-color: #6b4a2c;
+  border-width: 3px;
+}
+
+.gv-lamp.is-on {
+  background: radial-gradient(circle at 35% 30%, var(--play-white), var(--play-hot) 40%, var(--play));
+  border-color: var(--play-hot);
+  box-shadow: 0 0 18px rgb(255 122 26 / 0.7);
+}
+
+.gv-lamp.is-accent.is-on {
+  background: radial-gradient(circle at 35% 30%, #fff, var(--play-white) 45%, var(--play-hot));
+  box-shadow: 0 0 26px rgb(255 179 107 / 0.95);
+}
+
+.gv-countdown {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 80px;
+  line-height: 1;
+  color: var(--play);
+  text-shadow: 0 0 22px rgb(255 122 26 / 0.55);
+}
+
+.gv-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gv-row-pair {
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.gv-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gv-beats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gv-sig {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.seg {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.seg-btn {
+  min-width: 48px;
+  padding: 0 10px;
+}
+
+.gv-click .range {
+  flex: 1;
+  min-width: 0;
+}
+
+.gv-click-toggle {
+  min-width: 108px;
+}
+
+.gv-pick .pp {
+  width: 100%;
+}
+
+.gv-pick .pp-trigger {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.gv-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+}
+
+.gv-fillrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gv-fillrow .pp {
+  flex: 1;
+  min-width: 0;
+}
+
+.gv-fillrow .pp-trigger {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.gv-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.gv-check input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--fill);
+}
+
+.gv-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  position: sticky;
+  bottom: 0;
+  padding: 10px 0 12px;
+  background: linear-gradient(transparent, var(--bg) 18%);
+}
+
+.gv-play,
+.gv-fill {
+  min-height: 72px;
+  font-size: 16px;
+  letter-spacing: 0.14em;
+  position: relative;
+}
+
+.gv-play {
+  background: linear-gradient(#34312d, #26231f);
+  color: var(--play);
+}
+
+.gv-play.is-playing {
+  background: linear-gradient(#ff9440, var(--play));
+  color: #1b1a19;
+  border-color: #ffb36b;
+}
+
+.gv-fill {
+  color: var(--fill);
+}
+
+.gv-fill.is-queued {
+  border-color: var(--fill);
+  background: #1f3a3f;
+}
+
+.gv-fill.is-active {
+  border-color: var(--fill);
+  background: linear-gradient(#4ad8e9, var(--fill));
+  color: #0c2226;
+  animation: fill-pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes fill-pulse {
+  to {
+    box-shadow: 0 0 22px rgb(46 196 214 / 0.8);
+  }
+}
+
+.gv-kbd {
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  opacity: 0.55;
+  text-transform: none;
+}
+
+@media (min-width: 900px) {
+  .gv {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      'main settings'
+      'actions settings';
+    column-gap: 56px;
+    row-gap: 8px;
+    padding-top: 48px;
+    align-content: start;
+    align-items: start;
+  }
+  .gv-main {
+    grid-area: main;
+  }
+  .gv-settings {
+    grid-area: settings;
+    gap: 20px;
+    padding-top: 28px;
+  }
+  .gv-actions {
+    grid-area: actions;
+    position: static;
+    background: none;
+  }
+}
+
+@media (max-height: 700px) and (max-width: 899px) {
+  .gv-lamps-area {
+    min-height: 64px;
+  }
+  .gv-bpm-input {
+    font-size: 64px;
   }
 }
 

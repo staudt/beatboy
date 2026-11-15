@@ -93,6 +93,8 @@ export function removeBeatAction(): void {
 
 // ── persistence ──────────────────────────────────────────────────
 let repo: PatternRepo | null = null;
+/** The shared repository (null until initLab resolves, or when storage is unavailable). */
+export const getRepo = (): PatternRepo | null => repo;
 let saver: Autosaver<Pattern> | null = null;
 let persistAsked = false;
 
@@ -196,7 +198,7 @@ export function requestDelete(id: string): void {
 }
 
 // ── audio / playback ─────────────────────────────────────────────
-function trackKit(p: Promise<void>): void {
+export function trackKit(p: Promise<void>): void {
   if (kitStatus.peek() !== 'ready') kitStatus.value = 'loading';
   p.then(
     () => {
@@ -216,10 +218,12 @@ export function prepareAudio(): void {
 }
 
 export function togglePlay(): void {
-  if (engine.playing) {
+  if (engine.mode === 'lab') {
     engine.stop();
     return;
   }
+  // Idle, or the Assistant groove is playing (the lab takes over). Tempo is per-mode.
+  engine.setBpm(bpm.peek());
   const started = engine.playPattern(() => current.peek());
   trackKit(started);
   started.catch(() => {});
@@ -246,7 +250,7 @@ function tickLoop(): void {
 }
 
 function syncPlaying(): void {
-  const now = engine.playing;
+  const now = engine.mode === 'lab';
   if (now === playing.peek()) return;
   playing.value = now;
   if (now) {
@@ -273,7 +277,11 @@ async function doInit(): Promise<void> {
     if (engine.kitReady && kitStatus.peek() !== 'ready') kitStatus.value = 'ready';
   });
   // Keep the engine tempo in step with the current pattern / overrides.
-  effect(() => engine.setBpm(bpm.value));
+  // (The Assistant groove has its own tempo, so leave the engine alone while it plays.)
+  effect(() => {
+    const b = bpm.value;
+    if (engine.mode !== 'groove') engine.setBpm(b);
+  });
 
   try {
     repo = await PatternRepo.open();

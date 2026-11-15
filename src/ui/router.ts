@@ -3,7 +3,7 @@ import { signal } from '@preact/signals';
 export type Route = 'lab' | 'assistant';
 
 function parse(): Route {
-  return location.hash.startsWith('#/assistant') ? 'assistant' : 'lab';
+  return location.hash.startsWith('#/lab') ? 'lab' : 'assistant';
 }
 
 export const route = signal<Route>(parse());

@@ -13,6 +13,8 @@ export interface PatternPickerProps {
   onNew?: () => void;
   /** Tempo shown in the row subtitle (defaults to the pattern's own). */
   bpmOf?: (p: Pattern) => number;
+  /** Replaces the whole row subtitle. */
+  subtitleOf?: (p: Pattern) => string;
   /** Accessible name of the trigger's popup. */
   label?: string;
   /** data-testid for the trigger's name text. */
@@ -48,6 +50,7 @@ export function PatternPicker({
   onRename,
   onNew,
   bpmOf,
+  subtitleOf,
   label = 'Patterns',
   nameTestId,
 }: PatternPickerProps) {
@@ -248,6 +251,7 @@ export function PatternPicker({
   const optId = (id: string) => `pp-opt-${id}`;
   const activeOpt = activeId && flat.some((p) => p.id === activeId) ? optId(activeId) : undefined;
   const subtitle = (p: Pattern) =>
+    subtitleOf?.(p) ??
     `${p.timeSig.num} beat${p.timeSig.num === 1 ? '' : 's'} · ${bpmOf ? bpmOf(p) : p.bpm} BPM${p.builtIn ? ' · built-in' : ''}`;
 
   return (
