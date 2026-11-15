@@ -9,7 +9,7 @@ export function Transport() {
   const swing = Math.round(current.value.swing * 100);
   const kit = kitStatus.value;
   const desktop = isDesktop.value;
-  // Desktop: inline between "−" and the BPM number. Mobile: its own full-width row.
+  // Desktop: inline between the BPM number and "+". Mobile: its own full-width row.
   const slider = (
     <input
       class="range tempo-slider"
@@ -41,7 +41,6 @@ export function Transport() {
         <button type="button" class="btn btn-icon" aria-label="Tempo down" disabled={b <= PATTERN_LIMITS.minBpm} onClick={() => setTempo(b - 1)}>
           <IconMinus />
         </button>
-        {desktop && slider}
         <label class="tempo-field">
           <input
             class="tempo-input"
@@ -56,6 +55,7 @@ export function Transport() {
           />
           <span class="label">bpm</span>
         </label>
+        {desktop && slider}
         <button type="button" class="btn btn-icon" aria-label="Tempo up" disabled={b >= PATTERN_LIMITS.maxBpm} onClick={() => setTempo(b + 1)}>
           <IconPlus />
         </button>
