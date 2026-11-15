@@ -51,9 +51,9 @@ describe('storage migrations/validation', () => {
       schemaVersion: 1,
     };
     const m = migratePattern(v1)!;
-    expect(m.timeSig).toEqual({ num: 2, den: 4 });
+    expect(m.timeSig).toEqual({ num: 4, den: 4 }); // 2 beats x 2 bars, flattened
     expect(m.stepsPerBeat).toBe(3);
-    expect(m.bars).toBe(2);
+    expect(m.bars).toBe(1);
     expect(m.notes.kick).toEqual([
       { tick: 0, vel: 100 },
       { tick: 480, vel: 90 },
@@ -64,12 +64,49 @@ describe('storage migrations/validation', () => {
     expect(migratePattern({ ...base(), stepsPerBeat: 8, schemaVersion: 1 })!.stepsPerBeat).toBe(4);
   });
 
-  it('v2 records must be den 4 with 1..4 steps per beat', () => {
+  it('v2 records must be den 4; v3 needs 3 or 4 steps per beat', () => {
     const odd = { ...base(), timeSig: { num: 6, den: 8 }, schemaVersion: 2 };
     expect(migratePattern(odd)).toBeNull();
-    expect(validatePattern({ ...base(), timeSig: { num: 8, den: 4 } })).toBeNull();
+    expect(validatePattern({ ...base(), timeSig: { num: 33, den: 4 } })).toBeNull();
+    expect(validatePattern({ ...base(), timeSig: { num: 32, den: 4 } })).not.toBeNull();
+    expect(validatePattern({ ...base(), bars: 2 })).toBeNull(); // v3 is always a single bar of beats
     expect(validatePattern({ ...base(), stepsPerBeat: 6 })).toBeNull();
     expect(validatePattern({ ...base(), stepsPerBeat: 3 })).not.toBeNull();
+    for (const n of [1, 2]) expect(validatePattern({ ...base(), stepsPerBeat: n })).toBeNull();
+  });
+
+  it('migrates v2 -> v3: 1 or 2 steps per beat become 4 and no note moves', () => {
+    for (const n of [1, 2]) {
+      const v2 = { ...base(), stepsPerBeat: n, bars: 2, notes: { kick: [{ tick: 0, vel: 96 }, { tick: 480, vel: 96 }, { tick: 2400, vel: 90 }] }, schemaVersion: 2 };
+      const m = migratePattern(v2)!;
+      expect(m.stepsPerBeat).toBe(4);
+      expect(m.notes.kick).toEqual(v2.notes.kick);
+      expect(m.bars).toBe(1); // bars are flattened into beats: 4 beats x 2 bars = 8 beats
+      expect(m.timeSig).toEqual({ num: 8, den: 4 });
+    }
+    expect(migratePattern({ ...base(), stepsPerBeat: 3, schemaVersion: 2 })!.stepsPerBeat).toBe(3);
+    expect(migratePattern({ ...base(), stepsPerBeat: 4, schemaVersion: 2 })!.stepsPerBeat).toBe(4);
+  });
+
+  it('flattening clamps at 32 beats and drops the notes beyond', () => {
+    const v2 = { ...base(), timeSig: { num: 7, den: 4 }, bars: 8, notes: { kick: [{ tick: 0, vel: 90 }, { tick: 31 * 480, vel: 90 }, { tick: 32 * 480, vel: 90 }] }, schemaVersion: 2 };
+    const m = migratePattern(v2)!;
+    expect(m.timeSig.num).toBe(32);
+    expect(m.notes.kick!.map((n) => n.tick)).toEqual([0, 31 * 480]);
+  });
+
+  it('migrates v1 -> v3 through both steps', () => {
+    const v1 = { ...base(), timeSig: { num: 4, den: 4 }, stepsPerBeat: 2, schemaVersion: 1 };
+    expect(migratePattern(v1)!.stepsPerBeat).toBe(4);
+    const six = { ...base(), timeSig: { num: 6, den: 8 }, stepsPerBeat: 2, schemaVersion: 1, notes: { kick: [{ tick: 0, vel: 90 }] } };
+    const m = migratePattern(six)!;
+    expect(m.timeSig).toEqual({ num: 2, den: 4 });
+    expect(m.stepsPerBeat).toBe(3);
+    const q = { ...base(), timeSig: { num: 3, den: 8 }, stepsPerBeat: 1, schemaVersion: 1, notes: { kick: [{ tick: 0, vel: 90 }, { tick: 240, vel: 90 }] } };
+    const mq = migratePattern(q)!;
+    expect(mq.timeSig).toEqual({ num: 3, den: 4 });
+    expect(mq.stepsPerBeat).toBe(4);
+    expect(mq.notes.kick!.map((n) => n.tick)).toEqual([0, 480]);
   });
 
   it('sorts and dedupes notes', () => {

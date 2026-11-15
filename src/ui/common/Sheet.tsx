@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
+import { useLayoutEffect, useRef } from 'preact/hooks';
 
 interface Props {
   title: string;
@@ -12,7 +12,8 @@ interface Props {
 /** Modal dialog / bottom sheet. Render it only while open. */
 export function Sheet({ title, onClose, children, className }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  // Layout effect: the Escape listener and focus are in place as soon as the dialog is visible.
+  useLayoutEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
     const el = ref.current;
     const focusable = el?.querySelector<HTMLElement>('[data-autofocus], input, textarea, select');

@@ -96,83 +96,24 @@ describe('cycleStep', () => {
   });
 });
 
-describe('setBars', () => {
-  it('grows by repeating cyclically', () => {
-    let p = ops.setStep(base(), 'kick', 0, 100);
-    p = ops.setStep(p, 'snare', 4, 90);
-    const q = ops.setBars(p, 2, LATER);
-    expect(q.bars).toBe(2);
-    expect(q.notes.kick!.map((n) => n.tick)).toEqual([0, 1920]);
-    expect(q.notes.snare!.map((n) => n.tick)).toEqual([480, 2400]);
-    expect(q.updatedAt).toBe(LATER);
-    const r = ops.setBars(q, 5);
-    expect(r.notes.kick!.map((n) => n.tick)).toEqual([0, 1920, 3840, 5760, 7680]);
-  });
-  it('grows 2 → 3 cycling', () => {
-    let p = ops.setBars(ops.setStep(base(), 'kick', 0, 100), 2);
-    p = ops.setStep(p, 'kick', 16, 0);
-    const q = ops.setBars(p, 3);
-    expect(q.notes.kick!.map((n) => n.tick)).toEqual([0, 3840]);
-  });
-  it('shrinks by truncating', () => {
-    const p = ops.setBars(ops.setStep(base(), 'kick', 0, 100), 4);
-    const q = ops.setBars(p, 2);
-    expect(q.notes.kick!.map((n) => n.tick)).toEqual([0, 1920]);
-    const r = ops.setBars(ops.setStep(ops.setStep(base(), 'kick', 0, 1), 'snare', 4, 1), 1);
-    expect(r.bars).toBe(1);
-  });
-  it('drops emptied tracks', () => {
-    let p = ops.setBars(base(), 2);
-    p = ops.setStep(p, 'kick', 20, 100);
-    expect(ops.setBars(p, 1).notes.kick).toBeUndefined();
-  });
-  it('clamps', () => {
-    expect(ops.setBars(base(), 99).bars).toBe(8);
-    expect(ops.setBars(base(), 0).bars).toBe(1);
-  });
-  it('is immutable', () => {
-    const p = ops.setBars(ops.setStep(base(), 'kick', 0, 100), 2);
-    const before = clone(p);
-    ops.setBars(p, 4);
-    ops.setBars(p, 1);
-    expect(p).toEqual(before);
-  });
-});
-
 const nt = (p: Pattern, id: 'kick' | 'snare' | 'hatClosed' = 'kick') => p.notes[id]?.map((n) => [n.tick, n.vel]);
 
-describe('setTimeSig', () => {
-  it('drops notes beyond the end', () => {
-    let p = ops.setStep(base(), 'kick', 0, 100);
-    p = ops.setStep(p, 'kick', 12, 100); // tick 1440
-    const q = ops.setTimeSig(p, { num: 3, den: 4 }, LATER);
-    expect(q.timeSig).toEqual({ num: 3, den: 4 });
-    expect(q.notes.kick).toEqual([{ tick: 0, vel: 100 }]);
-    expect(p.timeSig).toEqual({ num: 4, den: 4 });
-  });
-  it('re-maps notes per bar in multi-bar patterns', () => {
-    // 2 bars of 4/4; kick at bar 2 beat 1 (tick 1920) must follow its bar to 1440 in 3/4.
-    const p = base({ bars: 2, notes: { kick: [{ tick: 0, vel: 100 }, { tick: 1440, vel: 90 }, { tick: 1920, vel: 80 }, { tick: 3360, vel: 70 }] } });
-    const q = ops.setTimeSig(p, { num: 3, den: 4 });
-    expect(nt(q)).toEqual([[0, 100], [1440, 80]]);
-  });
-});
-
 describe('setBeats', () => {
-  it('sets x/4 and clamps 1..7', () => {
-    expect(ops.setBeats(base(), 3, LATER)).toMatchObject({ timeSig: { num: 3, den: 4 }, updatedAt: LATER });
+  it('sets the loop length in beats (1..32) as one bar of x/4', () => {
+    expect(ops.setBeats(base(), 3, LATER)).toMatchObject({ timeSig: { num: 3, den: 4 }, bars: 1, updatedAt: LATER });
     expect(ops.setBeats(base(), 0).timeSig).toEqual({ num: 1, den: 4 });
-    expect(ops.setBeats(base(), 99).timeSig).toEqual({ num: 7, den: 4 });
+    expect(ops.setBeats(base(), 99).timeSig).toEqual({ num: 32, den: 4 });
   });
-  it('shrinking drops notes beyond each bar end (multi-bar re-map)', () => {
-    const p = base({ bars: 2, notes: { kick: [{ tick: 0, vel: 100 }, { tick: 1440, vel: 90 }, { tick: 1920, vel: 80 }, { tick: 3360, vel: 70 }] } });
-    const q = ops.setBeats(p, 3);
-    expect(nt(q)).toEqual([[0, 100], [1440, 80]]);
-    expect(q.bars).toBe(2);
+  it('shrinking drops notes beyond the new end, growing keeps every tick', () => {
+    const p = base({ timeSig: { num: 8, den: 4 }, notes: { kick: [{ tick: 0, vel: 100 }, { tick: 1440, vel: 90 }, { tick: 1920, vel: 80 }, { tick: 3360, vel: 70 }] } });
+    expect(nt(ops.setBeats(p, 4))).toEqual([[0, 100], [1440, 90]]);
+    expect(nt(ops.setBeats(p, 12))).toEqual([[0, 100], [1440, 90], [1920, 80], [3360, 70]]);
   });
-  it('growing keeps in-bar positions and moves later bars', () => {
-    const p = base({ bars: 2, notes: { kick: [{ tick: 480, vel: 100 }, { tick: 1920 + 480, vel: 90 }] } });
-    expect(nt(ops.setBeats(p, 5))).toEqual([[480, 100], [2400 + 480, 90]]);
+  it('flattens a multi-bar pattern without moving ticks', () => {
+    const p = base({ bars: 2, notes: { kick: [{ tick: 1920, vel: 80 }] } });
+    const q = ops.setBeats(p, 8);
+    expect(q.bars).toBe(1);
+    expect(nt(q)).toEqual([[1920, 80]]);
   });
   it('is immutable', () => {
     const p = ops.setStep(base(), 'kick', 12, 100);
@@ -183,43 +124,95 @@ describe('setBeats', () => {
 });
 
 describe('setStepsPerBeat', () => {
-  it('moves nothing when going to a finer aligned grid', () => {
-    let p = ops.setStepsPerBeat(base(), 2);
-    p = ops.setStep(p, 'kick', 3, 100); // 8th grid: tick 720
+  it('moves nothing when going from triplets to straight on aligned notes', () => {
+    let p = ops.setStepsPerBeat(base(), 3);
+    p = ops.setStep(p, 'kick', 3, 100); // triplet grid: tick 480
     const q = ops.setStepsPerBeat(p, 4, LATER);
     expect(q.stepsPerBeat).toBe(4);
     expect(q.notes).toEqual(p.notes);
   });
-  it('quantizes to the nearest step, ties go earlier', () => {
-    // 16ths (120) -> 8ths (240): 120 is a tie -> 0; 240 stays; 360 is a tie -> 240; 480 stays; 600 tie -> 480; 
-    const p = base({ notes: { kick: [120, 240, 360, 480, 600, 720].map((tick) => ({ tick, vel: 90 })) } });
-    expect(nt(ops.setStepsPerBeat(p, 2))!.map((x) => x[0])).toEqual([0, 240, 480, 720]);
-  });
   it('4 -> 3 snaps to triplets (160)', () => {
     const p = base({ notes: { kick: [{ tick: 120, vel: 90 }, { tick: 240, vel: 90 }, { tick: 360, vel: 90 }] } });
-    // 120 -> 160, 240 -> 320 (80 > 80? tie: 240-160=80, tie -> earlier 160), 360 -> 320
+    // 120 -> 160, 240 -> 160 (tie goes earlier), 360 -> 320
     expect(nt(ops.setStepsPerBeat(p, 3))).toEqual([[160, 90], [320, 90]]);
   });
   it('merges collisions keeping the max velocity per sound', () => {
-    const p = base({ notes: { kick: [{ tick: 0, vel: 60 }, { tick: 100, vel: 120 }, { tick: 130, vel: 80 }], snare: [{ tick: 120, vel: 40 }] } });
-    const q = ops.setStepsPerBeat(p, 1);
+    const p = base({ notes: { kick: [{ tick: 0, vel: 60 }, { tick: 60, vel: 120 }, { tick: 70, vel: 80 }], snare: [{ tick: 40, vel: 40 }] } });
+    const q = ops.setStepsPerBeat(p, 3);
     expect(nt(q)).toEqual([[0, 120]]);
     expect(nt(q, 'snare')).toEqual([[0, 40]]);
   });
-  it('drops notes snapped to or past the end', () => {
-    const p = base({ notes: { kick: [{ tick: 1900, vel: 90 }, { tick: 1680, vel: 90 }] } });
-    // quarters: 1900 -> 1920 (the end, dropped); 1680 is a tie between 1440 and 1920 -> 1440
-    expect(nt(ops.setStepsPerBeat(p, 1))).toEqual([[1440, 90]]);
+  it('drops notes snapped to the end', () => {
+    const p = base({ notes: { kick: [{ tick: 1900, vel: 90 }, { tick: 1700, vel: 90 }] } });
+    expect(nt(ops.setStepsPerBeat(p, 3))).toEqual([[1760, 90]]);
   });
   it('leaves nothing off-grid afterwards', () => {
     const p = base({ notes: { kick: [17, 133, 479, 481, 1001].map((tick) => ({ tick, vel: 90 })) } });
-    for (const n of [1, 2, 3, 4]) expect(ops.offGridCount(ops.setStepsPerBeat(p, n))).toBe(0);
+    for (const n of [3, 4]) expect(ops.offGridCount(ops.setStepsPerBeat(p, n))).toBe(0);
   });
   it('rejects unsupported resolutions', () => {
     const p = base();
-    expect(ops.setStepsPerBeat(p, 5)).toBe(p);
-    expect(ops.setStepsPerBeat(p, 6)).toBe(p);
-    expect(ops.setStepsPerBeat(p, 8)).toBe(p);
+    for (const n of [1, 2, 5, 6, 8]) expect(ops.setStepsPerBeat(p, n)).toBe(p);
+  });
+});
+
+describe('feel', () => {
+  it('feelOf / setFeel', () => {
+    const p = base();
+    expect(ops.feelOf(p)).toBe('straight');
+    const t = ops.setFeel(p, 'triplet', LATER);
+    expect(t.stepsPerBeat).toBe(3);
+    expect(t.updatedAt).toBe(LATER);
+    expect(ops.feelOf(t)).toBe('triplet');
+    expect(ops.setFeel(t, 'straight').stepsPerBeat).toBe(4);
+  });
+  it('setFeel quantizes notes', () => {
+    const p = base({ notes: { kick: [{ tick: 120, vel: 90 }] } });
+    expect(nt(ops.setFeel(p, 'triplet'))).toEqual([[160, 90]]);
+  });
+  it('signatureLabel', () => {
+    expect(ops.signatureLabel(4, 'straight')).toBe('4/4');
+    expect(ops.signatureLabel(3, 'straight')).toBe('3/4');
+    expect(ops.signatureLabel(7, 'straight')).toBe('7/4');
+    expect(ops.signatureLabel(2, 'triplet')).toBe('6/8');
+    expect(ops.signatureLabel(3, 'triplet')).toBe('9/8');
+    expect(ops.signatureLabel(4, 'triplet')).toBe('12/8');
+    expect(ops.signatureLabel(5, 'triplet')).toBe('5 × triplets');
+    expect(ops.signatureLabel(1, 'triplet')).toBe('1 × triplets');
+  });
+});
+
+describe('addBeat / removeLastBeat / lastBeatHasNotes', () => {
+  it('addBeat appends one EMPTY beat', () => {
+    const p = base({ notes: { kick: [{ tick: 1440, vel: 100 }] } });
+    const q = ops.addBeat(p, LATER);
+    expect(q.timeSig).toEqual({ num: 5, den: 4 });
+    expect(q.bars).toBe(1);
+    expect(q.updatedAt).toBe(LATER);
+    expect(nt(q)).toEqual([[1440, 100]]); // no copy
+  });
+  it('addBeat caps at 32 and is pure', () => {
+    const p = base({ timeSig: { num: 32, den: 4 } });
+    expect(ops.addBeat(p)).toBe(p);
+    const q = base({ notes: { kick: [{ tick: 0, vel: 100 }] } });
+    const before = clone(q);
+    ops.addBeat(q);
+    expect(q).toEqual(before);
+  });
+  it('removeLastBeat drops the last beat and its notes, min 1', () => {
+    const p = base({ notes: { kick: [{ tick: 0, vel: 100 }], snare: [{ tick: 1500, vel: 90 }] } });
+    const q = ops.removeLastBeat(p);
+    expect(q.timeSig.num).toBe(3);
+    expect(nt(q)).toEqual([[0, 100]]);
+    expect(q.notes.snare).toBeUndefined();
+    const one = base({ timeSig: { num: 1, den: 4 } });
+    expect(ops.removeLastBeat(one)).toBe(one);
+  });
+  it('lastBeatHasNotes', () => {
+    expect(ops.lastBeatHasNotes(base({ notes: { kick: [{ tick: 0, vel: 100 }] } }))).toBe(false);
+    expect(ops.lastBeatHasNotes(base({ notes: { kick: [{ tick: 1440, vel: 100 }] } }))).toBe(true);
+    expect(ops.lastBeatHasNotes(base({ notes: { kick: [{ tick: 1919, vel: 100 }] } }))).toBe(true);
+    expect(ops.lastBeatHasNotes(base({ timeSig: { num: 5, den: 4 }, notes: { kick: [{ tick: 1440, vel: 100 }] } }))).toBe(false);
   });
 });
 
@@ -266,25 +259,25 @@ describe('toBeatGrid', () => {
     expect(q.notes.kick!.every((n) => n.tick % 160 === 0)).toBe(true);
     expect(nt(q)).toEqual([[0, 100], [160, 100]]);
   });
-  it('7/8 @1 -> 7 x 1', () => {
+  it('7/8 @1 -> 7 x 4 (quarters become the straight grid)', () => {
     const p = mk(7, 8, 1, [0, 240, 720, 1200]);
     const q = ops.toBeatGrid(p);
     expect(q.timeSig).toEqual({ num: 7, den: 4 });
-    expect(q.stepsPerBeat).toBe(1);
+    expect(q.stepsPerBeat).toBe(4);
     expect(nt(q)).toEqual([[0, 100], [480, 100], [1440, 100], [2400, 100]]);
     same(p, q);
   });
-  it('3/8 @1 -> 3 x 1', () => {
+  it('3/8 @1 -> 3 x 4', () => {
     const q = ops.toBeatGrid(mk(3, 8, 1, [0, 480]));
     expect(q.timeSig).toEqual({ num: 3, den: 4 });
-    expect(q.stepsPerBeat).toBe(1);
+    expect(q.stepsPerBeat).toBe(4);
     expect(nt(q)).toEqual([[0, 100], [960, 100]]);
   });
   it('2/2: the half note is the pulse, so 2 beats with the same steps per beat', () => {
     const p = mk(2, 2, 1, [0, 960]);
     const q = ops.toBeatGrid(p);
     expect(q.timeSig).toEqual({ num: 2, den: 4 });
-    expect(q.stepsPerBeat).toBe(1);
+    expect(q.stepsPerBeat).toBe(4);
     expect(nt(q)).toEqual([[0, 100], [480, 100]]);
     same(p, q);
     const r = mk(2, 2, 4, [0, 240, 960]);
@@ -293,16 +286,22 @@ describe('toBeatGrid', () => {
     expect(nt(s)).toEqual([[0, 100], [120, 100], [480, 100]]);
     same(r, s);
   });
-  it('6/8 @2 -> 2 x 3 (quantized); 6/8 @4 -> 2 x 4 via 8 -> 4', () => {
+  it('6/8 @2 -> 2 x 3 (quantized); 6/8 @4 -> 2 x 4 via 8 -> 4; den-4 grids 1, 2 -> 4', () => {
     expect(ops.toBeatGrid(mk(6, 8, 2, [0])).stepsPerBeat).toBe(3);
     const q = ops.toBeatGrid(mk(6, 8, 4, [0, 60, 120]));
     expect(q.stepsPerBeat).toBe(4);
     expect(q.notes.kick!.every((n) => n.tick % 120 === 0)).toBe(true);
+    for (const spb of [1, 2]) {
+      const r = ops.toBeatGrid(mk(4, 4, spb, [0, 960]));
+      expect(r.stepsPerBeat).toBe(4);
+      expect(nt(r)).toEqual([[0, 100], [960, 100]]);
+    }
   });
   it('multi-bar: bars map individually and audible time is preserved', () => {
     const p = mk(6, 8, 1, [0, 240, 1440, 1440 + 720, 2880 + 240], 3);
     const q = ops.toBeatGrid(p);
-    expect(q.bars).toBe(3);
+    expect(q.bars).toBe(1);
+    expect(q.timeSig).toEqual({ num: 6, den: 4 }); // 3 bars x 2 beats, flattened
     expect(nt(q)).toEqual([[0, 100], [160, 100], [960, 100], [960 + 480, 100], [1920 + 160, 100]]);
     same(p, q);
   });
@@ -314,13 +313,13 @@ describe('toBeatGrid', () => {
     expect(q.notes.kick!.every((n) => n.tick % 160 === 0)).toBe(true);
     expect(ops.toBeatGrid(mk(4, 4, 8, [0, 60])).stepsPerBeat).toBe(4);
   });
-  it('clamps beats above 7 and drops what no longer fits', () => {
-    const p = mk(9, 4, 1, [0, 2880, 3360, 3840], 1);
+  it('clamps beats above 32 and drops what no longer fits', () => {
+    const p = mk(40, 4, 1, [0, 14880, 15360], 1);
     const q = ops.toBeatGrid(p);
-    expect(q.timeSig).toEqual({ num: 7, den: 4 });
-    expect(nt(q)).toEqual([[0, 100], [2880, 100]]);
+    expect(q.timeSig).toEqual({ num: 32, den: 4 });
+    expect(nt(q)).toEqual([[0, 100], [14880, 100]]);
     const r = ops.toBeatGrid(mk(16, 8, 1, [0, 3840 - 240]));
-    expect(r.timeSig.num).toBeLessThanOrEqual(7);
+    expect(r.timeSig.num).toBeLessThanOrEqual(32);
   });
   it('keeps every other field and does not mutate the input', () => {
     const p = { ...mk(6, 8, 1, [0, 240]), name: 'Keep', swing: 0.6, mix: { kick: { gain: 0.5, muted: true } } };

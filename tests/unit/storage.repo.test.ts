@@ -13,8 +13,8 @@ function pat(id: string, updatedAt: number, over: Partial<Pattern> = {}): Patter
     name: id,
     category: 'My beats',
     kind: 'groove',
-    timeSig: { num: 4, den: 4 },
-    bars: 2,
+    timeSig: { num: 8, den: 4 },
+    bars: 1,
     stepsPerBeat: 4,
     swing: 0.55,
     bpm: 100,
@@ -41,14 +41,16 @@ describe('PatternRepo', () => {
     expect(await repo.list()).toEqual([]);
   });
 
-  it('migrates a v1 6/8 record lazily on read and saves back as v2', async () => {
+  it('migrates a v1 6/8 record lazily on read and flattens bars and saves back as v3', async () => {
     const name = dbName();
     const raw = await openBeatboyDb(name);
-    await raw.put('patterns', { ...pat('old', 1, { timeSig: { num: 6, den: 8 }, stepsPerBeat: 1, notes: { kick: [{ tick: 240, vel: 90 }] } }), schemaVersion: 1 });
+    await raw.put('patterns', { ...pat('old', 1, { timeSig: { num: 6, den: 8 }, bars: 2, stepsPerBeat: 1, notes: { kick: [{ tick: 240, vel: 90 }] } }), schemaVersion: 1 });
     raw.close();
     const repo = await PatternRepo.open(name);
     const p = (await repo.get('old'))!;
-    expect(p.timeSig).toEqual({ num: 2, den: 4 });
+    // 6/8 x 2 bars -> 2 triplet beats per bar, flattened into one run of 4 beats
+    expect(p.timeSig).toEqual({ num: 4, den: 4 });
+    expect(p.bars).toBe(1);
     expect(p.stepsPerBeat).toBe(3);
     expect(p.notes.kick).toEqual([{ tick: 160, vel: 90 }]);
     await repo.put(p);

@@ -18,15 +18,24 @@ DOM or Web Audio imports and are fully unit-tested in Node.
 - Integer **ticks**, `TPQ = 480` per quarter note. A beat is one `1/den` note (`beatTicks = 480·4/den`).
 - Patterns store sparse notes `{tick, vel}` per sound. The step grid is a *view*:
   `stepTicks = beatTicks / stepsPerBeat`.
-- **Beats × steps model**: users see only BEATS (1–7, one row each) and STEPS per beat (1–4: quarters, 8ths,
-  triplets, 16ths). Every pattern has `timeSig.den === 4` and `num` = beats; the engine still understands any
-  meter. Changing STEPS quantizes notes to the new grid (nearest step, ties earlier, collisions keep the loudest),
-  so no note is ever invisible. `toBeatGrid` (patternOps) converts legacy meters (6/8 → 2×3, 12/8 → 4×3, …)
-  with identical timing at the same BPM; storage schema v2 applies it on read.
+- **Beats + feel model**: a Beat Lab pattern is one loop of N beats (1–32, the BEATS control at the top right of
+  the editor). Every pattern has `timeSig = {num: N, den: 4}` and `bars = 1` (the field stays for the engine and
+  later songs, where bar grouping will live). The grid is always 16ths: `stepsPerBeat` is 4 (FEEL = Straight, 4
+  squares per beat; 8th-note grooves leave every other square empty) or 3 (FEEL = Triplet: shuffle, 6/8, 12/8).
+  Changing FEEL quantizes notes to the new grid (nearest step, ties earlier, collisions keep the loudest), so no note
+  is ever invisible. Adding a beat appends an empty beat; removing one drops its notes (the UI confirms first).
+  `toBeatGrid` (patternOps) converts legacy meters (6/8 → 2×3, 12/8 → 4×3, …) with identical timing at the same BPM
+  and flattens multiple bars into beats (`bars: b, num: k` → `bars: 1, num: k·b`, every tick unchanged); storage
+  schema v3 applies this on read.
 - **BPM counts pulses**: the beat in simple meters, the dotted beat group in compound meters
   (legacy 6/8 at 60 BPM = 60 dotted quarters per minute; with den 4 the pulse is just the beat). `secondsPerTick = 60 / (bpm · pulseTicks)`.
-- **Swing** delays odd grid steps by `(swing − 0.5) · 2 · stepTicks`; it is applied at scheduling time and
-  never stored in the notes. Triplet grids ignore swing.
+- **Swing** is classic 8th-note swing (the guitarist's "shuffle" knob, 50–75%), applied at scheduling time and
+  never stored in the notes. Time is warped inside each beat so the "&" (half-beat) lands at `swing` of the beat and
+  the 16ths in between scale proportionally. With `f = tickInBeat / beatTicks` in [0, 1):
+  `f < 0.5 → warped = f · (swing / 0.5)`, else `warped = swing + (f − 0.5) · ((1 − swing) / 0.5)`; the playback
+  offset is `(warped − f) · beatTicks` (`swingOffset` in `domain/time.ts`). 0.5 = straight, 0.67 ≈ triplet shuffle
+  (the "&" lands on the 3rd triplet, the 16th "e" at 1/3 of the beat), 0.75 = dotted feel. Beat starts never move
+  and note order is preserved. Triplet feel ignores swing.
 
 ## Scheduling ("two clocks")
 

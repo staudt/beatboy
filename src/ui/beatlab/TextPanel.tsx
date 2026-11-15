@@ -3,11 +3,10 @@ import { useEffect, useRef } from 'preact/hooks';
 import { applyBeatText, formatBeatText, parseBeatText, type ParseResult } from '../../domain/notation';
 import { SOUND_IDS } from '../../domain/types';
 import { SOUNDS } from '../../domain/sounds';
-import { stepLabel } from '../gridLayout';
 import { current, editCurrent, showToast, textDraft } from '../state/lab';
 
 const RULES =
-  '- or . rest · + joins hits (k+x) · UPPERCASE accent · (s) ghost · | bar line · [ … ]*2 repeat · spaces are ignored · # comment';
+  '- or . rest · + joins hits (k+x) · UPPERCASE accent · (s) ghost · | bar line · [ … ]*2 repeat · spaces are ignored · # comment · | is cosmetic · write one token per beat, 8th or 16th';
 
 function CheatSheet() {
   return (
@@ -75,7 +74,7 @@ export function TextPanel() {
   if (!dirty) {
     status = (
       <p class="parse ok" role="status">
-        ✓ {p.bars} bar{p.bars === 1 ? '' : 's'} · {p.timeSig.num}×{p.stepsPerBeat} · {stepLabel(p.stepsPerBeat)}
+        ✓ {p.timeSig.num} beat{p.timeSig.num === 1 ? '' : 's'} · read as {formatted.value.resolution}
       </p>
     );
   } else if (!fresh) {
@@ -87,7 +86,7 @@ export function TextPanel() {
   } else if (fresh.ok) {
     status = (
       <p class="parse ok" role="status">
-        ✓ {fresh.bars} bar{fresh.bars === 1 ? '' : 's'} · {p.timeSig.num}×{p.stepsPerBeat} · {stepLabel(p.stepsPerBeat)}
+        ✓ {fresh.beats} beat{fresh.beats === 1 ? '' : 's'} · read as {fresh.resolution}
         {fresh.warnings.length > 0 && <span class="parse-warn"> · {fresh.warnings[0]}</span>}
       </p>
     );

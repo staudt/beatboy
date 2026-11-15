@@ -1,8 +1,8 @@
 import { computed, effect, signal } from '@preact/signals';
 import { engine } from '../../audio/engine';
 import { factoryPatterns } from '../../domain/factory';
-import { duplicatePattern, createPattern, rename } from '../../domain/patternOps';
-import { patternTicks, stepTicks, stepsPerBar } from '../../domain/time';
+import { addBeat, duplicatePattern, createPattern, lastBeatHasNotes, removeLastBeat, rename } from '../../domain/patternOps';
+import { patternTicks, stepTicks } from '../../domain/time';
 import type { Pattern, SoundId } from '../../domain/types';
 import { registerTap } from '../../input/tapTempo';
 import { Autosaver, installLifecycleFlush, type SaveStatus } from '../../storage/autosave';
@@ -50,7 +50,7 @@ export const current = computed<Pattern>(
 /** Tempo of the current pattern (override for built-ins). */
 export const bpm = computed(() => effectiveBpm(current.value, bpmOverrides.value));
 export const selectedSound = signal<SoundId>('kick');
-export const barPage = signal(0);
+/** While playing, the lane/grid scrolls to keep the playhead in view. Turned off by manual scrolling. */
 export const followPlayhead = signal(true);
 export const labView = signal<LabView>('grid');
 export const playheadStep = signal<number | null>(null);
@@ -68,9 +68,30 @@ export const ready = signal(false);
 /** Unsaved text-editor draft; null = follow the pattern. */
 export const textDraft = signal<string | null>(null);
 
-export const stepsInBar = computed(() => stepsPerBar(current.value.timeSig, current.value.stepsPerBeat));
-/** Bar page clamped to the current pattern length. */
-export const visibleBar = computed(() => Math.min(barPage.value, current.value.bars - 1));
+/** Timeline shape as primitives so cells re-render only when the structure changes. */
+export const beatCount = computed(() => current.value.timeSig.num);
+export const stepsPerBeatSig = computed(() => current.value.stepsPerBeat);
+
+/** Appends one empty beat. */
+export function addBeatAction(): void {
+  editCurrent((p) => addBeat(p));
+}
+
+/** Removes the last beat; asks first when that beat has notes. */
+export function removeBeatAction(): void {
+  const p = current.peek();
+  if (p.timeSig.num <= 1) return;
+  if (!lastBeatHasNotes(p)) {
+    editCurrent((q) => removeLastBeat(q));
+    return;
+  }
+  confirmReq.value = {
+    title: `Remove beat ${p.timeSig.num}?`,
+    body: 'It has notes.',
+    confirmLabel: 'Remove',
+    onConfirm: () => editCurrent((q) => removeLastBeat(q)),
+  };
+}
 
 // ── persistence ──────────────────────────────────────────────────
 let repo: PatternRepo | null = null;
@@ -130,7 +151,6 @@ export function tap(now: number = performance.now()): void {
 export function selectPattern(id: string): void {
   if (!findPattern(library.peek(), id)) return;
   currentId.value = id;
-  barPage.value = 0;
   textDraft.value = null;
 }
 
@@ -222,10 +242,7 @@ function tickLoop(): void {
     const len = patternTicks(p);
     const m = ((t % len) + len) % len;
     const step = Math.floor(m / stepTicks(p.timeSig, p.stepsPerBeat));
-    if (playheadStep.peek() !== step) {
-      playheadStep.value = step;
-      if (followPlayhead.peek()) barPage.value = Math.floor(step / stepsPerBar(p.timeSig, p.stepsPerBeat));
-    }
+    if (playheadStep.peek() !== step) playheadStep.value = step;
   }
   rafId = requestAnimationFrame(tickLoop);
 }
@@ -235,6 +252,7 @@ function syncPlaying(): void {
   if (now === playing.peek()) return;
   playing.value = now;
   if (now) {
+    followPlayhead.value = true;
     cancelAnimationFrame(rafId);
     rafId = requestAnimationFrame(tickLoop);
   } else {

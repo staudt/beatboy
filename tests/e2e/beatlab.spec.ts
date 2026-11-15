@@ -48,17 +48,41 @@ async function openSettings(page: Page): Promise<void> {
   }
 }
 
-async function setBeatsSteps(page: Page, beats: number, steps: number): Promise<void> {
-  await openSettings(page);
-  for (const [label, target] of [['Beats', beats], ['Steps', steps]] as const) {
-    const out = page.getByRole('group', { name: label }).locator('output');
-    for (let guard = 0; guard < 8; guard++) {
-      const cur = Number(await out.textContent());
-      if (cur === target) break;
-      await press(page, page.getByRole('button', { name: `${label} ${cur < target ? 'up' : 'down'}` }));
+const beatsOut = (page: Page): Locator => page.getByRole('group', { name: 'Beats', exact: true }).locator('output');
+
+/** Sets the loop length with the BEATS [–] n [+] control at the top right of the editor. */
+async function setBeats(page: Page, beats: number): Promise<void> {
+  const out = beatsOut(page);
+  for (let guard = 0; guard < 40; guard++) {
+    const cur = Number(await out.textContent());
+    if (cur === beats) break;
+    const down = cur > beats;
+    await press(page, page.getByRole('button', { name: `Beats ${down ? 'down' : 'up'}` }));
+    if (down) {
+      const ok = page.getByRole('dialog').getByRole('button', { name: 'Remove' });
+      if (await ok.isVisible().catch(() => false)) await press(page, ok);
     }
-    await expect(out).toHaveText(String(target));
   }
+  await expect(out).toHaveText(String(beats));
+}
+
+async function setFeel(page: Page, feel: 'Straight' | 'Triplet'): Promise<void> {
+  await openSettings(page);
+  await press(page, page.getByRole('button', { name: feel, exact: true }));
+  await expect(page.getByRole('button', { name: feel, exact: true })).toHaveAttribute('aria-pressed', 'true');
+}
+
+/** Touch drag through CDP (real touch events, so the browser decides between scroll and tap). */
+async function touchDrag(page: Page, from: { x: number; y: number }, to: { x: number; y: number }): Promise<void> {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [from] });
+  const n = 10;
+  for (let i = 1; i <= n; i++) {
+    const pt = { x: from.x + ((to.x - from.x) * i) / n, y: from.y + ((to.y - from.y) * i) / n };
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [pt] });
+    await page.waitForTimeout(16);
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 }
 
 async function newBeat(page: Page): Promise<void> {
@@ -190,62 +214,146 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await press(page, page.getByRole('button', { name: 'New beat' }));
       await expect(patternName(page)).toHaveText('Beat 1');
       await openSettings(page);
-      await setBeatsSteps(page, 4, 2);
-
       await openText(page);
       const box = page.getByRole('textbox', { name: 'Beat text' });
       await box.fill('k+x x s+x x k+x k+x s+x x');
-      await expect(page.locator('.parse.ok')).toContainText('✓ 1 bar · 4×2 · 8ths');
+      await expect(page.locator('.parse.ok')).toContainText('✓ 4 beats · read as 8ths');
       await press(page, page.getByRole('button', { name: 'Apply' }));
       await expect(page.getByRole('button', { name: 'Apply' })).toBeDisabled();
 
       if (isMobile(page)) await press(page, page.getByRole('tab', { name: 'Grid' }));
       await press(page, pad(page, 'Kick'));
-      for (const s of [0, 4, 5]) await expect(cell(page, 'kick', s)).toHaveAttribute('aria-pressed', 'true');
-      await expect(cell(page, 'kick', 2)).toHaveAttribute('aria-pressed', 'false');
+      // 8th-note text lands on every other square of the 16th grid.
+      for (const s of [0, 8, 10]) await expect(cell(page, 'kick', s)).toHaveAttribute('aria-pressed', 'true');
+      await expect(cell(page, 'kick', 4)).toHaveAttribute('aria-pressed', 'false');
       await press(page, pad(page, 'Snare'));
-      for (const s of [2, 6]) await expect(cell(page, 'snare', s)).toHaveAttribute('aria-pressed', 'true');
+      for (const s of [4, 12]) await expect(cell(page, 'snare', s)).toHaveAttribute('aria-pressed', 'true');
       await press(page, pad(page, 'Hi-hat closed'));
-      for (const s of [0, 1, 2, 3, 4, 5, 6, 7]) await expect(cell(page, 'hatClosed', s)).toHaveAttribute('aria-pressed', 'true');
+      for (const s of [0, 2, 4, 6, 8, 10, 12, 14]) await expect(cell(page, 'hatClosed', s)).toHaveAttribute('aria-pressed', 'true');
+      await expect(cell(page, 'hatClosed', 1)).toHaveAttribute('aria-pressed', 'false');
 
       await openText(page);
       await box.fill('k x\nk q');
       await expect(page.locator('.parse.err')).toContainText("Line 2, col 3: Unknown sound 'q'");
+      await box.fill('k---'.repeat(33));
+      await expect(page.locator('.parse.err')).toContainText('Too many beats: maximum is 32');
       await expect(page.getByRole('button', { name: 'Apply' })).toBeDisabled();
       await press(page, page.getByRole('button', { name: 'Revert' }));
       await expect(page.locator('.parse.ok')).toBeVisible();
     });
 
-    test('beats and steps steppers resize the grid but keep squares the same size', async ({ page }) => {
+    test('beats control and feel toggle resize the grid but keep squares the same size', async ({ page }) => {
       await open(page);
       await newBeat(page);
       await press(page, pad(page, 'Kick'));
       const kick = page.locator('[data-cell][data-sound="kick"]');
       await expect(kick).toHaveCount(16);
       const w4 = (await cell(page, 'kick', 0).boundingBox())!;
+      if (isMobile(page)) expect(Math.abs(w4.width - w4.height)).toBeLessThanOrEqual(1); // square
 
-      await setBeatsSteps(page, 4, 2);
-      await expect(kick).toHaveCount(8);
-      const w2 = (await cell(page, 'kick', 0).boundingBox())!;
-      expect(Math.abs(w2.width - w4.width)).toBeLessThanOrEqual(1);
-      expect(Math.abs(w2.height - w4.height)).toBeLessThanOrEqual(1);
-      if (isMobile(page)) {
-        await expect(page.locator('.step-row')).toHaveCount(4);
-        expect(Math.abs(w2.width - w2.height)).toBeLessThanOrEqual(1); // square
-        // two squares per row
-        await expect(page.locator('.step-row').first().locator('[data-cell]')).toHaveCount(2);
-      }
-
-      await setBeatsSteps(page, 3, 2);
-      await expect(kick).toHaveCount(6);
-      if (isMobile(page)) await expect(page.locator('.step-row')).toHaveCount(3);
+      await setBeats(page, 3);
+      await expect(kick).toHaveCount(12);
       const w3 = (await cell(page, 'kick', 0).boundingBox())!;
       expect(Math.abs(w3.width - w4.width)).toBeLessThanOrEqual(1);
 
-      // Going coarser snaps notes instead of hiding them; nothing is invisible.
-      await setBeatsSteps(page, 3, 1);
-      await expect(kick).toHaveCount(3);
-      await expect(page.getByText('between grid steps')).toHaveCount(0);
+      await setBeats(page, 4);
+      await setFeel(page, 'Triplet');
+      await expect(kick).toHaveCount(12); // 3 squares per beat
+      const beat = cell(page, 'kick', 0).locator('xpath=..');
+      await expect(beat.locator('[data-cell]')).toHaveCount(3);
+      const wt = (await cell(page, 'kick', 0).boundingBox())!;
+      expect(Math.abs(wt.width - w4.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(wt.height - w4.height)).toBeLessThanOrEqual(1);
+      await expect(page.getByRole('slider', { name: 'Swing' })).toBeDisabled();
+
+      await setBeats(page, 2);
+      await setFeel(page, 'Straight');
+      await expect(kick).toHaveCount(8);
+      await expect(page.getByRole('slider', { name: 'Swing' })).toBeEnabled();
+      await setBeats(page, 8);
+      await expect(kick).toHaveCount(32);
+    });
+
+    test('BEATS control sits at the top right of the editor; + appends an empty beat; - confirms when the beat has notes', async ({ page }) => {
+      await open(page);
+      await newBeat(page);
+      await press(page, pad(page, 'Kick'));
+      const panel = page.locator(isMobile(page) ? '.lane' : '.fullgrid');
+      const group = page.getByRole('group', { name: 'Beats', exact: true });
+
+      // Flush top-right: right edge inside the panel's right edge, above the first row of squares.
+      const pb = (await panel.boundingBox())!;
+      const gb = (await group.boundingBox())!;
+      const first = (await cell(page, 'kick', 0).boundingBox())!;
+      expect(pb.x + pb.width - (gb.x + gb.width)).toBeGreaterThanOrEqual(-1);
+      expect(pb.x + pb.width - (gb.x + gb.width)).toBeLessThanOrEqual(24);
+      expect(gb.y + gb.height).toBeLessThanOrEqual(first.y);
+      expect(gb.y - pb.y).toBeLessThanOrEqual(24);
+      expect(gb.x).toBeGreaterThan(pb.x + pb.width / 2);
+
+      // An empty last beat is removed without asking.
+      await press(page, page.getByRole('button', { name: 'Beats up' }));
+      await expect(beatsOut(page)).toHaveText('5');
+      await expect(page.locator('[data-cell][data-sound="kick"]')).toHaveCount(20);
+      await press(page, page.getByRole('button', { name: 'Beats down' }));
+      await expect(beatsOut(page)).toHaveText('4');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+
+      await press(page, cell(page, 'kick', 0));
+      await press(page, cell(page, 'kick', 14));
+      await press(page, page.getByRole('button', { name: 'Beats up' }));
+      // The new beat is empty (not a copy).
+      for (const s of [16, 17, 18, 19]) await expect(cell(page, 'kick', s)).toHaveAttribute('aria-pressed', 'false');
+      await expect(cell(page, 'kick', 14)).toHaveAttribute('aria-pressed', 'true');
+      await press(page, page.getByRole('button', { name: 'Beats down' }));
+      await expect(beatsOut(page)).toHaveText('4');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+
+      await press(page, page.getByRole('button', { name: 'Beats down' }));
+      const dlg = page.getByRole('dialog', { name: 'Remove beat 4?' });
+      await expect(dlg).toBeVisible();
+      await expect(dlg).toContainText('It has notes.');
+      await press(page, dlg.getByRole('button', { name: 'Cancel' }));
+      await expect(beatsOut(page)).toHaveText('4');
+      await press(page, page.getByRole('button', { name: 'Beats down' }));
+      await press(page, page.getByRole('dialog').getByRole('button', { name: 'Remove' }));
+      await expect(beatsOut(page)).toHaveText('3');
+      await expect(page.locator('[data-cell][data-sound="kick"]')).toHaveCount(12);
+      await expect(cell(page, 'kick', 0)).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('button', { name: 'Beats up' })).toBeEnabled();
+    });
+
+    test('while playing the lane follows the playhead; manual scroll shows the Follow chip', async ({ page }) => {
+      await open(page);
+      await newBeat(page);
+      await setBeats(page, 8);
+      await page.getByRole('slider', { name: 'Tempo slider' }).fill('240');
+      const lane = page.getByTestId('lane');
+      expect(await lane.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+      await expect(page.getByRole('button', { name: 'Follow' })).toHaveCount(0);
+
+      await press(page, page.getByRole('button', { name: 'Play' }));
+      const seen = new Set<number>();
+      await expect
+        .poll(async () => {
+          seen.add(Math.round(await lane.evaluate((el) => el.scrollLeft)));
+          return seen.size;
+        }, { timeout: 6000, intervals: [60] })
+        .toBeGreaterThanOrEqual(2); // 0 and at least one follow jump
+      expect(Math.max(...seen)).toBeGreaterThan(40);
+      await expect(page.getByRole('button', { name: 'Follow' })).toHaveCount(0);
+
+      // The page itself never scrolls sideways.
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+      await lane.evaluate((el) => {
+        el.scrollLeft = el.scrollLeft > 100 ? 0 : el.scrollLeft + 120;
+      });
+      const chip = page.getByRole('button', { name: 'Follow' });
+      await expect(chip).toBeVisible();
+      await press(page, chip);
+      await expect(chip).toHaveCount(0);
+      await press(page, page.getByRole('button', { name: 'Stop' }));
     });
 
     test('pattern browser: new, duplicate, rename, delete', async ({ page }) => {
@@ -288,6 +396,56 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
     });
   });
 }
+
+test.describe('mobile touch', () => {
+  test.use(LAYOUTS.mobile);
+
+  test('dragging the lane scrolls it and never toggles a cell; a tap still toggles', async ({ page }) => {
+    await open(page);
+    await newBeat(page);
+    await setBeats(page, 8);
+    await press(page, pad(page, 'Kick'));
+    const lane = page.getByTestId('lane');
+    const pressed = page.locator('[data-cell][aria-pressed="true"]');
+    await expect(pressed).toHaveCount(0);
+    expect(await lane.evaluate((el) => el.scrollLeft)).toBe(0);
+
+    // Drag starting ON a cell, well beyond the 8 px tap slop.
+    const c = (await cell(page, 'kick', 3).boundingBox())!;
+    const y = c.y + c.height / 2;
+    await touchDrag(page, { x: c.x + c.width / 2, y }, { x: c.x + c.width / 2 - 160, y });
+    await page.waitForTimeout(200);
+    expect(await lane.evaluate((el) => el.scrollLeft)).toBeGreaterThan(60);
+    await expect(pressed).toHaveCount(0);
+
+    // A drag back over cells does not toggle them either, and a tiny wobble still counts as a tap.
+    await touchDrag(page, { x: 200, y }, { x: 330, y });
+    await page.waitForTimeout(200);
+    await expect(pressed).toHaveCount(0);
+
+    await lane.evaluate((el) => (el.scrollLeft = 0));
+    await cell(page, 'kick', 2).tap();
+    await expect(cell(page, 'kick', 2)).toHaveAttribute('aria-pressed', 'true');
+    await expect(pressed).toHaveCount(1);
+    await cell(page, 'kick', 2).tap();
+    await expect(cell(page, 'kick', 2)).toHaveAttribute('aria-label', 'Kick step 3, accent');
+  });
+
+  test('overview: tapping a column scrolls the lane, tapping a name selects the sound', async ({ page }) => {
+    await open(page);
+    await newBeat(page);
+    await setBeats(page, 12);
+    await press(page, pad(page, 'Snare'));
+    await press(page, cell(page, 'snare', 0));
+    const lane = page.getByTestId('lane');
+    expect(await lane.evaluate((el) => el.scrollLeft)).toBe(0);
+    await page.locator('.ov-row .ov-cells [data-ov-step="40"]').first().tap();
+    await expect.poll(() => lane.evaluate((el) => el.scrollLeft)).toBeGreaterThan(300);
+    await expect(page.locator('.ov-view')).toBeVisible();
+    await press(page, page.locator('.ov-name').first());
+    await expect(page.getByRole('region', { name: 'Snare steps' })).toBeVisible();
+  });
+});
 
 test('desktop: click-drag paints a row and Space toggles playback', async ({ browser }) => {
   const ctx = await browser.newContext(LAYOUTS.desktop);
@@ -332,7 +490,7 @@ test('desktop: Space plays/stops even when a button, step, slider or stepper has
     pad(page, 'Snare'),
     page.getByRole('button', { name: 'Tap tempo' }),
     page.getByRole('slider', { name: 'Tempo slider' }),
-    page.getByRole('button', { name: 'Steps up' }),
+    page.getByRole('button', { name: 'Beats up' }),
   ]) {
     await target.focus();
     await page.keyboard.press('Space');
@@ -421,14 +579,29 @@ test('screenshots', async ({ browser }) => {
       : [['7x4', 7, 4]];
     for (const [label, beats, steps] of variants) {
       await newBeat(page);
-      await setBeatsSteps(page, beats, steps);
+      await setBeats(page, beats);
+      if (steps === 3) await setFeel(page, 'Triplet');
+      const per = steps === 3 ? 3 : 4;
       await press(page, pad(page, 'Kick'));
-      for (let s = 0; s < beats * steps; s += steps) await press(page, cell(page, 'kick', s));
+      for (let s = 0; s < beats * per; s += per) await press(page, cell(page, 'kick', s));
       await press(page, pad(page, 'Hi-hat closed'));
-      for (let s = 0; s < beats * steps; s += Math.max(1, steps - 1)) await press(page, cell(page, 'hatClosed', s));
+      for (let s = 0; s < beats * per; s += steps === 3 ? 1 : 2) await press(page, cell(page, 'hatClosed', s));
+      await page.locator('[data-testid="lane"]').evaluate((el) => (el.scrollLeft = 0));
       await page.waitForTimeout(450);
       await shot(`lab-${label}`);
+      if (label === '2x3') await shot('lab-triplet');
     }
+
+    // Eight beats: the loop runs on to the right.
+    await newBeat(page);
+    await setBeats(page, 8);
+    await press(page, pad(page, 'Kick'));
+    for (const s of [0, 6, 8, 16, 22, 24]) await press(page, cell(page, 'kick', s));
+    await press(page, pad(page, 'Snare'));
+    for (const s of [4, 12, 20, 28]) await press(page, cell(page, 'snare', s));
+    await page.locator('[data-testid="lane"]').evaluate((el) => (el.scrollLeft = 0));
+    await page.waitForTimeout(450);
+    await shot('lab-8beats');
     expect(errors).toEqual([]);
     await ctx.close();
   }

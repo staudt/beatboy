@@ -1,8 +1,8 @@
 # Beat text notation
 
-Beat Lab's **Text** panel lets you type a pattern instead of tapping it. One character is (usually) one step on the grid, so `k-s-k-s-` is a kick on steps 1 and 5 and a snare on steps 3 and 7 of an 8-step bar.
+Beat Lab's **Text** panel lets you type a pattern instead of tapping it. One token is one square, or one beat, or one 8th, depending on how coarsely you write it (see *Resolution* below), so `k-s-k-s-` is a kick on 1 and 3 and a snare on 2 and 4 of a 4-beat loop written in 8ths.
 
-Parsing is done by `parseBeatText` in `src/domain/notation.ts`; `formatBeatText` writes a pattern back out as text. The text is interpreted against the pattern's current **beats** per bar and **steps** per beat (1 = quarters, 2 = 8ths, 3 = triplets, 4 = 16ths), so the same text means different rhythms at 8ths vs 16ths.
+Parsing is done by `parseBeatText` in `src/domain/notation.ts`; `formatBeatText` writes a pattern back out as text. The grid is always 16ths (4 squares per beat, **Straight**) or triplets (3 squares per beat, **Triplet**); a pattern is a loop of N beats (1 to 32).
 
 ## Grammar
 
@@ -18,9 +18,29 @@ comment   = "#" … end of line          (ignored)
 ```
 
 - **Whitespace is ignored** everywhere (spaces, tabs, newlines). Use it freely to group beats.
-- Each `rest` or `hitgroup` is **one step**.
-- A **bar line** `|` is optional. When present, the bar before it must contain exactly the number of steps in a bar (`numerator × steps per beat`), otherwise you get an error such as `Bar 1 has 7 steps, expected 8`. Without bar lines, steps are simply chopped into bars; an incomplete last bar is padded with rests (a warning is shown).
-- Maximum 8 bars. Repeats do not nest; the count is 1 to 64.
+- Each `rest` or `hitgroup` is **one token**.
+- The **bar line** `|` is purely cosmetic and ignored like whitespace (the formatter ends each line of four beats with one).
+- Maximum 32 beats. Repeats do not nest; the count is 1 to 64.
+
+## Resolution (you need not type every rest)
+
+Let T be the number of tokens in the text, N the pattern's current number of beats and S its squares per beat (4 Straight, 3 Triplet). The text may be written with **d tokens per beat** for any d that divides S:
+
+| Feel | d | Written as | Squares between tokens |
+|------|---|-----------|------------------------|
+| Straight | 4 | 16ths | 0 |
+| Straight | 2 | 8ths | 1 empty square |
+| Straight | 1 | quarters | 3 empty squares |
+| Triplet | 3 | triplets | 0 |
+| Triplet | 1 | quarters | 2 empty squares |
+
+Token *i* lands on square *i · S/d*. The reading is chosen like this:
+
+1. If T = N × d for an allowed d, that d is used and the beat count stays N (so 8 tokens at 4 beats are 8ths, 16 tokens at 4 beats are 16ths, 16 tokens at 8 beats are 8ths).
+2. Otherwise the text is read at full resolution (d = S) and the beat count follows the text: N becomes ceil(T / S), the last beat is padded with rests and a warning says so. More than 32 beats is an error.
+3. Empty text keeps the current length.
+
+Applying text can therefore change the beat count. The status line reports the choice, e.g. `✓ 4 beats · read as 8ths` (`quarters`, `8ths`, `16ths` or `triplets`).
 
 ## Velocity
 
@@ -69,13 +89,13 @@ Errors are reported with line and column (1-based, counted over the raw text inc
 
 ## Examples
 
-Rock beat in 8ths (4 beats × 2 steps):
+Rock beat in 8ths (4 beats, 2 tokens per beat):
 
 ```
 k+x x  s+x x  k+x k+x  s+x x |
 ```
 
-Two-bar pattern in 16ths with a ghost note and an accent:
+Eight beats in 16ths with a ghost note and an accent (a line per four beats, cosmetic):
 
 ```
 K+x x x x  s+x x (s) x  k+x x k+x x  S+x x x x |
@@ -91,14 +111,14 @@ Repeat with a comment:
 
 ### typeabeat compatibility
 
-Strings written for typeabeat paste straight in, one character per step, with whitespace and `|` optional:
+Strings written for typeabeat paste straight in, one character per square, with whitespace and `|` optional:
 
 ```
 skxkskxkskxks-k-
 ```
 
-(16 steps: 4 beats with 4 steps each.) The only difference to be aware of is that `o` is the **open** hi-hat here, not a closed one; use `x` for closed hat.
+(16 tokens: 4 beats of 16ths.) The only difference to be aware of is that `o` is the **open** hi-hat here, not a closed one; use `x` for closed hat.
 
 ## Round trip
 
-`formatBeatText` writes one line per bar, a space between steps, two spaces between beats, and ends each bar with ` |`. Accents are uppercase, ghosts are in parentheses. Notes that do not sit on the current grid (for example for patterns saved before steps were quantized) cannot be written as text; the Text panel warns when applying would drop them.
+`formatBeatText` writes the pattern at the **coarsest resolution that represents every note exactly**: an 8th-note groove prints 2 tokens per beat (`k+x x  s+x x  k+x k+x  s+x x |`), a pattern with 16ths prints 4, a triplet one 3, and a quarter-note one a single token per beat. There is a space between tokens, two between beats (one when each beat is a single token), a line break after every four beats, and each line ends with ` |`. Accents are uppercase, ghosts are in parentheses. Because the formatted text always has T = N × d, parsing it gives the same pattern back (`parse(format(p)) = p`). Notes that do not sit on the current grid (for example from before notes were quantized) cannot be written as text; the Text panel warns when applying would drop them.

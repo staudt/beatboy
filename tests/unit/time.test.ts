@@ -31,20 +31,36 @@ describe('time signatures', () => {
 });
 
 describe('swingOffset', () => {
+  const B = 480;
+  const at = (tick: number, swing: number) => tick + swingOffset(tick, B, swing);
   it('is zero when straight', () => {
-    expect(swingOffset(120, 120, 0.5)).toBe(0);
+    for (const t of [0, 120, 240, 360]) expect(swingOffset(t, B, 0.5)).toBe(0);
   });
-  it('delays odd steps only', () => {
-    expect(swingOffset(120, 120, 0.75)).toBeCloseTo(60);
-    expect(swingOffset(0, 120, 0.75)).toBe(0);
-    expect(swingOffset(240, 120, 0.75)).toBe(0);
-    expect(swingOffset(360, 120, 0.75)).toBeCloseTo(60);
+  it('never moves the beat start, in any beat', () => {
+    expect(swingOffset(0, B, 0.75)).toBe(0);
+    expect(swingOffset(480, B, 0.75)).toBe(0);
+    expect(swingOffset(1920, B, 0.67)).toBe(0);
   });
-  it('triplet feel at 0.66', () => {
-    expect(swingOffset(120, 120, 0.66)).toBeCloseTo(0.32 * 120);
+  it('0.67: the "&" lands on the 3rd triplet and the "e" on 1/3 of the beat', () => {
+    expect(at(240, 2 / 3)).toBeCloseTo(320, 9);
+    expect(at(120, 2 / 3)).toBeCloseTo(160, 9); // the 16th "e" scales proportionally
+    expect(at(360, 2 / 3)).toBeCloseTo(400, 9);
+    expect(at(480 + 240, 2 / 3)).toBeCloseTo(480 + 320, 9); // second beat
   });
-  it('ignores off-grid notes and bad steps', () => {
-    expect(swingOffset(130, 120, 0.7)).toBe(0);
+  it('0.75 puts the "&" on the dotted-8th position', () => {
+    expect(at(240, 0.75)).toBeCloseTo(360, 9);
+  });
+  it('is monotonic so notes never change order', () => {
+    for (const sw of [0.55, 0.67, 0.75]) {
+      let prev = -1;
+      for (let t = 0; t < 480; t += 10) {
+        const w = at(t, sw);
+        expect(w).toBeGreaterThan(prev);
+        prev = w;
+      }
+    }
+  });
+  it('ignores bad beat lengths', () => {
     expect(swingOffset(120, 0, 0.7)).toBe(0);
   });
 });

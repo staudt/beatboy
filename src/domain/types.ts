@@ -64,6 +64,9 @@ export interface TrackMix {
   muted: boolean;
 }
 
+/** What the user picks: 4 squares per beat (straight) or 3 (triplet). */
+export type Feel = 'straight' | 'triplet';
+
 export type PatternKind = 'groove' | 'fill';
 
 export interface Pattern {
@@ -77,11 +80,11 @@ export interface Pattern {
    * `den === 4` and `num` = beats per bar. (Legacy meters are converted by `toBeatGrid`.)
    */
   timeSig: TimeSignature;
-  /** Length in bars, 1..8. */
+  /** Length in bars. Beat Lab patterns always use 1 bar of `timeSig.num` beats. */
   bars: number;
-  /** Grid resolution: steps per beat (beat = 1/den note). 4 in 4/4 = 16ths. */
+  /** Grid resolution: steps per beat, 4 (straight 16ths) or 3 (triplet feel). */
   stepsPerBeat: number;
-  /** 0.5 = straight, up to 0.75 = hard swing. Applied to odd grid steps. */
+  /** 8th-note swing: where the "&" lands in the beat. 0.5 = straight, 0.67 = shuffle, 0.75 = hard. Ignored in triplet feel. */
   swing: number;
   /** Preferred/preview tempo in pulse BPM (see pulseTicks in time.ts). */
   bpm: number;
@@ -98,15 +101,16 @@ export interface Pattern {
 export const DEFAULT_MIX: TrackMix = { gain: 1, muted: false };
 
 export const PATTERN_LIMITS = {
-  /** Beats per bar (the UI "BEATS" stepper). */
+  /** Total beats in the loop (the UI "BEATS" stepper): a pattern is one bar of N beats. */
   minBeats: 1,
-  maxBeats: 7,
+  maxBeats: 32,
+  /** Bars are kept for the engine/songs; Beat Lab patterns always have exactly 1. */
   minBars: 1,
   maxBars: 8,
   minBpm: 30,
   maxBpm: 300,
   minSwing: 0.5,
   maxSwing: 0.75,
-  /** Allowed grid resolutions (steps per beat): quarters, 8ths, triplets, 16ths. */
-  stepsPerBeat: [1, 2, 3, 4] as readonly number[],
+  /** Allowed grid resolutions (steps per beat): 3 = triplet feel, 4 = straight (16ths). */
+  stepsPerBeat: [3, 4] as readonly number[],
 } as const;

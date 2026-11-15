@@ -54,15 +54,18 @@ export function secondsPerTick(bpm: number, ts: TimeSignature): number {
 }
 
 /**
- * Swing offset in ticks for a note at `tick` on a grid of `step` ticks.
- * Notes on odd grid positions are delayed by (swing - 0.5) * 2 * step.
- * swing = 0.5 → straight; 0.6667 → triplet feel; 0.75 → dotted feel.
- * Off-grid notes and triplet grids are left alone by callers choosing swing = 0.5.
+ * Swing offset in ticks (classic 8th-note swing, the guitarist's "shuffle" knob).
+ * Time is warped inside each beat so the "&" (half-beat) lands at `swing` of the beat and everything
+ * in between scales proportionally. With f = tickInBeat / beat in [0, 1):
+ *   f < 0.5  → warped = f * (swing / 0.5)
+ *   f >= 0.5 → warped = swing + (f - 0.5) * ((1 - swing) / 0.5)
+ * and the offset is (warped - f) * beat. swing 0.5 = straight, 2/3 = triplet shuffle (the "&" lands on
+ * the 3rd triplet), 0.75 = dotted feel. Beat starts never move.
  */
-export function swingOffset(tick: number, step: number, swing: number): number {
-  if (swing <= 0.5 || step <= 0) return 0;
-  if (tick % step !== 0) return 0;
-  const index = tick / step;
-  if (index % 2 === 0) return 0;
-  return (swing - 0.5) * 2 * step;
+export function swingOffset(tick: number, beat: number, swing: number): number {
+  if (swing <= 0.5 || beat <= 0) return 0;
+  const inBeat = ((tick % beat) + beat) % beat;
+  const f = inBeat / beat;
+  const warped = f < 0.5 ? f * (swing / 0.5) : swing + (f - 0.5) * ((1 - swing) / 0.5);
+  return (warped - f) * beat;
 }

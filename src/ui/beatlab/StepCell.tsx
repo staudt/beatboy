@@ -14,6 +14,8 @@ interface Props {
 }
 
 const LONG_PRESS_MS = 450;
+/** A touch that travels this far (px) is a scroll, not a tap. */
+const TAP_SLOP = 8;
 
 /** One step button. Subscribes only to its own velocity and its own playhead state. */
 export function StepCell({ sound, step, beatStart }: Props) {
@@ -22,7 +24,8 @@ export function StepCell({ sound, step, beatStart }: Props) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const long = useRef(false);
   const lastType = useRef('');
-  const start = useRef({ x: 0, y: 0 });
+  const start = useRef({ x: 0, y: 0, scroll: 0 });
+  const moved = useRef(false);
 
   const level = levelName(vel.value);
   const clearTimer = () => {
@@ -50,7 +53,9 @@ export function StepCell({ sound, step, beatStart }: Props) {
           e.preventDefault();
           startPaint(sound, step);
         } else {
-          start.current = { x: e.clientX, y: e.clientY };
+          const sc = e.currentTarget.closest('.lane-scroll, .fg-scroll');
+          start.current = { x: e.clientX, y: e.clientY, scroll: sc?.scrollLeft ?? 0 };
+          moved.current = false;
           const { clientX, clientY } = e;
           clearTimer();
           timer.current = setTimeout(() => {
@@ -60,16 +65,28 @@ export function StepCell({ sound, step, beatStart }: Props) {
         }
       }}
       onPointerMove={(e) => {
-        if (timer.current && Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) > 10) clearTimer();
+        if (e.pointerType === 'mouse') return;
+        if (Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y) >= TAP_SLOP) {
+          moved.current = true;
+          clearTimer();
+        }
       }}
-      onPointerUp={clearTimer}
+      onPointerUp={(e) => {
+        const wasPressing = timer.current !== undefined;
+        clearTimer();
+        if (e.pointerType === 'mouse' || long.current) return;
+        // Touch/pen: a tap toggles on release, but never after a drag or a scroll of the lane.
+        const sc = e.currentTarget.closest('.lane-scroll, .fg-scroll');
+        const scrolled = sc !== null && Math.abs(sc.scrollLeft - start.current.scroll) > 1;
+        if (wasPressing && !moved.current && !scrolled) cycleCell(sound, step);
+      }}
       onPointerCancel={clearTimer}
       onContextMenu={(e) => {
         e.preventDefault();
         if (lastType.current === 'mouse') openPopover(e.clientX, e.clientY);
       }}
       onClick={(e) => {
-        if (lastType.current === 'mouse' && e.detail > 0) return; // handled on pointerdown
+        if (e.detail > 0 && lastType.current !== '') return; // pointer input is handled on pointerdown/up
         if (long.current) {
           long.current = false;
           return;

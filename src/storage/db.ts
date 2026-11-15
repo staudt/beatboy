@@ -2,7 +2,7 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { Pattern } from '../domain/types';
 
 export const DB_VERSION = 1;
-export const PATTERN_SCHEMA_VERSION = 2;
+export const PATTERN_SCHEMA_VERSION = 3;
 
 export type StoredPattern = Pattern & { schemaVersion: number };
 

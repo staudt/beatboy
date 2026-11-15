@@ -20,8 +20,21 @@ const STEPS: Record<number, (r: Rec) => Rec> = {
     const legacy = validatePattern(r, 1);
     return legacy ? (toBeatGrid(legacy) as unknown as Rec) : r;
   },
+  // v2 -> v3: the grid is always 16ths (4) or triplets (3): quarter/8th grids become 4 (ticks are already
+  // aligned, nothing moves). Bars are flattened into beats: `bars: b, num: k` -> `bars: 1, num: k * b`
+  // (clamped to 32 beats, dropping notes beyond), which keeps every tick unchanged.
+  2: (r) => {
+    let out: Rec = r.stepsPerBeat === 1 || r.stepsPerBeat === 2 ? { ...r, stepsPerBeat: 4 } : r;
+    const ts = out.timeSig;
+    if (isRec(ts) && isInt(ts.num) && isInt(out.bars) && out.bars >= 1 && ts.den === 4) {
+      const beats = clamp(ts.num * out.bars, PATTERN_LIMITS.minBeats, PATTERN_LIMITS.maxBeats);
+      out = { ...out, bars: 1, timeSig: { ...ts, num: beats } };
+    }
+    return out;
+  },
 };
 
+const V2_STEPS: readonly number[] = [1, 2, 3, 4];
 const LEGACY_STEPS: readonly number[] = [1, 2, 3, 4, 6, 8];
 const isRec = (v: unknown): v is Rec => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
@@ -47,7 +60,7 @@ function cleanString(v: unknown, fallback: string): string {
   return t || fallback;
 }
 
-/** Validates a record. v1 (legacy) accepts any meter/grid; v2 (current) requires den 4 and 1..4 steps. */
+/** Validates a record. v1 (legacy) accepts any meter/grid; v2 requires den 4; v3 (current) also requires 3 or 4 steps per beat and a single bar of 1..32 beats. */
 export function validatePattern(raw: unknown, version: number = PATTERN_SCHEMA_VERSION): Pattern | null {
   if (!isRec(raw)) return null;
   if (typeof raw.id !== 'string' || raw.id === '') return null;
@@ -59,9 +72,10 @@ export function validatePattern(raw: unknown, version: number = PATTERN_SCHEMA_V
   const timeSig = { num: ts.num, den: ts.den as BeatUnit };
   const legacy = version < 2;
   if (!legacy && (ts.den !== 4 || ts.num > PATTERN_LIMITS.maxBeats)) return null;
+  if (version >= 3 && raw.bars !== 1) return null;
 
   if (!isInt(raw.bars) || raw.bars < PATTERN_LIMITS.minBars || raw.bars > PATTERN_LIMITS.maxBars) return null;
-  if (!isInt(raw.stepsPerBeat) || !(legacy ? LEGACY_STEPS : PATTERN_LIMITS.stepsPerBeat).includes(raw.stepsPerBeat)) return null;
+  if (!isInt(raw.stepsPerBeat) || !(version < 2 ? LEGACY_STEPS : version === 2 ? V2_STEPS : PATTERN_LIMITS.stepsPerBeat).includes(raw.stepsPerBeat)) return null;
   if (!isFiniteNum(raw.swing) || !isFiniteNum(raw.bpm)) return null;
   if (!isFiniteNum(raw.createdAt) || !isFiniteNum(raw.updatedAt)) return null;
   if (typeof raw.builtIn !== 'boolean') return null;

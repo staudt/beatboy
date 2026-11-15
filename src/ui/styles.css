@@ -638,38 +638,133 @@ button.chip {
   border-color: var(--play);
 }
 
-.bar-pager {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.bar-pager .btn-icon {
-  min-width: 36px;
-  min-height: 40px;
-}
-
-.pager-value {
-  font-family: var(--font-mono);
-  font-weight: 800;
-  min-width: 36px;
-  text-align: center;
-}
-
 /* ── step grid ─────────────────────────────────────────────────── */
-.stepgrid {
+/* ── timeline (mobile lane + desktop grid) ───────────────────── */
+.tl {
+  --cw: 44px; /* square width: the same for every pattern */
+  --ch: 44px;
+  --cg: 3px; /* gap between squares inside a beat */
+  --bg: 10px; /* gap between beats */
+}
+
+.tl-beats {
+  display: flex;
+  flex: none;
+  width: max-content;
+  gap: var(--bg);
+}
+
+.tl-beat {
+  display: flex;
+  flex: none;
+  gap: var(--cg);
+  width: calc(var(--spb) * var(--cw) + (var(--spb) - 1) * var(--cg));
+}
+
+.tl .cell {
+  flex: none;
+  width: var(--cw);
+  height: var(--ch);
+  touch-action: pan-x pan-y;
+}
+
+.tl-ruler {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  user-select: none;
+}
+
+.tl-beatnum {
+  display: block;
+  height: 16px;
+  line-height: 16px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.beats-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  margin-left: auto;
+}
+
+.beats-ctl .stepper-value {
+  min-width: 28px;
+}
+
+.chip-follow {
+  cursor: pointer;
+  color: var(--fill);
+  border-color: var(--fill);
+}
+
+/* mobile lane */
+.lane {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
 }
 
-.stepgrid-head {
+.lane-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
+
+.stepgrid-title {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.lane-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lane-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: max-content;
+}
+
+.lane-hint {
+  margin: 0;
+}
+
+.seg {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.seg-btn {
+  flex: 1;
+  min-width: 96px;
+}
+
+.field-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sig {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--play);
+}
+
 
 .stepgrid-title {
   margin: 0;
@@ -698,43 +793,6 @@ button.chip {
 
 .g-ghost {
   border: 2px solid #b5651f;
-}
-
-.step-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.row-label {
-  flex: none;
-  width: 16px;
-  text-align: right;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-dim);
-}
-
-.stepgrid {
-  container-type: inline-size;
-  /* Squares keep one size: as if 4 fit per row (row label 16px + 6px gap, 3 gaps of 5px). */
-  --cell: min(60px, calc((100cqw - 22px - 15px) / 4));
-}
-
-.step-cells {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 5px;
-}
-
-.step-cells .cell {
-  flex: none;
-  width: var(--cell);
-  height: var(--cell);
 }
 
 .cell {
@@ -839,7 +897,7 @@ button.chip {
 }
 
 .ov-grid {
-  --ovc: 14px;
+  --ovc: 12px;
   --ovg: 2px;
   position: relative;
   display: flex;
@@ -853,12 +911,10 @@ button.chip {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 30px;
+  min-height: 26px;
   padding: 3px 4px;
   border: 1px solid transparent;
   border-radius: 8px;
-  background: transparent;
-  text-align: left;
 }
 
 .ov-row.is-selected {
@@ -869,6 +925,11 @@ button.chip {
 .ov-name {
   flex: none;
   width: 46px;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
@@ -884,6 +945,7 @@ button.chip {
   flex: none;
   display: flex;
   gap: var(--ovg);
+  cursor: pointer;
 }
 
 .ov-cell {
@@ -897,6 +959,7 @@ button.chip {
 .ov-cell.beat {
   background: #2f2b28;
 }
+
 
 .ov-cell.v-normal {
   background: var(--play);
@@ -921,17 +984,23 @@ button.chip {
   pointer-events: none;
 }
 
-.ov-playhead {
+.ov-playhead,
+.ov-view {
   position: absolute;
   top: 0;
   bottom: 0;
-  /* 57px = 1px border + 4px padding + 46px name + 6px gap */
-  left: calc(57px + var(--col) * (var(--ovc) + var(--ovg)) - 1px);
-  width: calc(var(--ovc) + 2px);
+  border-radius: 4px;
+}
+
+.ov-playhead {
   background: rgb(46 196 214 / 0.28);
   border-left: 1px solid var(--fill);
   border-right: 1px solid var(--fill);
-  border-radius: 3px;
+}
+
+.ov-view {
+  background: rgb(255 255 255 / 0.07);
+  border: 1px solid rgb(255 255 255 / 0.35);
 }
 
 /* ── mix ───────────────────────────────────────────────────────── */
@@ -1315,6 +1384,13 @@ button.chip {
     font-size: 12.5px;
   }
 
+  .tl {
+    --cw: 37px;
+    --ch: 32px;
+    --bg: 10px;
+    --ctrl-w: 220px;
+  }
+
   .cell {
     height: 32px;
     border-radius: 6px;
@@ -1351,6 +1427,7 @@ button.chip {
     z-index: 2;
     flex: none;
     display: grid;
+    width: var(--ctrl-w);
     grid-template-columns: 64px 36px 96px;
     align-items: center;
     gap: 8px;
@@ -1401,17 +1478,14 @@ button.chip {
 
   .fg-cells {
     flex: none;
-    display: flex;
-    gap: 3px;
   }
 
-  .fg-cells .cell {
-    flex: none;
-    width: 37px;
+  .fg-ctrl-spacer {
+    padding: 0;
   }
 
-  .fg-cells .cell.beat {
-    margin-left: 7px;
+  .fg-ruler-row {
+    padding-bottom: 2px;
   }
 
   .textarea {

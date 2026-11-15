@@ -8,7 +8,7 @@ import {
   type TimeSignature,
 } from './types';
 import { LETTER_TO_SOUND, SOUNDS } from './sounds';
-import { stepTicks, stepsPerBar } from './time';
+import { stepTicks } from './time';
 import { velocityLevel } from './patternOps';
 
 export interface NotationError {
@@ -17,9 +17,35 @@ export interface NotationError {
   message: string;
 }
 
+/** How coarsely a text was written: one token per quarter, 8th, 16th or triplet. */
+export type Resolution = 'quarters' | '8ths' | '16ths' | 'triplets';
+
 export type ParseResult =
-  | { ok: true; notes: Partial<Record<SoundId, NoteEvent[]>>; bars: number; steps: number; warnings: string[] }
+  | {
+      ok: true;
+      notes: Partial<Record<SoundId, NoteEvent[]>>;
+      /** Length of the loop in beats (1..32); can differ from the pattern's current length. */
+      beats: number;
+      /** Tokens read (rests included), at the chosen resolution. */
+      steps: number;
+      resolution: Resolution;
+      warnings: string[];
+    }
   | { ok: false; errors: NotationError[] };
+
+/** Tokens per beat that can be written for a grid of `spb` steps per beat, finest first (4 → 4, 2, 1; 3 → 3, 1). */
+function densities(spb: number): number[] {
+  const out: number[] = [];
+  for (let d = spb; d >= 1; d--) if (spb % d === 0) out.push(d);
+  return out;
+}
+
+/** Name of writing `d` tokens per beat on a grid of `spb` steps per beat. */
+export function resolutionOf(d: number, spb: number): Resolution {
+  if (d === 1) return 'quarters';
+  if (spb % 3 === 0) return 'triplets';
+  return d === 2 ? '8ths' : '16ths';
+}
 
 interface Tok {
   ch: string;
@@ -33,12 +59,7 @@ interface StepItem {
   line: number;
   col: number;
 }
-interface BarItem {
-  kind: 'bar';
-  line: number;
-  col: number;
-}
-type Item = StepItem | BarItem;
+type Item = StepItem;
 
 const MAX_ERRORS = 20;
 const MAX_REPEAT = 64;
@@ -128,8 +149,7 @@ export function parseBeatText(text: string, opts: { timeSig: TimeSignature; step
       target().push({ kind: 'step', hits: new Map(), line: t.line, col: t.col });
       i++;
     } else if (t.ch === '|') {
-      target().push({ kind: 'bar', line: t.line, col: t.col });
-      i++;
+      i++; // bar lines are cosmetic
     } else if (t.ch === '[') {
       if (bracket) {
         err(t, 'Nested repeats are not supported');
@@ -184,50 +204,48 @@ export function parseBeatText(text: string, opts: { timeSig: TimeSignature; step
   }
   if (bracket && bracketStart) err(bracketStart, "Missing ']*N' to close this repeat");
 
-  // Expand stream into steps, checking bar lines.
-  const spb = stepsPerBar(opts.timeSig, opts.stepsPerBeat);
-  const st = stepTicks(opts.timeSig, opts.stepsPerBeat);
+  // `|` is cosmetic. Work out how coarsely the text is written: d tokens per beat, d dividing steps/beat.
+  const spb = opts.stepsPerBeat;
+  const ds = densities(spb);
+  const tokens = top;
+  const T = tokens.length;
+  const current = opts.timeSig.num;
+  // The text matches the current length at some resolution; otherwise it is full resolution and the length follows it.
+  let d = ds.find((x) => T === current * x) ?? spb;
+  if (T === 0) d = spb;
+  const beats = T === 0 ? current : Math.ceil(T / d);
+  const tokenTicks = stepTicks(opts.timeSig, spb) * (spb / d);
   const notes: Partial<Record<SoundId, NoteEvent[]>> = {};
-  let total = 0;
-  let sinceBar = 0;
-  let closedBars = 0;
   let overflowReported = false;
-  for (const item of top) {
-    if (item.kind === 'step') {
-      if (!overflowReported && Math.floor(total / spb) >= PATTERN_LIMITS.maxBars) {
-        err(item, `Too many bars: maximum is ${PATTERN_LIMITS.maxBars}`);
-        overflowReported = true;
-      }
-      for (const [sound, vel] of item.hits) (notes[sound] ??= []).push({ tick: total * st, vel });
-      total++;
-      sinceBar++;
-    } else {
-      if (sinceBar > 0) {
-        if (sinceBar !== spb) err(item, `Bar ${closedBars + 1} has ${sinceBar} steps, expected ${spb}`);
-        closedBars++;
-        sinceBar = 0;
-      }
+  tokens.forEach((item, idx) => {
+    if (!overflowReported && Math.floor(idx / d) >= PATTERN_LIMITS.maxBeats) {
+      err(item, `Too many beats: maximum is ${PATTERN_LIMITS.maxBeats}`);
+      overflowReported = true;
     }
-  }
+    for (const [sound, vel] of item.hits) (notes[sound] ??= []).push({ tick: Math.round(idx * tokenTicks), vel });
+  });
 
   const warnings: string[] = [];
-  const bars = Math.max(1, Math.ceil(total / spb));
-  if (total % spb !== 0) {
-    const pad = bars * spb - total;
-    warnings.push(`Padded ${pad} rest${pad === 1 ? '' : 's'} to complete bar ${bars}`);
+  if (T % d !== 0) {
+    const pad = beats * d - T;
+    warnings.push(`Padded ${pad} rest${pad === 1 ? '' : 's'} to complete beat ${beats}`);
   }
   if (errors.length > 0) return { ok: false, errors };
-  if (bars > PATTERN_LIMITS.maxBars) {
-    return { ok: false, errors: [{ line: 1, col: 1, message: `Too many bars: maximum is ${PATTERN_LIMITS.maxBars}` }] };
+  if (beats > PATTERN_LIMITS.maxBeats) {
+    return { ok: false, errors: [{ line: 1, col: 1, message: `Too many beats: maximum is ${PATTERN_LIMITS.maxBeats}` }] };
   }
-  return { ok: true, notes, bars, steps: total, warnings };
+  return { ok: true, notes, beats, steps: T, resolution: resolutionOf(d, spb), warnings };
 }
 
-export function formatBeatText(p: Pattern): { text: string; droppedOffGrid: number } {
+/**
+ * Writes a pattern as text at the COARSEST resolution that represents every note exactly: an 8th-note
+ * groove prints 2 tokens per beat, a 16th-note one 4, a triplet one 3; one line per 4 beats. Notes that are off
+ * the grid cannot be written and are counted in `droppedOffGrid`.
+ */
+export function formatBeatText(p: Pattern): { text: string; droppedOffGrid: number; resolution: Resolution } {
   const st = stepTicks(p.timeSig, p.stepsPerBeat);
-  const spbeat = p.stepsPerBeat;
-  const perBar = stepsPerBar(p.timeSig, p.stepsPerBeat);
-  const totalSteps = perBar * p.bars;
+  const spb = p.stepsPerBeat;
+  const totalSteps = p.timeSig.num * p.bars * spb;
   const grid = new Map<number, Map<SoundId, number>>();
   let dropped = 0;
   for (const id of SOUND_IDS) {
@@ -243,33 +261,36 @@ export function formatBeatText(p: Pattern): { text: string; droppedOffGrid: numb
       m.set(id, n.vel);
     }
   }
+  // Coarsest d (tokens per beat) such that every note sits on a multiple of spb/d steps.
+  const ds = densities(spb).reverse();
+  const d = ds.find((x) => [...grid.keys()].every((s) => s % (spb / x) === 0)) ?? spb;
+  const unit = spb / d;
   const lines: string[] = [];
-  for (let b = 0; b < p.bars; b++) {
-    const beats: string[] = [];
-    for (let beat = 0; beat < p.timeSig.num; beat++) {
-      const steps: string[] = [];
-      for (let j = 0; j < spbeat; j++) {
-        const m = grid.get(b * perBar + beat * spbeat + j);
-        if (!m || m.size === 0) {
-          steps.push('-');
-          continue;
-        }
-        const parts: string[] = [];
-        for (const id of SOUND_IDS) {
-          const vel = m.get(id);
-          if (vel === undefined) continue;
-          const letter = SOUNDS[id].letter;
-          const lvl = velocityLevel(vel);
-          parts.push(lvl === 'accent' ? letter.toUpperCase() : lvl === 'ghost' ? `(${letter})` : letter);
-        }
-        steps.push(parts.join('+'));
+  const total = p.timeSig.num * p.bars;
+  const beatTexts: string[] = [];
+  for (let beat = 0; beat < total; beat++) {
+    const tokens: string[] = [];
+    for (let j = 0; j < d; j++) {
+      const m = grid.get(beat * spb + j * unit);
+      if (!m || m.size === 0) {
+        tokens.push('-');
+        continue;
       }
-      beats.push(steps.join(' '));
+      const parts: string[] = [];
+      for (const id of SOUND_IDS) {
+        const vel = m.get(id);
+        if (vel === undefined) continue;
+        const letter = SOUNDS[id].letter;
+        const lvl = velocityLevel(vel);
+        parts.push(lvl === 'accent' ? letter.toUpperCase() : lvl === 'ghost' ? `(${letter})` : letter);
+      }
+      tokens.push(parts.join('+'));
     }
-    // One space between steps, two between beats (one when each beat is a single step).
-    lines.push(`${beats.join(spbeat > 1 ? '  ' : ' ')} |`);
+    beatTexts.push(tokens.join(' '));
   }
-  return { text: lines.join('\n'), droppedOffGrid: dropped };
+  // One space between tokens, two between beats (one when each beat is a single token); a line per 4 beats.
+  for (let k = 0; k < beatTexts.length; k += 4) lines.push(`${beatTexts.slice(k, k + 4).join(d > 1 ? '  ' : ' ')} |`);
+  return { text: lines.join('\n'), droppedOffGrid: dropped, resolution: resolutionOf(d, spb) };
 }
 
 export function applyBeatText(
@@ -279,5 +300,5 @@ export function applyBeatText(
 ): { ok: true; pattern: Pattern; warnings: string[] } | { ok: false; errors: NotationError[] } {
   const r = parseBeatText(text, { timeSig: p.timeSig, stepsPerBeat: p.stepsPerBeat });
   if (!r.ok) return r;
-  return { ok: true, pattern: { ...p, notes: r.notes, bars: r.bars, updatedAt: now }, warnings: r.warnings };
+  return { ok: true, pattern: { ...p, timeSig: { num: r.beats, den: 4 }, bars: 1, notes: r.notes, updatedAt: now }, warnings: r.warnings };
 }

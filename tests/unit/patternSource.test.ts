@@ -59,17 +59,17 @@ describe('PatternLoopSource', () => {
     expect(collect(new PatternLoopSource(() => p), 0, 1920).every((n) => n.gain === 1)).toBe(true);
   });
 
-  it('computes swing offsets on odd steps', () => {
+  it('warps notes inside the beat (the "&" lands on 2/3)', () => {
     const q = mkPattern({
       swing: 2 / 3,
       notes: { hatClosed: [{ tick: 0, vel: 90 }, { tick: 120, vel: 90 }, { tick: 240, vel: 90 }, { tick: 360, vel: 90 }] },
     });
     const out = collect(new PatternLoopSource(() => q), 0, 480).sort((a, b) => a.tick - b.tick);
-    expect(out.map((n) => Math.round(n.offsetTicks * 1000) / 1000)).toEqual([0, 40, 0, 40]);
+    expect(out.map((n) => Math.round(n.offsetTicks * 1000) / 1000)).toEqual([0, 40, 80, 40]);
   });
 
   it('ignores swing on triplet grids', () => {
-    for (const spb of [3, 6]) {
+    for (const spb of [3]) {
       const q = mkPattern({ stepsPerBeat: spb, swing: 0.7, notes: { hatClosed: [{ tick: 80, vel: 90 }, { tick: 160, vel: 90 }] } });
       expect(collect(new PatternLoopSource(() => q), 0, 480).every((n) => n.offsetTicks === 0)).toBe(true);
     }

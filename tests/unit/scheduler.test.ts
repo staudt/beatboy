@@ -147,7 +147,7 @@ describe('Scheduler', () => {
     ticks.slice(1).forEach((t, i) => expect(t - ticks[i]!).toBe(240));
   });
 
-  it('delays odd 16ths by the swing amount', () => {
+  it('warps the 16ths and the "&" inside each beat by the swing amount', () => {
     const p = mkPattern({
       swing: 2 / 3,
       notes: { hatClosed: [0, 120, 240, 360].map((tick) => ({ tick, vel: 90 })) },
@@ -158,7 +158,7 @@ describe('Scheduler', () => {
     h.s.start();
     run(h, 2);
     const spt = 0.5 / 480;
-    const expectTicks = [0, 120 + 40, 240, 360 + 40];
+    const expectTicks = [0, 120 + 40, 240 + 80, 360 + 40];
     h.rec.slice(0, 8).forEach((r, i) => {
       const k = Math.floor(i / 4);
       expect(r.time).toBeCloseTo(t0 + (k * 1920 + expectTicks[i % 4]!) * spt, 9);

@@ -1,6 +1,6 @@
 import { DEFAULT_MIX, SOUND_IDS } from '../domain/types';
 import type { Pattern, TimeSignature } from '../domain/types';
-import { patternTicks, stepTicks, swingOffset } from '../domain/time';
+import { beatTicks, patternTicks, swingOffset } from '../domain/time';
 import type { EventSource, NoteOut } from './types';
 
 /** Loops a (live-read) pattern forever from transport tick 0. */
@@ -16,8 +16,8 @@ export class PatternLoopSource implements EventSource {
     const p = this.getPattern();
     const len = patternTicks(p);
     if (len <= 0) return;
-    const step = stepTicks(p.timeSig, p.stepsPerBeat);
-    const swing = p.stepsPerBeat === 3 || p.stepsPerBeat === 6 ? 0.5 : p.swing;
+    const beat = beatTicks(p.timeSig);
+    const swing = p.stepsPerBeat === 3 ? 0.5 : p.swing;
     const kFirst = Math.floor(from / len);
     const kLast = Math.floor((to - 1) / len);
     for (const sound of SOUND_IDS) {
@@ -33,7 +33,7 @@ export class PatternLoopSource implements EventSource {
           if (abs < from || abs >= to) continue;
           out.push({
             tick: abs,
-            offsetTicks: swingOffset(n.tick, step, swing),
+            offsetTicks: swingOffset(n.tick, beat, swing),
             sound,
             vel: n.vel,
             gain: mix.gain,

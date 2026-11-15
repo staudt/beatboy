@@ -4,13 +4,13 @@ import { parseBeatText } from '../../src/domain/notation';
 import { noteCount } from '../../src/domain/patternOps';
 
 describe('factory patterns', () => {
-  it('all parse into exactly one full bar with no warnings', () => {
+  it('all parse into exactly their beat count with no warnings', () => {
     for (const s of FACTORY_SPECS) {
       const r = parseBeatText(s.text, { timeSig: s.timeSig ?? { num: 4, den: 4 }, stepsPerBeat: s.stepsPerBeat });
       expect(r.ok, s.id).toBe(true);
       if (r.ok) {
         expect(r.warnings, s.id).toEqual([]);
-        expect(r.bars, s.id).toBe(1);
+        expect(r.beats, s.id).toBe(s.timeSig?.num ?? 4);
       }
     }
   });
@@ -26,12 +26,12 @@ describe('factory patterns', () => {
     }
   });
 
-  it('every pattern is on the beats x steps model (den 4, 1..4 steps, <= 7 beats)', () => {
+  it('every pattern is on the beats x steps model (den 4, 3 or 4 steps, <= 7 beats)', () => {
     for (const p of factoryPatterns()) {
       expect(p.timeSig.den, p.id).toBe(4);
       expect(p.timeSig.num, p.id).toBeGreaterThanOrEqual(1);
       expect(p.timeSig.num, p.id).toBeLessThanOrEqual(7);
-      expect([1, 2, 3, 4], p.id).toContain(p.stepsPerBeat);
+      expect([3, 4], p.id).toContain(p.stepsPerBeat);
     }
     expect(factoryPatterns().find((p) => p.id === 'f-seven-eight')).toBeUndefined();
   });
@@ -47,5 +47,13 @@ describe('factory patterns', () => {
     expect(p.notes.kick!.map((n) => n.tick)).toEqual([0, 960, 1200]);
     expect(p.notes.snare!.map((n) => n.tick)).toEqual([480, 1440]);
     expect(p.notes.hatClosed!.length).toBe(8);
+  });
+
+  it('keeps the swing amounts of the swung grooves', () => {
+    const g = (id: string) => factoryPatterns().find((p) => p.id === id)!;
+    expect(g('f-shuffle').swing).toBe(0.67);
+    expect(g('f-jazz-ride').swing).toBe(0.67);
+    expect(g('f-one-drop').swing).toBe(0.6);
+    expect(g('f-hip-hop').swing).toBe(0.58);
   });
 });

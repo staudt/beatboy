@@ -1,7 +1,6 @@
-import { stepLabel } from '../gridLayout';
 import { isDesktop } from '../media';
+import { feelOf } from '../../domain/patternOps';
 import { current, labView, settingsOpen, type LabView } from '../state/lab';
-import { BarPager } from './BarPager';
 import { FullGrid } from './FullGrid';
 import { MixPanel } from './MixPanel';
 import { OverviewGrid } from './OverviewGrid';
@@ -9,7 +8,7 @@ import { PadGrid } from './PadGrid';
 import { PatternBrowser } from './PatternBrowser';
 import { PatternHeader } from './PatternHeader';
 import { PatternSettings } from './PatternSettings';
-import { StepGrid } from './StepGrid';
+import { StepLane } from './StepLane';
 import { TextPanel } from './TextPanel';
 import { Transport } from './Transport';
 import { VelocityPopover } from './VelocityPopover';
@@ -36,8 +35,6 @@ function SubTabs() {
           {v.label}
         </button>
       ))}
-      <span class="spacer" />
-      {labView.value === 'grid' && <BarPager />}
     </div>
   );
 }
@@ -55,7 +52,7 @@ function Summary() {
       onClick={() => (settingsOpen.value = !open)}
     >
       <span>
-        {p.timeSig.num} beat{p.timeSig.num === 1 ? '' : 's'} × {p.stepsPerBeat} · {stepLabel(p.stepsPerBeat)} · {p.bars} bar{p.bars === 1 ? '' : 's'}
+        {p.timeSig.num} beat{p.timeSig.num === 1 ? '' : 's'} · {feelOf(p)}
       </span>
       <IconGear width={18} height={18} />
     </button>
@@ -106,7 +103,7 @@ export function BeatLab() {
       <SubTabs />
       {view === 'grid' && (
         <>
-          <StepGrid />
+          <StepLane />
           <OverviewGrid />
         </>
       )}
