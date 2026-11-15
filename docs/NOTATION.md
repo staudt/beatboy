@@ -2,7 +2,7 @@
 
 Beat Lab's **Text** panel lets you type a pattern instead of tapping it. One character is (usually) one step on the grid, so `k-s-k-s-` is a kick on steps 1 and 5 and a snare on steps 3 and 7 of an 8-step bar.
 
-Parsing is done by `parseBeatText` in `src/domain/notation.ts`; `formatBeatText` writes a pattern back out as text. The text is interpreted against the pattern's current **time signature** and **grid resolution** (steps per beat), so the same text means different rhythms at 8ths vs 16ths.
+Parsing is done by `parseBeatText` in `src/domain/notation.ts`; `formatBeatText` writes a pattern back out as text. The text is interpreted against the pattern's current **beats** per bar and **steps** per beat (1 = quarters, 2 = 8ths, 3 = triplets, 4 = 16ths), so the same text means different rhythms at 8ths vs 16ths.
 
 ## Grammar
 
@@ -69,7 +69,7 @@ Errors are reported with line and column (1-based, counted over the raw text inc
 
 ## Examples
 
-Rock beat in 8ths (resolution = 8ths, 4/4):
+Rock beat in 8ths (4 beats × 2 steps):
 
 ```
 k+x x  s+x x  k+x k+x  s+x x |
@@ -97,8 +97,8 @@ Strings written for typeabeat paste straight in, one character per step, with wh
 skxkskxkskxks-k-
 ```
 
-(16 steps: set the resolution to 16ths in 4/4, or 4 beats with 4 steps each.) The only difference to be aware of is that `o` is the **open** hi-hat here, not a closed one; use `x` for closed hat.
+(16 steps: 4 beats with 4 steps each.) The only difference to be aware of is that `o` is the **open** hi-hat here, not a closed one; use `x` for closed hat.
 
 ## Round trip
 
-`formatBeatText` writes one line per bar, a space between steps, two spaces between beats, and ends each bar with ` |`. Accents are uppercase, ghosts are in parentheses. Notes that do not sit on the current grid (for example after switching resolution) cannot be written as text; the Text panel warns when applying would drop them.
+`formatBeatText` writes one line per bar, a space between steps, two spaces between beats, and ends each bar with ` |`. Accents are uppercase, ghosts are in parentheses. Notes that do not sit on the current grid (for example for patterns saved before steps were quantized) cannot be written as text; the Text panel warns when applying would drop them.

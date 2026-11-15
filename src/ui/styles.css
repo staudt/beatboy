@@ -716,12 +716,25 @@ button.chip {
   color: var(--text-dim);
 }
 
+.stepgrid {
+  container-type: inline-size;
+  /* Squares keep one size: as if 4 fit per row (row label 16px + 6px gap, 3 gaps of 5px). */
+  --cell: min(60px, calc((100cqw - 22px - 15px) / 4));
+}
+
 .step-cells {
   flex: 1;
   min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
   gap: 5px;
+}
+
+.step-cells .cell {
+  flex: none;
+  width: var(--cell);
+  height: var(--cell);
 }
 
 .cell {
@@ -820,11 +833,20 @@ button.chip {
   gap: 6px;
 }
 
+.ov-scroll {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
 .ov-grid {
+  --ovc: 14px;
+  --ovg: 2px;
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 3px;
+  width: max-content;
+  min-width: 100%;
 }
 
 .ov-row {
@@ -859,15 +881,15 @@ button.chip {
 }
 
 .ov-cells {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
-  gap: 2px;
+  flex: none;
+  display: flex;
+  gap: var(--ovg);
 }
 
 .ov-cell {
-  height: 16px;
+  flex: none;
+  width: var(--ovc);
+  height: var(--ovc);
   border-radius: 3px;
   background: #211f1d;
 }
@@ -894,8 +916,8 @@ button.chip {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 57px; /* 1px border + 4px padding + 46px name + 6px gap */
-  right: 5px;
+  left: 0;
+  right: 0;
   pointer-events: none;
 }
 
@@ -903,6 +925,9 @@ button.chip {
   position: absolute;
   top: 0;
   bottom: 0;
+  /* 57px = 1px border + 4px padding + 46px name + 6px gap */
+  left: calc(57px + var(--col) * (var(--ovc) + var(--ovg)) - 1px);
+  width: calc(var(--ovc) + 2px);
   background: rgb(46 196 214 / 0.28);
   border-left: 1px solid var(--fill);
   border-right: 1px solid var(--fill);
@@ -1310,13 +1335,31 @@ button.chip {
   }
 
   .fg-row {
-    display: grid;
-    grid-template-columns: 64px 36px 96px minmax(0, 1fr);
+    display: flex;
     align-items: center;
     gap: 8px;
-    min-width: 640px;
+    width: max-content;
+    min-width: 100%;
     padding: 2px 4px;
     border-radius: 8px;
+  }
+
+  /* Name / mute / volume stay put while the cells scroll horizontally. */
+  .fg-ctrl {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    flex: none;
+    display: grid;
+    grid-template-columns: 64px 36px 96px;
+    align-items: center;
+    gap: 8px;
+    padding-right: 8px;
+    background: var(--panel);
+  }
+
+  .fg-row.is-selected .fg-ctrl {
+    background: linear-gradient(rgb(255 122 26 / 0.09), rgb(255 122 26 / 0.09)), var(--panel);
   }
 
   .fg-row.is-selected {
@@ -1357,9 +1400,14 @@ button.chip {
   }
 
   .fg-cells {
-    display: grid;
-    grid-template-columns: repeat(var(--n), minmax(14px, 1fr));
+    flex: none;
+    display: flex;
     gap: 3px;
+  }
+
+  .fg-cells .cell {
+    flex: none;
+    width: 37px;
   }
 
   .fg-cells .cell.beat {

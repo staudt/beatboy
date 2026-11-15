@@ -223,14 +223,14 @@ describe('other meters and grids', () => {
     expect(r.bars).toBe(1);
     expect(ticks(r.notes, 'snare')).toEqual([960]);
   });
-  it('6/8 @2 = 12 steps per bar', () => {
-    const ts: TimeSignature = { num: 6, den: 8 };
-    const r = ok(parseBeatText('k-x-x-s-x-x- | k-x-x-s-x-x-', { timeSig: ts, stepsPerBeat: 2 }));
+  it('2 beats x 3 steps (6/8 feel) = 6 steps per bar', () => {
+    const ts: TimeSignature = { num: 2, den: 4 };
+    const r = ok(parseBeatText('k-x x-s | k-x x-s', { timeSig: ts, stepsPerBeat: 3 }));
     expect(r.bars).toBe(2);
-    expect(r.steps).toBe(24);
-    expect(ticks(r.notes, 'snare')).toEqual([6 * 120, 18 * 120]);
-    const e = fail(parseBeatText('k-x-x-s-x-x-x- |', { timeSig: ts, stepsPerBeat: 2 }));
-    expect(e[0]!.message).toBe('Bar 1 has 14 steps, expected 12');
+    expect(r.steps).toBe(12);
+    expect(ticks(r.notes, 'snare')).toEqual([5 * 160, 11 * 160]);
+    const e = fail(parseBeatText('k-x x-s-x |', { timeSig: ts, stepsPerBeat: 3 }));
+    expect(e[0]!.message).toBe('Bar 1 has 8 steps, expected 6');
   });
   it('triplet grid 4/4 @3', () => {
     const r = parseBeatText('kxx sxx kxx sxx |', { timeSig: T44, stepsPerBeat: 3 });
@@ -265,9 +265,9 @@ describe('formatBeatText', () => {
     expect(r.notes).toEqual(p.notes);
   });
   it('k+x-x- parses to [k+x][-][x][-]', () => {
-    const r = ok(parseBeatText('k+x-x-', { timeSig: { num: 3, den: 8 }, stepsPerBeat: 2 }));
+    const r = ok(parseBeatText('k+x-x-', { timeSig: { num: 3, den: 4 }, stepsPerBeat: 2 }));
     expect(ticks(r.notes, 'kick')).toEqual([0]);
-    expect(ticks(r.notes, 'hatClosed')).toEqual([0, 2 * 120]);
+    expect(ticks(r.notes, 'hatClosed')).toEqual([0, 2 * 240]);
   });
   it('accent / ghost / order / multi-bar / empty', () => {
     const p = createPattern({
@@ -324,7 +324,7 @@ describe('round trip', () => {
   it('parse(format(p)) reproduces notes and bars (200 random patterns)', () => {
     const rand = rng(12345);
     const pick = <T,>(a: readonly T[]): T => a[Math.floor(rand() * a.length)]!;
-    const sigs: TimeSignature[] = [{ num: 4, den: 4 }, { num: 3, den: 4 }, { num: 6, den: 8 }, { num: 7, den: 8 }];
+    const sigs: TimeSignature[] = [{ num: 4, den: 4 }, { num: 3, den: 4 }, { num: 2, den: 4 }, { num: 7, den: 4 }];
     const vels = [VELOCITY.ghost, VELOCITY.normal, VELOCITY.accent];
     for (let n = 0; n < 200; n++) {
       const timeSig = pick(sigs);

@@ -41,6 +41,37 @@ describe('storage migrations/validation', () => {
     expect(migratePattern({ ...base(), schemaVersion: 99 })).toBeNull();
   });
 
+  it('migrates a stored v1 6/8 pattern to 2 beats x 3 steps', () => {
+    const v1 = {
+      ...base(),
+      timeSig: { num: 6, den: 8 },
+      stepsPerBeat: 1,
+      bars: 2,
+      notes: { kick: [{ tick: 0, vel: 100 }, { tick: 720, vel: 90 }, { tick: 1440, vel: 80 }, { tick: 1440 + 240, vel: 70 }] },
+      schemaVersion: 1,
+    };
+    const m = migratePattern(v1)!;
+    expect(m.timeSig).toEqual({ num: 2, den: 4 });
+    expect(m.stepsPerBeat).toBe(3);
+    expect(m.bars).toBe(2);
+    expect(m.notes.kick).toEqual([
+      { tick: 0, vel: 100 },
+      { tick: 480, vel: 90 },
+      { tick: 960, vel: 80 },
+      { tick: 960 + 160, vel: 70 },
+    ]);
+    // v1 4/4 on a legacy 8-step grid gets a legal grid
+    expect(migratePattern({ ...base(), stepsPerBeat: 8, schemaVersion: 1 })!.stepsPerBeat).toBe(4);
+  });
+
+  it('v2 records must be den 4 with 1..4 steps per beat', () => {
+    const odd = { ...base(), timeSig: { num: 6, den: 8 }, schemaVersion: 2 };
+    expect(migratePattern(odd)).toBeNull();
+    expect(validatePattern({ ...base(), timeSig: { num: 8, den: 4 } })).toBeNull();
+    expect(validatePattern({ ...base(), stepsPerBeat: 6 })).toBeNull();
+    expect(validatePattern({ ...base(), stepsPerBeat: 3 })).not.toBeNull();
+  });
+
   it('sorts and dedupes notes', () => {
     const p = base();
     p.notes.snare = [

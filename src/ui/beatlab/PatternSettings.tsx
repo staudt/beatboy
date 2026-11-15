@@ -1,58 +1,27 @@
-import { offGridCount, setBars, setStepsPerBeat, setSwing, setTimeSig } from '../../domain/patternOps';
-import { PATTERN_LIMITS, type BeatUnit } from '../../domain/types';
+import { setBars, setBeats, setStepsPerBeat, setSwing } from '../../domain/patternOps';
+import { PATTERN_LIMITS } from '../../domain/types';
 import { Stepper } from '../common/Stepper';
 import { stepLabel } from '../gridLayout';
 import { current, editCurrent } from '../state/lab';
 
-export const TIME_SIGS = ['2/4', '3/4', '4/4', '5/4', '7/4', '6/8', '7/8', '9/8', '12/8'] as const;
-
 export function PatternSettings() {
   const p = current.value;
-  const ts = `${p.timeSig.num}/${p.timeSig.den}`;
-  const tsOptions: string[] = TIME_SIGS.includes(ts as (typeof TIME_SIGS)[number]) ? [...TIME_SIGS] : [ts, ...TIME_SIGS];
-  const off = offGridCount(p);
   const swing = Math.round(p.swing * 100);
-  const triplet = p.stepsPerBeat === 3 || p.stepsPerBeat === 6;
+  const triplet = p.stepsPerBeat === 3;
+  const spbMin = Math.min(...PATTERN_LIMITS.stepsPerBeat);
+  const spbMax = Math.max(...PATTERN_LIMITS.stepsPerBeat);
   return (
     <section class="settings" aria-label="Pattern settings">
-      <label class="field">
-        <span class="label">time signature</span>
-        <select
-          class="select"
-          value={ts}
-          aria-label="Time signature"
-          onChange={(e) => {
-            const [n, d] = e.currentTarget.value.split('/').map(Number);
-            editCurrent((q) => setTimeSig(q, { num: n as number, den: d as BeatUnit }));
-          }}
-        >
-          {tsOptions.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label class="field">
-        <span class="label">grid resolution</span>
-        <select
-          class="select"
-          value={String(p.stepsPerBeat)}
-          aria-label="Grid resolution"
-          onChange={(e) => editCurrent((q) => setStepsPerBeat(q, Number(e.currentTarget.value)))}
-        >
-          {PATTERN_LIMITS.stepsPerBeat.map((n) => (
-            <option key={n} value={String(n)}>
-              {stepLabel(p.timeSig, n)}
-            </option>
-          ))}
-        </select>
-      </label>
-      {off > 0 && (
-        <p class="notice" role="status">
-          {off} note{off === 1 ? ' is' : 's are'} between grid steps (still audible)
-        </p>
-      )}
+      <div class="field">
+        <span class="label">beats</span>
+        <Stepper label="Beats" value={p.timeSig.num} min={PATTERN_LIMITS.minBeats} max={PATTERN_LIMITS.maxBeats} onChange={(v) => editCurrent((q) => setBeats(q, v))} />
+        <span class="hint">one row per beat</span>
+      </div>
+      <div class="field">
+        <span class="label">steps · {stepLabel(p.stepsPerBeat)}</span>
+        <Stepper label="Steps" value={p.stepsPerBeat} min={spbMin} max={spbMax} onChange={(v) => editCurrent((q) => setStepsPerBeat(q, v))} />
+        <span class="hint">per beat: 1 quarters · 2 8ths · 3 triplets · 4 16ths</span>
+      </div>
       <div class="field">
         <span class="label">bars</span>
         <Stepper label="Bars" value={p.bars} min={PATTERN_LIMITS.minBars} max={PATTERN_LIMITS.maxBars} onChange={(v) => editCurrent((q) => setBars(q, v))} />

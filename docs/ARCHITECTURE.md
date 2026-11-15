@@ -17,9 +17,14 @@ DOM or Web Audio imports and are fully unit-tested in Node.
 
 - Integer **ticks**, `TPQ = 480` per quarter note. A beat is one `1/den` note (`beatTicks = 480·4/den`).
 - Patterns store sparse notes `{tick, vel}` per sound. The step grid is a *view*:
-  `stepTicks = beatTicks / stepsPerBeat`. Changing grid resolution never moves notes.
+  `stepTicks = beatTicks / stepsPerBeat`.
+- **Beats × steps model**: users see only BEATS (1–7, one row each) and STEPS per beat (1–4: quarters, 8ths,
+  triplets, 16ths). Every pattern has `timeSig.den === 4` and `num` = beats; the engine still understands any
+  meter. Changing STEPS quantizes notes to the new grid (nearest step, ties earlier, collisions keep the loudest),
+  so no note is ever invisible. `toBeatGrid` (patternOps) converts legacy meters (6/8 → 2×3, 12/8 → 4×3, …)
+  with identical timing at the same BPM; storage schema v2 applies it on read.
 - **BPM counts pulses**: the beat in simple meters, the dotted beat group in compound meters
-  (6/8 at 60 BPM = 60 dotted quarters per minute). `secondsPerTick = 60 / (bpm · pulseTicks)`.
+  (legacy 6/8 at 60 BPM = 60 dotted quarters per minute; with den 4 the pulse is just the beat). `secondsPerTick = 60 / (bpm · pulseTicks)`.
 - **Swing** delays odd grid steps by `(swing − 0.5) · 2 · stepTicks`; it is applied at scheduling time and
   never stored in the notes. Triplet grids ignore swing.
 

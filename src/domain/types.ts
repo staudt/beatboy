@@ -72,6 +72,10 @@ export interface Pattern {
   /** Free-form category used for browsing, e.g. "Rock", "Funk", "Fills". */
   category: string;
   kind: PatternKind;
+  /**
+   * Engine-level meter. The product model is "beats × steps": every pattern created by the app has
+   * `den === 4` and `num` = beats per bar. (Legacy meters are converted by `toBeatGrid`.)
+   */
   timeSig: TimeSignature;
   /** Length in bars, 1..8. */
   bars: number;
@@ -94,12 +98,15 @@ export interface Pattern {
 export const DEFAULT_MIX: TrackMix = { gain: 1, muted: false };
 
 export const PATTERN_LIMITS = {
+  /** Beats per bar (the UI "BEATS" stepper). */
+  minBeats: 1,
+  maxBeats: 7,
   minBars: 1,
   maxBars: 8,
   minBpm: 30,
   maxBpm: 300,
   minSwing: 0.5,
   maxSwing: 0.75,
-  /** Allowed grid resolutions (steps per beat). */
-  stepsPerBeat: [1, 2, 3, 4, 6, 8] as readonly number[],
+  /** Allowed grid resolutions (steps per beat): quarters, 8ths, triplets, 16ths. */
+  stepsPerBeat: [1, 2, 3, 4] as readonly number[],
 } as const;

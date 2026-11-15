@@ -26,6 +26,22 @@ describe('factory patterns', () => {
     }
   });
 
+  it('every pattern is on the beats x steps model (den 4, 1..4 steps, <= 7 beats)', () => {
+    for (const p of factoryPatterns()) {
+      expect(p.timeSig.den, p.id).toBe(4);
+      expect(p.timeSig.num, p.id).toBeGreaterThanOrEqual(1);
+      expect(p.timeSig.num, p.id).toBeLessThanOrEqual(7);
+      expect([1, 2, 3, 4], p.id).toContain(p.stepsPerBeat);
+    }
+    expect(factoryPatterns().find((p) => p.id === 'f-seven-eight')).toBeUndefined();
+  });
+
+  it('converted meters: slow blues 4x3, 6/8 ballad 2x3', () => {
+    const g = (id: string) => factoryPatterns().find((p) => p.id === id)!;
+    expect(g('f-slow-blues')).toMatchObject({ timeSig: { num: 4, den: 4 }, stepsPerBeat: 3, bpm: 52 });
+    expect(g('f-six-eight')).toMatchObject({ timeSig: { num: 2, den: 4 }, stepsPerBeat: 3, bpm: 56 });
+  });
+
   it('rock 8ths has kick on 1, 3, &3 and snare on 2, 4', () => {
     const p = factoryPatterns().find((x) => x.id === 'f-rock-8ths')!;
     expect(p.notes.kick!.map((n) => n.tick)).toEqual([0, 960, 1200]);

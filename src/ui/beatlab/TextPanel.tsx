@@ -75,7 +75,7 @@ export function TextPanel() {
   if (!dirty) {
     status = (
       <p class="parse ok" role="status">
-        ✓ {p.bars} bar{p.bars === 1 ? '' : 's'} · {p.timeSig.num}/{p.timeSig.den} · {stepLabel(p.timeSig, p.stepsPerBeat)}
+        ✓ {p.bars} bar{p.bars === 1 ? '' : 's'} · {p.timeSig.num}×{p.stepsPerBeat} · {stepLabel(p.stepsPerBeat)}
       </p>
     );
   } else if (!fresh) {
@@ -87,7 +87,7 @@ export function TextPanel() {
   } else if (fresh.ok) {
     status = (
       <p class="parse ok" role="status">
-        ✓ {fresh.bars} bar{fresh.bars === 1 ? '' : 's'} · {p.timeSig.num}/{p.timeSig.den} · {stepLabel(p.timeSig, p.stepsPerBeat)}
+        ✓ {fresh.bars} bar{fresh.bars === 1 ? '' : 's'} · {p.timeSig.num}×{p.stepsPerBeat} · {stepLabel(p.stepsPerBeat)}
         {fresh.warnings.length > 0 && <span class="parse-warn"> · {fresh.warnings[0]}</span>}
       </p>
     );

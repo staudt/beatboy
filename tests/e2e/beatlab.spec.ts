@@ -48,6 +48,25 @@ async function openSettings(page: Page): Promise<void> {
   }
 }
 
+async function setBeatsSteps(page: Page, beats: number, steps: number): Promise<void> {
+  await openSettings(page);
+  for (const [label, target] of [['Beats', beats], ['Steps', steps]] as const) {
+    const out = page.getByRole('group', { name: label }).locator('output');
+    for (let guard = 0; guard < 8; guard++) {
+      const cur = Number(await out.textContent());
+      if (cur === target) break;
+      await press(page, page.getByRole('button', { name: `${label} ${cur < target ? 'up' : 'down'}` }));
+    }
+    await expect(out).toHaveText(String(target));
+  }
+}
+
+async function newBeat(page: Page): Promise<void> {
+  await press(page, page.getByRole('button', { name: 'Browse patterns' }));
+  await press(page, page.getByRole('button', { name: 'New beat' }));
+  await expect(page.getByRole('dialog', { name: 'Patterns' })).toHaveCount(0);
+}
+
 async function waitSaved(page: Page): Promise<void> {
   await expect(page.locator('.chip-saved')).toHaveText('Saved');
 }
@@ -171,12 +190,12 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await press(page, page.getByRole('button', { name: 'New beat' }));
       await expect(patternName(page)).toHaveText('Beat 1');
       await openSettings(page);
-      await page.getByRole('combobox', { name: 'Grid resolution' }).selectOption({ label: '8ths' });
+      await setBeatsSteps(page, 4, 2);
 
       await openText(page);
       const box = page.getByRole('textbox', { name: 'Beat text' });
       await box.fill('k+x x s+x x k+x k+x s+x x');
-      await expect(page.locator('.parse.ok')).toContainText('✓ 1 bar · 4/4 · 8ths');
+      await expect(page.locator('.parse.ok')).toContainText('✓ 1 bar · 4×2 · 8ths');
       await press(page, page.getByRole('button', { name: 'Apply' }));
       await expect(page.getByRole('button', { name: 'Apply' })).toBeDisabled();
 
@@ -195,6 +214,38 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(page.getByRole('button', { name: 'Apply' })).toBeDisabled();
       await press(page, page.getByRole('button', { name: 'Revert' }));
       await expect(page.locator('.parse.ok')).toBeVisible();
+    });
+
+    test('beats and steps steppers resize the grid but keep squares the same size', async ({ page }) => {
+      await open(page);
+      await newBeat(page);
+      await press(page, pad(page, 'Kick'));
+      const kick = page.locator('[data-cell][data-sound="kick"]');
+      await expect(kick).toHaveCount(16);
+      const w4 = (await cell(page, 'kick', 0).boundingBox())!;
+
+      await setBeatsSteps(page, 4, 2);
+      await expect(kick).toHaveCount(8);
+      const w2 = (await cell(page, 'kick', 0).boundingBox())!;
+      expect(Math.abs(w2.width - w4.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(w2.height - w4.height)).toBeLessThanOrEqual(1);
+      if (isMobile(page)) {
+        await expect(page.locator('.step-row')).toHaveCount(4);
+        expect(Math.abs(w2.width - w2.height)).toBeLessThanOrEqual(1); // square
+        // two squares per row
+        await expect(page.locator('.step-row').first().locator('[data-cell]')).toHaveCount(2);
+      }
+
+      await setBeatsSteps(page, 3, 2);
+      await expect(kick).toHaveCount(6);
+      if (isMobile(page)) await expect(page.locator('.step-row')).toHaveCount(3);
+      const w3 = (await cell(page, 'kick', 0).boundingBox())!;
+      expect(Math.abs(w3.width - w4.width)).toBeLessThanOrEqual(1);
+
+      // Going coarser snaps notes instead of hiding them; nothing is invisible.
+      await setBeatsSteps(page, 3, 1);
+      await expect(kick).toHaveCount(3);
+      await expect(page.getByText('between grid steps')).toHaveCount(0);
     });
 
     test('pattern browser: new, duplicate, rename, delete', async ({ page }) => {
@@ -264,7 +315,7 @@ test('desktop: click-drag paints a row and Space toggles playback', async ({ bro
   await ctx.close();
 });
 
-test('desktop: Space plays/stops even when a button, step, slider or select has focus', async ({ browser }) => {
+test('desktop: Space plays/stops even when a button, step, slider or stepper has focus', async ({ browser }) => {
   const ctx = await browser.newContext(LAYOUTS.desktop);
   const page = await ctx.newPage();
   await page.goto('./');
@@ -281,7 +332,7 @@ test('desktop: Space plays/stops even when a button, step, slider or select has 
     pad(page, 'Snare'),
     page.getByRole('button', { name: 'Tap tempo' }),
     page.getByRole('slider', { name: 'Tempo slider' }),
-    page.getByRole('combobox').first(),
+    page.getByRole('button', { name: 'Steps up' }),
   ]) {
     await target.focus();
     await page.keyboard.press('Space');
@@ -361,6 +412,23 @@ test('screenshots', async ({ browser }) => {
     await expect(page.getByRole('dialog', { name: 'Patterns' })).toBeVisible();
     await page.waitForTimeout(450); // let the sheet animation finish
     await shot('browser');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Patterns' })).toHaveCount(0);
+
+    // Other grid shapes. Squares keep their size; the grid grows and shrinks.
+    const variants: [string, number, number][] = name === 'mobile'
+      ? [['2x3', 2, 3], ['4x2', 4, 2]]
+      : [['7x4', 7, 4]];
+    for (const [label, beats, steps] of variants) {
+      await newBeat(page);
+      await setBeatsSteps(page, beats, steps);
+      await press(page, pad(page, 'Kick'));
+      for (let s = 0; s < beats * steps; s += steps) await press(page, cell(page, 'kick', s));
+      await press(page, pad(page, 'Hi-hat closed'));
+      for (let s = 0; s < beats * steps; s += Math.max(1, steps - 1)) await press(page, cell(page, 'hatClosed', s));
+      await page.waitForTimeout(450);
+      await shot(`lab-${label}`);
+    }
     expect(errors).toEqual([]);
     await ctx.close();
   }

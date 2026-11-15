@@ -8,15 +8,21 @@ import {
   type TrackMix,
 } from '../domain/types';
 import { barTicks } from '../domain/time';
+import { toBeatGrid } from '../domain/patternOps';
 import { PATTERN_SCHEMA_VERSION } from './db';
 
 type Rec = Record<string, unknown>;
 
 /** Migration steps keyed by the schemaVersion they upgrade FROM. */
 const STEPS: Record<number, (r: Rec) => Rec> = {
-  1: (r) => r, // v1 -> v2 placeholder (identity until v2 exists)
+  // v1 -> v2: any meter becomes the beats × steps model (den 4, 1..4 steps per beat).
+  1: (r) => {
+    const legacy = validatePattern(r, 1);
+    return legacy ? (toBeatGrid(legacy) as unknown as Rec) : r;
+  },
 };
 
+const LEGACY_STEPS: readonly number[] = [1, 2, 3, 4, 6, 8];
 const isRec = (v: unknown): v is Rec => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
 const isFiniteNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -41,7 +47,8 @@ function cleanString(v: unknown, fallback: string): string {
   return t || fallback;
 }
 
-export function validatePattern(raw: unknown): Pattern | null {
+/** Validates a record. v1 (legacy) accepts any meter/grid; v2 (current) requires den 4 and 1..4 steps. */
+export function validatePattern(raw: unknown, version: number = PATTERN_SCHEMA_VERSION): Pattern | null {
   if (!isRec(raw)) return null;
   if (typeof raw.id !== 'string' || raw.id === '') return null;
 
@@ -50,9 +57,11 @@ export function validatePattern(raw: unknown): Pattern | null {
   if (!isInt(ts.num) || ts.num < 1 || ts.num > 32) return null;
   if (!isInt(ts.den) || ![2, 4, 8, 16].includes(ts.den)) return null;
   const timeSig = { num: ts.num, den: ts.den as BeatUnit };
+  const legacy = version < 2;
+  if (!legacy && (ts.den !== 4 || ts.num > PATTERN_LIMITS.maxBeats)) return null;
 
   if (!isInt(raw.bars) || raw.bars < PATTERN_LIMITS.minBars || raw.bars > PATTERN_LIMITS.maxBars) return null;
-  if (!isInt(raw.stepsPerBeat) || !PATTERN_LIMITS.stepsPerBeat.includes(raw.stepsPerBeat)) return null;
+  if (!isInt(raw.stepsPerBeat) || !(legacy ? LEGACY_STEPS : PATTERN_LIMITS.stepsPerBeat).includes(raw.stepsPerBeat)) return null;
   if (!isFiniteNum(raw.swing) || !isFiniteNum(raw.bpm)) return null;
   if (!isFiniteNum(raw.createdAt) || !isFiniteNum(raw.updatedAt)) return null;
   if (typeof raw.builtIn !== 'boolean') return null;

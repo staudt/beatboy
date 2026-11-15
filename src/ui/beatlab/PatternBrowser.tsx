@@ -55,7 +55,7 @@ export function PatternBrowser() {
                 >
                   <span class="bi-name">{p.name}</span>
                   <span class="bi-meta">
-                    {p.timeSig.num}/{p.timeSig.den} · {overrides[p.id] ?? p.bpm} BPM · {p.bars} bar{p.bars === 1 ? '' : 's'}
+                    {p.timeSig.num}×{p.stepsPerBeat} · {overrides[p.id] ?? p.bpm} BPM · {p.bars} bar{p.bars === 1 ? '' : 's'}
                     {p.builtIn ? ' · built-in' : ''}
                   </span>
                 </button>

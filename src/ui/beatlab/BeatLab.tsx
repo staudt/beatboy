@@ -55,7 +55,7 @@ function Summary() {
       onClick={() => (settingsOpen.value = !open)}
     >
       <span>
-        {p.timeSig.num}/{p.timeSig.den} · {stepLabel(p.timeSig, p.stepsPerBeat)} · {p.bars} bar{p.bars === 1 ? '' : 's'}
+        {p.timeSig.num} beat{p.timeSig.num === 1 ? '' : 's'} × {p.stepsPerBeat} · {stepLabel(p.stepsPerBeat)} · {p.bars} bar{p.bars === 1 ? '' : 's'}
       </span>
       <IconGear width={18} height={18} />
     </button>

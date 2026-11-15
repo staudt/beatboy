@@ -10,7 +10,7 @@ import {
   type TrackMix,
   type VelocityLevel,
 } from './types';
-import { barTicks, patternSteps, patternTicks, stepTicks } from './time';
+import { barTicks, beatTicks, patternSteps, patternTicks, pulsesPerBar, pulseTicks, stepTicks, TPQ } from './time';
 
 type Notes = Partial<Record<SoundId, NoteEvent[]>>;
 
@@ -121,21 +121,112 @@ export function setBars(p: Pattern, bars: number, now: number = Date.now()): Pat
   return touch(p, { bars: target, notes }, now);
 }
 
-export function setTimeSig(p: Pattern, ts: TimeSignature, now: number = Date.now()): Pattern {
-  const timeSig = { num: ts.num, den: ts.den };
-  const len = patternTicks({ timeSig, bars: p.bars });
-  const notes: Notes = {};
+/**
+ * Re-maps every note when the bar length changes. Notes are stored as absolute ticks over ALL bars, so
+ * each `(bar, tickInBar)` becomes `bar * newBarTicks + round(tickInBar * scale)`; notes that no longer
+ * fit inside their bar are dropped.
+ */
+function remapBars(notes: Notes, oldBar: number, newBar: number, bars: number, scale = 1): Notes {
+  const out: Notes = {};
   for (const id of SOUND_IDS) {
-    const out = (p.notes[id] ?? []).filter((n) => n.tick < len).map((n) => ({ ...n }));
-    if (out.length > 0) notes[id] = out;
+    const list: NoteEvent[] = [];
+    for (const n of notes[id] ?? []) {
+      const bar = Math.floor(n.tick / oldBar);
+      if (bar >= bars) continue;
+      const inBar = Math.round((n.tick - bar * oldBar) * scale);
+      if (inBar >= newBar) continue;
+      list.push({ tick: bar * newBar + inBar, vel: n.vel });
+    }
+    list.sort((a, b) => a.tick - b.tick);
+    if (list.length > 0) out[id] = list;
   }
+  return out;
+}
+
+/** Snap to the nearest multiple of `step`, halves going to the earlier position. */
+function snapDown(tick: number, step: number): number {
+  const q = Math.floor(tick / step);
+  const r = tick - q * step;
+  return (r * 2 > step ? q + 1 : q) * step;
+}
+
+/**
+ * Snaps every note to the grid of `step` ticks. Collisions per sound keep the loudest velocity and
+ * anything landing at/after `end` is dropped.
+ */
+function quantizeNotes(notes: Notes, step: number, end: number): Notes {
+  const out: Notes = {};
+  for (const id of SOUND_IDS) {
+    const byTick = new Map<number, number>();
+    for (const n of notes[id] ?? []) {
+      const t = snapDown(n.tick, step);
+      if (t >= end) continue;
+      byTick.set(t, Math.max(byTick.get(t) ?? 0, n.vel));
+    }
+    if (byTick.size > 0) {
+      out[id] = [...byTick.entries()].sort((a, b) => a[0] - b[0]).map(([tick, vel]) => ({ tick, vel }));
+    }
+  }
+  return out;
+}
+
+/** Beats per bar (1..7). Always sets a x/4 meter; shrinking drops notes beyond each bar's new end. */
+export function setBeats(p: Pattern, beats: number, now: number = Date.now()): Pattern {
+  const n = clamp(Math.round(beats), PATTERN_LIMITS.minBeats, PATTERN_LIMITS.maxBeats);
+  const timeSig: TimeSignature = { num: n, den: 4 };
+  const notes = remapBars(p.notes, barTicks(p.timeSig), barTicks(timeSig), p.bars);
   return touch(p, { timeSig, notes }, now);
 }
 
-/** Non-destructive. Values outside PATTERN_LIMITS.stepsPerBeat leave the pattern unchanged. */
+/** Changes the meter, re-mapping notes per bar. Not used by the UI any more (see setBeats). */
+export function setTimeSig(p: Pattern, ts: TimeSignature, now: number = Date.now()): Pattern {
+  const timeSig = { num: ts.num, den: ts.den };
+  const notes = remapBars(p.notes, barTicks(p.timeSig), barTicks(timeSig), p.bars);
+  return touch(p, { timeSig, notes }, now);
+}
+
+/**
+ * Steps per beat, 1..4 (quarters, 8ths, triplets, 16ths). Notes are quantized to the new grid so
+ * none are ever invisible: nearest step (ties go earlier), collisions keep the loudest velocity.
+ */
 export function setStepsPerBeat(p: Pattern, n: number, now: number = Date.now()): Pattern {
   if (!PATTERN_LIMITS.stepsPerBeat.includes(n)) return p;
-  return touch(p, { stepsPerBeat: n }, now);
+  const notes = quantizeNotes(p.notes, stepTicks(p.timeSig, n), patternTicks(p));
+  return touch(p, { stepsPerBeat: n, notes }, now);
+}
+
+function isBeatGrid(p: Pattern): boolean {
+  return (
+    p.timeSig.den === 4 &&
+    p.timeSig.num >= PATTERN_LIMITS.minBeats &&
+    p.timeSig.num <= PATTERN_LIMITS.maxBeats &&
+    PATTERN_LIMITS.stepsPerBeat.includes(p.stepsPerBeat)
+  );
+}
+
+function allowedSteps(n: number): number {
+  if (PATTERN_LIMITS.stepsPerBeat.includes(n)) return n;
+  if (n > 4) return n % 4 === 0 ? 4 : n % 3 === 0 ? 3 : 4;
+  return 1;
+}
+
+/**
+ * Normalizes any (legacy) pattern to the beats × steps model: `timeSig = {num: beats, den: 4}`,
+ * `stepsPerBeat` in 1..4. The pulse (beat in simple meters, dotted beat in 6/8, 9/8, 12/8) becomes
+ * the new beat, so the same BPM number sounds identical. Ticks are scaled by `TPQ / pulseTicks` per
+ * bar; if the pulse needs a grid that is not 1..4 steps, the nearest allowed grid is used and notes
+ * are quantized. Returns the same object when nothing needs to change.
+ */
+export function toBeatGrid(p: Pattern): Pattern {
+  if (isBeatGrid(p)) return p;
+  const ts = p.timeSig;
+  const pulse = pulseTicks(ts);
+  const beats = clamp(Math.round(pulsesPerBar(ts)), PATTERN_LIMITS.minBeats, PATTERN_LIMITS.maxBeats);
+  const stepsPerBeat = allowedSteps(Math.round((p.stepsPerBeat * pulse) / beatTicks(ts)));
+  const timeSig: TimeSignature = { num: beats, den: 4 };
+  const scaled = remapBars(p.notes, barTicks(ts), barTicks(timeSig), p.bars, TPQ / pulse);
+  const notes = quantizeNotes(scaled, TPQ / stepsPerBeat, barTicks(timeSig) * p.bars);
+  return { ...p, timeSig, stepsPerBeat, notes, mix: cloneMix(p.mix) };
 }
 
 /** Number of notes that do not sit exactly on the current step grid. */

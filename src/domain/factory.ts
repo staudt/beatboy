@@ -42,7 +42,7 @@ const SPECS: FactorySpec[] = [
   // ── Blues, country, swing ─────────────────────────────────
   { id: 'f-shuffle', name: 'Blues Shuffle', category: 'Blues', stepsPerBeat: 2, swing: 0.67, bpm: 96,
     text: 'k+x x  s+x x  k+x x  s+x x |' },
-  { id: 'f-slow-blues', name: 'Slow Blues 12/8', category: 'Blues', timeSig: { num: 12, den: 8 }, stepsPerBeat: 1, bpm: 52,
+  { id: 'f-slow-blues', name: 'Slow Blues 12/8', category: 'Blues', timeSig: { num: 4, den: 4 }, stepsPerBeat: 3, bpm: 52,
     text: 'k+x x x  s+x x x  k+x x k+x  s+x x x |' },
   { id: 'f-train', name: 'Country Train', category: 'Blues', stepsPerBeat: 4, bpm: 110,
     text: 'k+(s) (s) S (s)  k+(s) (s) S (s)  k+(s) (s) S (s)  k+(s) (s) S (s) |' },
@@ -60,12 +60,10 @@ const SPECS: FactorySpec[] = [
   // ── Other meters ──────────────────────────────────────────
   { id: 'f-waltz', name: 'Waltz 3/4', category: 'Odd', timeSig: { num: 3, den: 4 }, stepsPerBeat: 2, bpm: 100,
     text: 'k+x x  s+x x  s+x x |' },
-  { id: 'f-six-eight', name: '6/8 Ballad', category: 'Odd', timeSig: { num: 6, den: 8 }, stepsPerBeat: 1, bpm: 56,
+  { id: 'f-six-eight', name: '6/8 Ballad', category: 'Odd', timeSig: { num: 2, den: 4 }, stepsPerBeat: 3, bpm: 56,
     text: 'k+x x x  s+x x x |' },
   { id: 'f-five-four', name: 'Five 5/4', category: 'Odd', timeSig: { num: 5, den: 4 }, stepsPerBeat: 2, bpm: 120,
     text: 'k+x x  s+x x  k+x x  k+x x  s+x x |' },
-  { id: 'f-seven-eight', name: 'Seven 7/8', category: 'Odd', timeSig: { num: 7, den: 8 }, stepsPerBeat: 1, bpm: 220,
-    text: 'k+x x  s+x x  k+x k+x s+x |' },
   { id: 'f-metal', name: 'Double Kick', category: 'Metal', stepsPerBeat: 4, bpm: 140,
     text: 'k+x k k k  k+s+x k k k  k+x k k k  k+s+x k k k |' },
   // ── Fills (1 bar) ─────────────────────────────────────────

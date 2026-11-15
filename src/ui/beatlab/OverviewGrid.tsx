@@ -12,9 +12,8 @@ function PlayheadOverlay() {
     const perBar = stepsInBar.value;
     return Math.floor(s / perBar) === visibleBar.value ? s % perBar : -1;
   });
-  const n = stepsInBar.value;
   if (col.value < 0) return null;
-  return <div class="ov-playhead" style={{ left: `${(col.value / n) * 100}%`, width: `${100 / n}%` }} />;
+  return <div class="ov-playhead" style={{ '--col': col.value }} />;
 }
 
 /** Compact all-track mini grid of the visible bar. Tap a row to select that sound. */
@@ -27,6 +26,7 @@ export function OverviewGrid() {
   return (
     <section class="overview" aria-label="Overview of all tracks">
       <h3 class="label">overview</h3>
+      <div class="ov-scroll">
       <div class="ov-grid">
         {rows.map((s) => (
           <button
@@ -38,7 +38,7 @@ export function OverviewGrid() {
             onClick={() => (selectedSound.value = s)}
           >
             <span class="ov-name">{SOUNDS[s].short}</span>
-            <span class="ov-cells" style={{ '--n': perBar }}>
+            <span class="ov-cells">
               {Array.from({ length: perBar }, (_, i) => (
                 <i
                   key={i}
@@ -51,6 +51,7 @@ export function OverviewGrid() {
         <div class="ov-overlay" aria-hidden="true">
           <PlayheadOverlay />
         </div>
+      </div>
       </div>
     </section>
   );
