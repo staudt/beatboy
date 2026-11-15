@@ -102,3 +102,23 @@ export function sameInfo(a: InfoLike | null, b: InfoLike | null): boolean {
     a.queued?.sectionIndex === b.queued?.sectionIndex
   );
 }
+
+// ── row gestures ─────────────────────────────────────────────────
+export const TAP_SLOP = 8; // px a finger or mouse may wander and still be a tap
+export const TAP_MAX_MS = 500;
+export const DOUBLE_TAP_MS = 300;
+export const DOUBLE_TAP_SLOP = 30;
+export const LONG_PRESS_MS = 500;
+export interface TapPoint {
+  x: number;
+  y: number;
+  t: number;
+}
+/** A real tap: released within the slop of where it went down, and quickly (otherwise it was a drag, scroll or hold). */
+export function isTap(down: TapPoint, up: TapPoint): boolean {
+  return Math.hypot(up.x - down.x, up.y - down.y) <= TAP_SLOP && up.t - down.t < TAP_MAX_MS;
+}
+/** Two taps close in time and place. */
+export function isDoubleTap(prev: TapPoint | null, cur: TapPoint): boolean {
+  return !!prev && cur.t - prev.t <= DOUBLE_TAP_MS && cur.t >= prev.t && Math.hypot(cur.x - prev.x, cur.y - prev.y) <= DOUBLE_TAP_SLOP;
+}

@@ -197,13 +197,13 @@ export function setDefaultFill(id: string): void {
   editSong((s) => setSongFill(s, id));
 }
 
-/** Tap on a section card: jump while playing (applied at the next bar line), else choose the start section. */
+/** Tap on a section row or its go button: jump while playing (applied at the next bar line), else choose the start section. */
 export function tapSection(id: string): void {
   const song = currentSong.peek();
   const i = song?.sections.findIndex((s) => s.id === id) ?? -1;
   if (i < 0) return;
   if (engine.mode === 'song') engine.songAct({ type: 'jump', sectionIndex: i });
-  else selectedSectionId.value = selectedSectionId.peek() === id ? null : id;
+  else selectedSectionId.value = id;
 }
 
 /** Keyboard number keys: playing = queued jump to section i; stopped = make it the start section. */

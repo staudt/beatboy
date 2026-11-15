@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import {
   BAR,
   LAYOUTS,
@@ -41,6 +41,16 @@ import {
 } from './fixtures';
 
 const labels = (page: Page) => cards(page).locator('.sc-label').allTextContents();
+async function openRename(page: Page, card: Locator) {
+  const l = card.locator('.sc-label');
+  if (isMobile(page)) {
+    const c = await center(page, l);
+    await touchAt(page, c, 20);
+    await page.waitForTimeout(80);
+    await touchAt(page, c, 20);
+  } else await l.dblclick();
+  await expect(card.getByRole('textbox', { name: 'Section name' })).toBeFocused();
+}
 const toast = (page: Page) => page.locator('.toast');
 
 /** Touch drag through CDP (Playwright has no touch-move API). */
@@ -57,6 +67,17 @@ async function touchDrag(page: Page, from: { x: number; y: number }, to: { x: nu
   if (opts.release !== false) await send('touchEnd');
   return { release: () => send('touchEnd') };
 }
+
+/** Raw touch events through CDP: tap, optionally held; returns after the finger is lifted. */
+async function touchAt(page: Page, p: { x: number; y: number }, holdMs = 30) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [p] });
+  await page.waitForTimeout(holdMs);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+}
+type Pt = { x: number; y: number };
+const queuedInfo = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __beatboy: { engine: { songInfo(): { queued: unknown } | null } } }).__beatboy.engine.songInfo()?.queued ?? null);
 
 async function center(page: Page, sel: ReturnType<Page['locator']>) {
   const b = (await sel.boundingBox())!;
@@ -91,7 +112,7 @@ test('first run: same-origin only, Practice song selected, one tap plays', async
   await expect(stopBtn(page)).toBeVisible();
   await expect.poll(async () => at(await log(page), 0, 'kick'), { timeout: 5000 }).toBeTruthy();
   const es = await log(page);
-  expect(es.filter((e) => e.sound.startsWith('click') && e.tick < 0).map((e) => Math.round(e.tick))).toEqual([-1920, -1440, -960, -480]);
+  expect(es.filter((e) => e.sound.startsWith('click') && Math.round(e.tick) < 0).map((e) => Math.round(e.tick))).toEqual([-1920, -1440, -960, -480]);
   await expect(nowName(page)).toHaveText('Groove');
   // it loops: still the same section after its 4 bars have passed
   await expect(page.getByTestId('loop-badge')).toBeVisible();
@@ -119,7 +140,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(page.getByTestId('countdown')).toBeVisible();
       await expect.poll(async () => at(await log(page), 0, 'kick'), { timeout: 4000 }).toBeTruthy();
       const es = await log(page);
-      const clicks = es.filter((e) => e.sound.startsWith('click') && e.tick < 0);
+      const clicks = es.filter((e) => e.sound.startsWith('click') && Math.round(e.tick) < 0);
       expect(clicks.map((e) => Math.round(e.tick))).toEqual([-1920, -1440, -960, -480]);
       expect(clicks[0]!.sound).toBe('clickAccent');
       expect(at(es, 0, 'ride')).toBeTruthy(); // Ride Rock
@@ -240,14 +261,14 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await open(page);
       await makeShortSong(page);
       // stopped: choose the start section
-      await press(page, cards(page).nth(1).locator('.sc-num'));
+      await press(page, cards(page).nth(1).locator('.sc-go'));
       await expect(cards(page).nth(1)).toHaveClass(/is-selected/);
       await expect(nowName(page)).toHaveText('Verse');
-      await press(page, cards(page).nth(0).locator('.sc-num'));
+      await press(page, cards(page).nth(0).locator('.sc-go'));
       await clearLog(page);
       await press(page, play(page));
       await expect(stopBtn(page)).toBeVisible();
-      await press(page, cards(page).nth(2).locator('.sc-num'));
+      await press(page, cards(page).nth(2).locator('.sc-go'));
       await expect(queued(page)).toContainText(/Jump → CHORUS/i);
       await expect(nowName(page)).toHaveText('Chorus', { timeout: 3000 });
       const es = await log(page);
@@ -256,6 +277,159 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       expect(hat).toBeTruthy();
       expect(Math.abs(hat.time - t0 - 1.2)).toBeLessThan(0.005);
       expect(es.filter((e) => e.sound === 'ride' && e.tick >= BAR)).toEqual([]);
+    });
+
+    /** A click on bare row padding (a mouse pointer: touch gets snapped to the nearest button by the browser). */
+    const tapPos = async (page: Page, loc: Locator, pos: Pt) => {
+      await loc.scrollIntoViewIfNeeded();
+      const b = (await loc.boundingBox())!;
+      await page.mouse.click(b.x + pos.x, b.y + pos.y);
+    };
+
+    test('19. the whole row is the jump target: label and background land on the next bar line', async ({ page }) => {
+      await open(page);
+      await makeShortSong(page);
+      await setBpm(page, 100); // slower: a bar is 2.4 s, so the queued state lasts long enough to observe
+      for (const how of ['label', 'padding'] as const) {
+        await clearLog(page);
+        await press(page, play(page));
+        await expect(stopBtn(page)).toBeVisible();
+        await expect(nowName(page)).toHaveText('Intro');
+        if (how === 'label') await press(page, cards(page).nth(2).locator('.sc-label'));
+        else {
+          const b = (await cards(page).nth(2).boundingBox())!;
+          await tapPos(page, cards(page).nth(2), { x: 3, y: b.height / 2 });
+        }
+        await expect(queued(page)).toContainText(/Jump → CHORUS/i);
+        await expect(cards(page).nth(2).getByTestId('section-go')).toHaveAttribute('data-state', 'queued');
+        await expect(nowName(page)).toHaveText('Chorus', { timeout: 5000 });
+        await expect(cards(page).nth(2).getByTestId('section-go')).toHaveAttribute('data-state', 'playing');
+        const es = await log(page);
+        const t0 = at(es, 0, 'kick')!.time;
+        const hat = es.find((e) => e.sound === 'hatClosed' && Math.round(e.tick) % 240 === 120)!; // Rock 16ths
+        const start = Math.round(hat.tick) - 120;
+        expect(start % BAR).toBe(0);
+        expect(start).toBeGreaterThanOrEqual(BAR);
+        expect(Math.abs(hat.time - (t0 + ((start + 120) / 480) * 0.6))).toBeLessThan(0.005);
+        await press(page, stopBtn(page));
+        await expect(play(page)).toBeVisible();
+      }
+    });
+
+    test('20. controls in the row never jump', async ({ page }) => {
+      await open(page);
+      await makeShortSong(page);
+      await press(page, play(page));
+      await expect(stopBtn(page)).toBeVisible();
+      const row = cards(page).nth(2);
+      const none = async (what: string) => {
+        await page.waitForTimeout(60);
+        await expect(queued(page), what).toHaveCount(0);
+        expect(await queuedInfo(page), what).toBeNull();
+      };
+      await press(page, row.getByRole('button', { name: /^Section groove:/ }));
+      await none('picker open');
+      await press(page, page.getByRole('dialog', { name: 'Section groove' }).getByRole('option', { name: /^Punk/ }));
+      await expect(row.getByRole('button', { name: /^Section groove:/ })).toContainText('Punk');
+      await none('picker option');
+      await press(page, row.getByRole('button', { name: 'Plays more' }));
+      await none('stepper +');
+      await press(page, row.getByRole('button', { name: 'Plays fewer' }));
+      await none('stepper -');
+      await press(page, row.getByRole('textbox', { name: /Plays \d+ times?/ }));
+      await none('stepper value');
+      await press(page, row.getByRole('button', { name: 'Fill into next section' }));
+      await none('F');
+      await press(page, row.getByRole('button', { name: 'Loop this section' }));
+      await none('loop');
+      await press(page, row.locator('.sc-handle'));
+      await none('handle tap');
+      await dragHandle(page, 2, 1);
+      await none('handle drag');
+      await page.waitForTimeout(300); // row settle transition
+      await press(page, cards(page).nth(1).getByRole('button', { name: 'Duplicate section' }));
+      await expect(cards(page)).toHaveCount(4);
+      await none('copy');
+      await press(page, cards(page).nth(1).getByRole('button', { name: 'Delete section' }));
+      await expect(cards(page)).toHaveCount(3);
+      await none('delete');
+      await press(page, stopBtn(page));
+    });
+
+    test('21. rename is deliberate: double-tap / double-click, long-press (touch), F2; a single tap only jumps', async ({ page }) => {
+      await open(page);
+      await makeShortSong(page);
+      const row = cards(page).nth(1);
+      const field = row.getByRole('textbox', { name: 'Section name' });
+      const label = row.locator('.sc-label');
+      await press(page, label); // single tap
+      await page.waitForTimeout(450);
+      await expect(field).toHaveCount(0);
+      await expect(row).toHaveClass(/is-selected/);
+      await openRename(page, row);
+      await field.fill('Couplet');
+      await field.press('Enter');
+      await expect(label).toHaveText('Couplet');
+      await expect(field).toHaveCount(0);
+      if (isMobile(page)) {
+        const c = await center(page, cards(page).nth(2).locator('.sc-label'));
+        await touchAt(page, c, 700); // long press
+        await expect(cards(page).nth(2).getByRole('textbox', { name: 'Section name' })).toBeFocused();
+        await page.waitForTimeout(400);
+        await expect(cards(page).nth(2).getByRole('textbox', { name: 'Section name' })).toBeFocused();
+        await page.keyboard.press('Escape');
+        await expect(cards(page).nth(2).locator('.sc-label')).toHaveText('Chorus');
+      } else {
+        await cards(page).nth(2).getByTestId('section-go').focus();
+        await page.keyboard.press('F2');
+        await expect(cards(page).nth(2).getByRole('textbox', { name: 'Section name' })).toBeFocused();
+        await page.keyboard.press('Escape');
+        await expect(cards(page).nth(2).locator('.sc-label')).toHaveText('Chorus');
+      }
+    });
+
+    test('22. go badge: aria-label, Enter jumps, states follow playing and queued', async ({ page }) => {
+      await open(page);
+      await makeShortSong(page);
+      await setBpm(page, 100);
+      const go = (i: number) => cards(page).nth(i).getByTestId('section-go');
+      await expect(go(1)).toHaveAttribute('aria-label', 'Start from Verse');
+      await expect(go(1)).toHaveAttribute('data-state', 'idle');
+      await press(page, go(1));
+      await expect(go(1)).toHaveAttribute('data-state', 'selected');
+      await press(page, go(0));
+      await expect(go(0)).toHaveAttribute('data-state', 'selected');
+      await expect(go(1)).toHaveAttribute('data-state', 'idle');
+      await press(page, play(page));
+      await expect(stopBtn(page)).toBeVisible();
+      await expect(go(0)).toHaveAttribute('data-state', 'playing');
+      await expect(go(2)).toHaveAttribute('aria-label', 'Go to Chorus (key 3)');
+      await go(2).focus();
+      await page.keyboard.press('Enter');
+      await expect(queued(page)).toContainText(/Jump → CHORUS/i);
+      await expect(go(2)).toHaveAttribute('data-state', 'queued');
+      await expect(go(2)).toHaveAttribute('data-state', 'playing', { timeout: 5000 });
+      await expect(go(0)).toHaveAttribute('data-state', 'idle');
+      if (!isMobile(page)) {
+        await page.keyboard.press('Space'); // still the global play/stop
+        await expect(play(page)).toBeVisible();
+        expect(await mode(page)).toBe('idle');
+      } else await press(page, stopBtn(page));
+    });
+
+    test('23. stopped: tapping a row picks the start section and Play starts there', async ({ page }) => {
+      await open(page);
+      await makeShortSong(page);
+      await press(page, cards(page).nth(2).locator('.sc-label'));
+      await expect(cards(page).nth(2)).toHaveClass(/is-selected/);
+      await expect(nowName(page)).toHaveText('Chorus');
+      await clearLog(page);
+      await press(page, play(page));
+      await expect(stopBtn(page)).toBeVisible();
+      await expect(nowName(page)).toHaveText('Chorus');
+      await expect.poll(async () => at(await log(page), 0, 'kick'), { timeout: 4000 }).toBeTruthy();
+      await expect(cards(page).nth(2)).toHaveAttribute('aria-current', 'true');
+      await press(page, stopBtn(page));
     });
 
     test('8. the shared tempo follows the song and writes back to it', async ({ page }) => {
@@ -332,13 +506,13 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
     test('11. rows are inline-editable: rename, bars, copy below, delete + Undo', async ({ page }) => {
       await open(page);
       await pickSong(page, /^Demo song/);
-      // rename by tapping the label
-      await press(page, cards(page).nth(0).getByRole('button', { name: /^Rename/ }));
+      // rename by double-clicking (F2 on desktop) the label
+      await openRename(page, cards(page).nth(0));
       const input = cards(page).nth(0).getByRole('textbox', { name: 'Section name' });
       await input.fill('Count off');
       await input.press('Enter');
       await expect(cards(page).nth(0).locator('.sc-label')).toHaveText('Count off');
-      await press(page, cards(page).nth(0).getByRole('button', { name: /^Rename/ }));
+      await openRename(page, cards(page).nth(0));
       await cards(page).nth(0).getByRole('textbox', { name: 'Section name' }).fill('zzz');
       await page.keyboard.press('Escape');
       await expect(cards(page).nth(0).locator('.sc-label')).toHaveText('Count off');
@@ -553,7 +727,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await pickSong(page, /^Demo song/);
       const before = await labels(page);
       const scroll0 = await page.evaluate(() => document.querySelector('.view')!.scrollTop);
-      const a = await center(page, cards(page).nth(3).locator('.sc-num'));
+      const a = await center(page, cards(page).nth(3).locator('.sc-go'));
       await touchDrag(page, a, { x: a.x, y: a.y - 220 });
       await page.waitForTimeout(400);
       expect(await page.evaluate(() => document.querySelector('.view')!.scrollTop)).toBeGreaterThan(scroll0 + 50);

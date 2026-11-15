@@ -123,7 +123,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await pickGroove(page, cards(page).nth(1), 'Punk');
       await press(page, play(page));
       await expect(stopBtn(page)).toBeVisible();
-      await press(page, cards(page).nth(1).locator('.sc-l1 .sc-num'));
+      await press(page, cards(page).nth(1).locator('.sc-l1 .sc-go'));
       await expect(page.getByTestId('now-name')).toHaveText('Chorus', { timeout: 6000 });
       await goEditor(page);
       await expect(patternName(page)).toHaveText('Punk');

@@ -2083,23 +2083,51 @@ button.chip {
   -webkit-user-select: none;
 }
 
-.sc-num {
+.sc-go {
   flex: none;
-  width: 22px;
-  height: 22px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   display: grid;
   place-items: center;
   border-radius: 50%;
+  border: 2px solid var(--line);
   background: #1f1d1b;
   color: var(--text-dim);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 800;
+  cursor: pointer;
 }
 
-.sc.is-current .sc-num {
-  background: var(--kc);
+.sc-go[data-state='selected'] {
+  border-color: var(--play);
+  color: var(--play);
+}
+
+.sc-go[data-state='playing'] {
+  background: var(--play);
+  border-color: var(--play);
   color: #1b1a19;
+}
+
+.sc-go[data-state='queued'] {
+  border-color: var(--next);
+  color: #ff7db0;
+  box-shadow: 0 0 0 3px rgb(232 69 139 / 0.45);
+  animation: sc-pulse 900ms ease-in-out infinite;
+}
+
+@keyframes sc-pulse {
+  50% {
+    box-shadow: 0 0 0 7px rgb(232 69 139 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-go[data-state='queued'] {
+    animation: none;
+  }
 }
 
 .sc-label,
@@ -2117,6 +2145,10 @@ button.chip {
 }
 
 .sc-label {
+  line-height: var(--tap);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   border: 0;
   background: none;
   color: var(--text);

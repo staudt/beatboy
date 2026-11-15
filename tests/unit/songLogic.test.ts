@@ -85,3 +85,19 @@ describe('sectionIndexForKey', () => {
     expect(sectionIndexForKey({ code: 'KeyA', key: 'a' }, 5)).toBeNull();
   });
 });
+
+import { isDoubleTap, isTap } from '../../src/ui/state/songLogic';
+describe('row gestures', () => {
+  it('a tap stays put and is quick', () => {
+    expect(isTap({ x: 10, y: 10, t: 0 }, { x: 14, y: 13, t: 120 })).toBe(true);
+    expect(isTap({ x: 10, y: 10, t: 0 }, { x: 30, y: 10, t: 100 })).toBe(false); // drag
+    expect(isTap({ x: 10, y: 10, t: 0 }, { x: 10, y: 10, t: 600 })).toBe(false); // hold
+    expect(isTap({ x: 0, y: 0, t: 0 }, { x: 0, y: 9, t: 50 })).toBe(false); // scroll nudge
+  });
+  it('a double tap is two taps close in time and place', () => {
+    expect(isDoubleTap(null, { x: 0, y: 0, t: 100 })).toBe(false);
+    expect(isDoubleTap({ x: 0, y: 0, t: 0 }, { x: 5, y: 5, t: 250 })).toBe(true);
+    expect(isDoubleTap({ x: 0, y: 0, t: 0 }, { x: 5, y: 5, t: 400 })).toBe(false);
+    expect(isDoubleTap({ x: 0, y: 0, t: 0 }, { x: 80, y: 0, t: 200 })).toBe(false);
+  });
+});

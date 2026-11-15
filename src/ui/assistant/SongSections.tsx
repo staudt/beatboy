@@ -6,6 +6,7 @@ import type { Pattern } from '../../domain/types';
 import { IconCopy, IconLoop, IconMinus, IconPlus, IconTrash } from '../common/icons';
 import { PatternPicker } from '../common/PatternPicker';
 import { fills, grooves } from '../state/drummer';
+import { isDoubleTap, isTap, LONG_PRESS_MS, TAP_SLOP, type TapPoint } from '../state/songLogic';
 import { library } from '../state/lab';
 import {
   addSectionOfKind,
@@ -18,6 +19,8 @@ import {
   playingSectionIndex,
   selectedSectionId,
   setDefaultFill,
+  songInfo,
+  songPlaying,
   tapSection,
 } from '../state/songs';
 
@@ -56,26 +59,33 @@ function BarsEditor({ section, beats }: { section: Section; beats: number }) {
   );
 }
 
-/** The section name: a button that turns into a text field (Enter / blur commits, Escape cancels). */
-function SectionLabel({ section }: { section: Section }) {
-  const [editing, setEditing] = useState(false);
+/** The section name: plain text (a tap on it jumps like the rest of the row) that becomes a text field on rename (Enter / blur commits, Escape cancels). */
+function SectionLabel({ section, editing, onDone }: { section: Section; editing: boolean; onDone: () => void }) {
   const cancelled = useRef(false);
+  const openedAt = useRef(0);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (editing) {
+      cancelled.current = false;
+      openedAt.current = Date.now();
       input.current?.focus();
       input.current?.select();
     }
   }, [editing]);
   if (!editing) {
     return (
-      <button type="button" class="sc-label" aria-label={`Rename ${section.name}`} title="Tap to rename" onClick={() => (cancelled.current = false, setEditing(true))}>
+      <span class="sc-label" data-row-label title="Double-click or press F2 to rename">
         {section.name}
-      </button>
+      </span>
     );
   }
   const commit = () => {
-    setEditing(false);
+    // a touch that opened the field is followed by emulated mouse events that steal focus: take it back
+    if (!cancelled.current && Date.now() - openedAt.current < 250) {
+      input.current?.focus();
+      return;
+    }
+    onDone();
     if (!cancelled.current && input.current && input.current.value.trim() !== section.name) patchSection(section.id, { name: input.current.value });
   };
   return (
@@ -89,8 +99,10 @@ function SectionLabel({ section }: { section: Section }) {
       autoComplete="off"
       onBlur={commit}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
-        else if (e.key === 'Escape') {
+        if (e.key === 'Enter') {
+          openedAt.current = 0;
+          e.currentTarget.blur();
+        } else if (e.key === 'Escape') {
           e.stopPropagation();
           cancelled.current = true;
           e.currentTarget.blur();
@@ -100,19 +112,43 @@ function SectionLabel({ section }: { section: Section }) {
   );
 }
 
+const CONTROL = '[data-row-control], button, input, select, textarea, a, label, .pp, .pp-panel, [role=listbox], [role=option], [role=dialog]';
+/** Did this event come from an interactive control (not the row itself)? composedPath: a picker option removes itself on select, so the target may already be detached. */
+const fromControl = (e: Event, row: Element): boolean => e.composedPath().some((n) => n instanceof HTMLElement && n !== row && n.matches(CONTROL));
+const onLabelPath = (e: Event): boolean => e.composedPath().some((n) => n instanceof HTMLElement && n.hasAttribute('data-row-label'));
+
+interface Press extends TapPoint {
+  onLabel: boolean;
+  ok: boolean;
+  consumed: boolean;
+  timer: ReturnType<typeof setTimeout> | undefined;
+}
+
 interface RowProps {
   section: Section;
   index: number;
   count: number;
   current: boolean;
   selected: boolean;
+  queued: boolean;
   shift: number;
   dragging: boolean;
   onHandleDown: (e: PointerEvent, id: string, index: number) => void;
 }
 
-function SectionRow({ section, index, count, current, selected, shift, dragging, onHandleDown }: RowProps) {
+function SectionRow({ section, index, count, current, selected, queued, shift, dragging, onHandleDown }: RowProps) {
   const groove = library.value.find((p) => p.id === section.patternId);
+  const [editing, setEditing] = useState(false);
+  const press = useRef<Press | null>(null);
+  const lastTap = useRef<(TapPoint & { onLabel: boolean }) | null>(null);
+  const playing = songPlaying.value;
+  const key = index < 10 ? String((index + 1) % 10) : null;
+  const state = current ? 'playing' : queued ? 'queued' : selected ? 'selected' : 'idle';
+  const goLabel = playing ? `Go to ${section.name}${key ? ` (key ${key})` : ''}` : `Start from ${section.name}`;
+  const clearPress = () => {
+    clearTimeout(press.current?.timer);
+    press.current = null;
+  };
   const label = `${index + 1}. ${section.name}, ${groove?.name ?? 'missing groove'}, plays ${section.bars} time${section.bars === 1 ? '' : 's'}`;
   return (
     <li
@@ -124,10 +160,49 @@ function SectionRow({ section, index, count, current, selected, shift, dragging,
       aria-current={current ? 'true' : undefined}
       aria-label={label}
       style={shift ? { transform: `translateY(${shift}px)` } : undefined}
-      onClick={(e) => {
-        // composedPath: a picker option removes itself on select, so the target may already be detached.
-        if (e.composedPath().some((n) => n instanceof HTMLElement && n !== e.currentTarget && n.matches('button, input, .pp, label'))) return;
+      onPointerDown={(e) => {
+        clearPress();
+        if ((e.pointerType === 'mouse' && e.button !== 0) || fromControl(e, e.currentTarget)) return;
+        const onLabel = onLabelPath(e);
+        const p: Press = { x: e.clientX, y: e.clientY, t: e.timeStamp, onLabel, ok: true, consumed: false, timer: undefined };
+        if (onLabel && e.pointerType !== 'mouse') {
+          p.timer = setTimeout(() => {
+            if (press.current === p && p.ok) {
+              p.consumed = true;
+              setEditing(true);
+            }
+          }, LONG_PRESS_MS);
+        }
+        press.current = p;
+      }}
+      onPointerMove={(e) => {
+        const p = press.current;
+        if (p && p.ok && !isTap(p, { x: e.clientX, y: e.clientY, t: p.t })) {
+          p.ok = false;
+          clearTimeout(p.timer);
+        }
+      }}
+      onPointerCancel={clearPress}
+      onPointerUp={(e) => {
+        const p = press.current;
+        clearPress();
+        if (!p || !p.ok || p.consumed || fromControl(e, e.currentTarget)) return;
+        const up = { x: e.clientX, y: e.clientY, t: e.timeStamp };
+        if (!isTap(p, up)) return;
+        const prev = lastTap.current;
+        if (p.onLabel && prev?.onLabel && isDoubleTap(prev, up)) {
+          lastTap.current = null;
+          setEditing(true);
+          return;
+        }
+        lastTap.current = { ...up, onLabel: p.onLabel };
         tapSection(section.id);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'F2' && !(e.target instanceof HTMLInputElement)) {
+          e.preventDefault();
+          setEditing(true);
+        }
       }}
     >
       <div class="sc-l1">
@@ -149,10 +224,18 @@ function SectionRow({ section, index, count, current, selected, shift, dragging,
         >
           <span aria-hidden="true">⋮⋮</span>
         </button>
-        <span class="sc-num" aria-hidden="true">
+        <button
+          type="button"
+          class="sc-go"
+          data-testid="section-go"
+          data-state={state}
+          aria-label={goLabel}
+          title={goLabel}
+          onClick={() => tapSection(section.id)}
+        >
           {index + 1}
-        </span>
-        <SectionLabel section={section} />
+        </button>
+        <SectionLabel section={section} editing={editing} onDone={() => setEditing(false)} />
         <button
           type="button"
           class="btn sc-ic sc-fill"
@@ -222,6 +305,7 @@ export function SectionList() {
   const song = currentSong.value;
   const cur = playingSectionIndex.value;
   const sel = selectedSectionId.value;
+  const queuedIdx = songPlaying.value ? (songInfo.value?.queued?.sectionIndex ?? null) : null;
   const [drag, setDrag] = useState<DragState | null>(null);
   const run = useRef<DragRun | null>(null);
   const list = useRef<HTMLOListElement>(null);
@@ -341,6 +425,7 @@ export function SectionList() {
               count={song.sections.length}
               current={cur === i}
               selected={cur === null && sel === s.id}
+              queued={queuedIdx === i}
               shift={drag && drag.id === s.id ? drag.dy : shiftOf(i)}
               dragging={drag?.id === s.id}
               onHandleDown={onHandleDown}
