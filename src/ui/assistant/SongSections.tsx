@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { SECTION_KINDS, SECTION_LABELS, SONG_LIMITS, type Section } from '../../domain/song';
 import { formatBeatText, stepsCaption } from '../../domain/notation';
 import { feelOf } from '../../domain/patternOps';
 import { isSongLocal, parseSectionText } from '../../domain/songBeats';
-import { lengthLabel, patternSteps, patternTicks } from '../../domain/time';
+import { lengthLabel } from '../../domain/time';
 import type { Pattern } from '../../domain/types';
-import { IconCopy, IconLoop, IconMinus, IconPlus, IconTrash } from '../common/icons';
-import { PatternPicker } from '../common/PatternPicker';
+import { IconChevronDown, IconCopy, IconLoop, IconMinus, IconPlus, IconTrash } from '../common/icons';
+import { isTouch, PatternPicker } from '../common/PatternPicker';
 import { fills, grooves } from '../state/drummer';
 import { isDoubleTap, isTap, LONG_PRESS_MS, TAP_SLOP, type TapPoint } from '../state/songLogic';
-import { library, requestSaveAsGroove } from '../state/lab';
+import { library, saveAsGroove } from '../state/lab';
 import { openInEditor } from '../state/link';
 import {
   addSectionOfKind,
@@ -118,113 +118,242 @@ function SectionLabel({ section, editing, onDone }: { section: Section; editing:
 }
 
 const BEAT_DEBOUNCE = 250;
+const MAX_LINES = 3;
 
-/** The section's beat as one line of text. Typing applies it live (debounced): see setSectionText for the song-local rules. */
-function BeatCombo({ section, pattern }: { section: Section; pattern: Pattern | undefined }) {
-  const local = isSongLocal(pattern);
-  const combo = useRef<HTMLDivElement>(null);
-  const fmt = pattern ? formatBeatText(pattern, { lineBreaks: false }) : null;
-  const text = fmt?.text ?? '';
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(text);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const lastApplied = useRef(text);
-  const cancelled = useRef(false);
-  const apply = (v: string) => {
-    clearTimeout(timer.current);
-    timer.current = undefined;
-    if (v === lastApplied.current) return;
-    if (setSectionText(section.id, v).ok) lastApplied.current = v;
-  };
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const shown = editing ? value : text;
-  const parsed = editing ? parseSectionText(pattern, value) : null;
-  const error = parsed && !parsed.ok ? `col ${parsed.errors[0]!.col}: ${parsed.errors[0]!.message}` : null;
-  let info = '';
-  if (parsed?.ok) info = stepsCaption(parsed.steps, pattern?.stepsPerBeat ?? 4);
-  else if (!parsed && pattern) info = stepsCaption(patternSteps(pattern), pattern.stepsPerBeat);
-  const tag = local ? 'song beat' : (pattern?.name ?? 'missing groove');
-  const actions = [
-    ...(local ? [{ label: 'Save as groove…', onClick: () => requestSaveAsGroove(section.patternId) }] : []),
-    ...(pattern ? [{ label: 'Open in Beat Editor', onClick: () => openInEditor(section.patternId) }] : []),
-  ];
+interface SlotProps {
+  section: Section;
+  pattern: Pattern | undefined;
+  local: boolean;
+  value: string;
+  error: string | null;
+  info: string;
+  saveName: string;
+  onValue: (v: string) => void;
+  onSaveName: (v: string) => void;
+  /** Enter: apply and close (stays open when the text is invalid). */
+  onEnter: () => void;
+  onOpenEditor: () => void;
+  onSave: () => void;
+}
+
+/** Top of the section beat panel: text editor, then name and save. */
+function BeatSlot({ section, pattern, local, value, error, info, saveName, onValue, onSaveName, onEnter, onOpenEditor, onSave }: SlotProps) {
+  const area = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = area.current;
+    if (!el) return;
+    el.setAttribute('autocorrect', 'off');
+    el.setAttribute('autocapitalize', 'off');
+    if (!isTouch()) {
+      el.focus({ preventScroll: true });
+      el.setSelectionRange(el.value.length, el.value.length);
+    }
+  }, []);
+  // auto-grow up to MAX_LINES lines
+  useLayoutEffect(() => {
+    const el = area.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const cs = getComputedStyle(el);
+    const line = parseFloat(cs.lineHeight) || 22;
+    const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+    el.style.height = `${Math.min(el.scrollHeight, line * MAX_LINES + pad)}px`;
+  }, [value]);
   return (
-    <div class="sc-main">
-      <div class={`sc-combo${error ? ' is-invalid' : ''}`} ref={combo}>
-        <span class="sc-tag" data-testid="beat-tag" title={tag}>
-          {tag}
-        </span>
-        <input
-          class="sc-text"
-          type="text"
-          value={shown}
+    <>
+      <div class="sb-edit">
+        <label class="label" for={`sb-text-${section.id}`}>
+          beat text
+        </label>
+        <textarea
+          id={`sb-text-${section.id}`}
+          ref={area}
+          class={`sb-text${error ? ' is-invalid' : ''}`}
+          rows={1}
+          value={value}
           spellcheck={false}
           autocomplete="off"
           enterkeyhint="done"
-          ref={(el) => {
-            if (el) {
-              el.setAttribute('autocorrect', 'off');
-              el.setAttribute('autocapitalize', 'off');
-            }
-          }}
           aria-label={`Beat for ${section.name}`}
           aria-invalid={error ? 'true' : undefined}
           data-testid="beat-text"
-          onFocus={() => {
-            cancelled.current = false;
-            lastApplied.current = text;
-            setValue(text);
-            setEditing(true);
-          }}
-          onInput={(e) => {
-            const v = e.currentTarget.value;
-            setValue(v);
-            clearTimeout(timer.current);
-            timer.current = setTimeout(() => apply(v), BEAT_DEBOUNCE);
-          }}
-          onBlur={(e) => {
-            if (!cancelled.current) apply(e.currentTarget.value);
-            clearTimeout(timer.current);
-            setEditing(false);
-          }}
+          onInput={(e) => onValue(e.currentTarget.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
               e.preventDefault();
-              e.currentTarget.blur();
-            } else if (e.key === 'Escape') {
-              e.stopPropagation();
-              cancelled.current = true;
-              clearTimeout(timer.current);
-              setValue(text);
-              e.currentTarget.blur();
+              onEnter();
             }
           }}
         />
-        <PatternPicker
-          patterns={grooves.value}
-          currentId={section.patternId}
-          onSelect={(id) => patchSection(section.id, { patternId: id })}
-          subtitleOf={beatsLabel}
-          label="Section groove"
-          triggerName={local ? 'Song beat' : undefined}
-          compact
-          anchorTo={() => combo.current}
-          actions={actions}
-        />
+        <div class="sb-row">
+          <p class={error ? 'sb-cap sc-err' : 'sb-cap'}>
+            <span data-testid={error ? 'beat-error' : 'beat-info'} role={error ? 'alert' : undefined}>
+              {error ?? (info || ' ')}
+            </span>
+          </p>
+          <button type="button" class="btn sb-btn" disabled={!pattern} onClick={onOpenEditor}>
+            Open in Beat Editor
+          </button>
+        </div>
       </div>
-      <p class={error ? 'sc-cap sc-err' : 'sc-cap'}>
-        <span class="sc-tag sc-tag-cap" data-testid="beat-tag" title={tag}>
-          {tag}
-        </span>
-        <span class="sc-capt" data-testid={error ? 'beat-error' : 'beat-info'} role={error ? 'alert' : undefined}>
-          {error ?? (info || '\u00a0')}
-        </span>
-      </p>
-    </div>
+      <div class="sb-save" data-testid="beat-save">
+        {local ? (
+          <>
+            <label class="pp-field sb-name">
+              <span class="label">groove name</span>
+              <input
+                class="input"
+                type="text"
+                value={saveName}
+                maxLength={48}
+                aria-label="Groove name"
+                autoComplete="off"
+                onInput={(e) => onSaveName(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.isComposing) {
+                    e.preventDefault();
+                    if (!error) onSave();
+                  }
+                }}
+              />
+            </label>
+            <button type="button" class="btn btn-primary sb-btn" disabled={!!error} onClick={onSave}>
+              Save as groove
+            </button>
+          </>
+        ) : (
+          <div class="sb-groove">
+            <span class="label">saved groove</span>
+            <b class="sb-groove-name" data-testid="beat-groove-name">
+              {pattern?.name ?? 'missing groove'}
+            </b>
+            {pattern?.builtIn && <span class="tag">Built-in</span>}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
-const CONTROL = '[data-row-control], button, input, select, textarea, a, label, .pp, .pp-panel, [role=listbox], [role=option], [role=dialog]';
+/**
+ * The section's beat: a read-only display (the groove's name, or the written pattern of a song beat) that opens a panel with
+ * the beat text editor, name and save, and the groove list. Typing applies live (debounced): see setSectionText for the song-local rules.
+ */
+function BeatCombo({ section, pattern }: { section: Section; pattern: Pattern | undefined }) {
+  const local = isSongLocal(pattern);
+  const text = pattern ? formatBeatText(pattern, { lineBreaks: false }).text : '';
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(text);
+  /** null until the user edits it: the name follows the song beat's own name (it is created by the first edit of a groove). */
+  const [saveName, setSaveName] = useState<string | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const lastApplied = useRef(text);
+  const latest = useRef(text);
+  const apply = (v: string): boolean => {
+    clearTimeout(timer.current);
+    timer.current = undefined;
+    if (v === lastApplied.current) return true;
+    const ok = setSectionText(section.id, v).ok;
+    if (ok) lastApplied.current = v;
+    return ok;
+  };
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const parsed = open ? parseSectionText(pattern, value) : null;
+  let error: string | null = null;
+  let info = '';
+  if (parsed && !parsed.ok) {
+    const e = parsed.errors[0]!;
+    error = `${e.line > 1 ? `line ${e.line}, ` : ''}col ${e.col}: ${e.message}`;
+  } else if (parsed?.ok) info = stepsCaption(parsed.steps, pattern?.stepsPerBeat ?? 4);
+  const name = local ? 'Song beat' : (pattern?.name ?? 'missing groove');
+  const currentPattern = () => library.peek().find((p) => p.id === currentPatternId());
+  const currentPatternId = () => currentSong.peek()?.sections.find((s) => s.id === section.id)?.patternId ?? section.patternId;
+  const onInput = (v: string) => {
+    latest.current = v;
+    setValue(v);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => apply(v), BEAT_DEBOUNCE);
+  };
+  return (
+    <PatternPicker
+      className="sc-main"
+      patterns={grooves.value}
+      currentId={section.patternId}
+      onSelect={(id) => patchSection(section.id, { patternId: id })}
+      subtitleOf={beatsLabel}
+      label="Section groove"
+      autoFocus={false}
+      panelWidth={600}
+      findHeading="Choose another beat"
+      onOpen={() => {
+        clearTimeout(timer.current);
+        lastApplied.current = text;
+        latest.current = text;
+        setValue(text);
+        setSaveName(null);
+        setOpen(true);
+      }}
+      onClose={(reason) => {
+        clearTimeout(timer.current);
+        timer.current = undefined;
+        if (reason === 'commit') apply(latest.current);
+        setOpen(false);
+      }}
+      renderTrigger={({ ref, open: isOpen, toggle, onKeyDown }) => (
+        <button
+          ref={ref}
+          type="button"
+          class={`sc-display${local ? ' is-text' : ''}`}
+          aria-haspopup="dialog"
+          aria-expanded={isOpen}
+          aria-label={`Section groove: ${name}`}
+          title={local ? text : name}
+          data-testid="beat-display"
+          onClick={toggle}
+          onKeyDown={onKeyDown}
+          onKeyUp={(e) => e.key === ' ' && e.preventDefault()}
+        >
+          <span class="sc-disp-main" data-testid="beat-display-text">
+            {local ? text : name}
+          </span>
+          <span class="sc-disp-cap" data-testid="beat-length">
+            {pattern ? lengthLabel(pattern) : ''}
+          </span>
+          <IconChevronDown class="pp-caret" />
+        </button>
+      )}
+      topSlot={({ close }) => (
+        <BeatSlot
+          section={section}
+          pattern={pattern}
+          local={local}
+          value={value}
+          error={error}
+          info={info}
+          saveName={saveName ?? pattern?.name ?? ''}
+          onValue={onInput}
+          onSaveName={setSaveName}
+          onEnter={() => {
+            if (parsed?.ok && apply(latest.current)) close({ focusTrigger: true });
+          }}
+          onOpenEditor={() => {
+            apply(latest.current);
+            const id = currentPatternId();
+            close();
+            openInEditor(id);
+          }}
+          onSave={() => {
+            if (!apply(latest.current)) return;
+            close({ focusTrigger: true });
+            saveAsGroove(currentPatternId(), saveName ?? currentPattern()?.name ?? '');
+          }}
+        />
+      )}
+    />
+  );
+}
+
+const CONTROL = '[data-row-control], button, input, select, textarea, a, label, .pp, .pp-panel, .pp-catcher, [role=listbox], [role=option], [role=dialog]';
 /** Did this event come from an interactive control (not the row itself)? composedPath: a picker option removes itself on select, so the target may already be detached. */
 const fromControl = (e: Event, row: Element): boolean => e.composedPath().some((n) => n instanceof HTMLElement && n !== row && n.matches(CONTROL));
 const onLabelPath = (e: Event): boolean => e.composedPath().some((n) => n instanceof HTMLElement && n.hasAttribute('data-row-label'));
@@ -312,7 +441,7 @@ function SectionRow({ section, index, count, current, selected, queued, shift, d
         tapSection(section.id);
       }}
       onKeyDown={(e) => {
-        if (e.key === 'F2' && !(e.target instanceof HTMLInputElement)) {
+        if (e.key === 'F2' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
           e.preventDefault();
           setEditing(true);
         }
@@ -467,7 +596,8 @@ export function SectionList() {
     if (!r) return;
     const box = r.scroller.getBoundingClientRect();
     const dock = document.querySelector('.sv-dock')?.getBoundingClientRect();
-    const top = box.top;
+    const player = document.querySelector('.sv-player')?.getBoundingClientRect();
+    const top = player && player.bottom > box.top ? player.bottom : box.top;
     const bottom = dock && dock.top > box.top + 100 && dock.top < box.bottom ? dock.top : box.bottom;
     let v = 0;
     if (r.y < top + EDGE) v = -Math.min(16, ((top + EDGE - r.y) / EDGE) * 16);

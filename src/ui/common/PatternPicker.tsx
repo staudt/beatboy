@@ -1,3 +1,4 @@
+import type { ComponentChildren, Ref } from 'preact';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Pattern } from '../../domain/types';
 import { feelOf } from '../../domain/patternOps';
@@ -21,12 +22,21 @@ export interface PatternPickerProps {
   nameTestId?: string;
   /** Text shown on the trigger instead of the current pattern's name (e.g. "Song beat"). */
   triggerName?: string;
-  /** Icon-only trigger (the name stays available to assistive tech); used inside the section beat combobox. */
-  compact?: boolean;
-  /** The panel is positioned under this element instead of the trigger. */
-  anchorTo?: () => HTMLElement | null;
-  /** Buttons shown at the top of the panel; choosing one closes the panel. */
-  actions?: { label: string; onClick: () => void }[];
+  /** Replaces the trigger button (the section beat display). `ref` must go on the focusable element; `onKeyDown` opens on arrow / space. */
+  renderTrigger?: (t: { ref: Ref<HTMLButtonElement>; open: boolean; toggle: () => void; onKeyDown: (e: KeyboardEvent) => void }) => ComponentChildren;
+  /** Content above the find field inside the panel (the section beat text editor); `close` is the panel's own close. */
+  topSlot?: (api: { close: (opts?: { revert?: boolean; focusTrigger?: boolean }) => void }) => ComponentChildren;
+  /** Heading shown above the find field when `topSlot` is used. */
+  findHeading?: string;
+  /** Called when the panel opens / closes ('select' = a pattern was chosen, 'revert' = Escape, else committed by closing). */
+  onOpen?: () => void;
+  onClose?: (reason: 'commit' | 'revert' | 'select') => void;
+  /** Focus the name / find field on open (default true; false when `topSlot` focuses its own field). */
+  autoFocus?: boolean;
+  /** Panel width at >= 900 px (default 360). */
+  panelWidth?: number;
+  /** Class on the wrapper. */
+  className?: string;
   /** Wording for other kinds of items (songs). */
   words?: { newLabel: string; nameLabel: string; findPlaceholder: string; findLabel: string; empty: string; list: string };
 }
@@ -52,7 +62,7 @@ export function groupPatterns(list: readonly Pattern[]): [string, Pattern[]][] {
     .map((x) => x.e);
 }
 
-const isTouch = (): boolean => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+export const isTouch = (): boolean => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 
 /** Dropdown anchored to the current pattern's name: rename it, find another, or create a new one. */
 export function PatternPicker({
@@ -65,9 +75,14 @@ export function PatternPicker({
   label = 'Patterns',
   nameTestId,
   triggerName,
-  compact,
-  anchorTo,
-  actions,
+  renderTrigger,
+  topSlot,
+  findHeading,
+  onOpen,
+  onClose,
+  autoFocus = true,
+  panelWidth = 360,
+  className,
   words = BEAT_WORDS,
 }: PatternPickerProps) {
   const cur = patterns.find((p) => p.id === currentId);
@@ -75,10 +90,12 @@ export function PatternPicker({
   const [name, setName] = useState('');
   const [query, setQuery] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; width: number | undefined }>({
+  const [pos, setPos] = useState<{ top: number | undefined; bottom: number | undefined; left: number; width: number | undefined; maxH: number | undefined }>({
     top: 0,
+    bottom: undefined,
     left: 0,
     width: undefined,
+    maxH: undefined,
   });
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -100,7 +117,8 @@ export function PatternPicker({
     }
   };
 
-  const close = (opts: { revert?: boolean; focusTrigger?: boolean } = {}) => {
+  const close = (opts: { revert?: boolean; focusTrigger?: boolean; reason?: 'select' } = {}) => {
+    onClose?.(opts.revert ? 'revert' : (opts.reason ?? 'commit'));
     if (opts.revert) {
       clearTimeout(timer.current);
       timer.current = undefined;
@@ -118,17 +136,24 @@ export function PatternPicker({
     setQuery('');
     setActiveId(currentId);
     setOpen(true);
+    onOpen?.();
   };
 
   // Position the panel right under the trigger.
   useLayoutEffect(() => {
     if (!open) return;
     const place = () => {
-      const r = (anchorTo?.() ?? trigger.current)?.getBoundingClientRect();
+      const r = trigger.current?.getBoundingClientRect();
       if (!r) return;
       const vw = document.documentElement.clientWidth;
-      if (vw < 900) setPos({ top: r.bottom + 4, left: 16, width: vw - 32 });
-      else setPos({ top: r.bottom + 4, left: Math.max(16, Math.min(r.left, vw - 360 - 16)), width: 360 });
+      const vh = window.innerHeight;
+      const below = vh - r.bottom - 4 - 12;
+      const above = r.top - 4 - 12;
+      // Below the anchor unless there is little room and more above (tall panels near the bottom of the screen).
+      const up = topSlot && below < 320 && above > below;
+      const v = up ? { top: undefined, bottom: vh - r.top + 4, maxH: Math.min(above, vh * 0.7) } : topSlot ? { top: r.bottom + 4, bottom: undefined, maxH: Math.min(below, vh * 0.7) } : { top: r.bottom + 4, bottom: undefined, maxH: undefined };
+      if (vw < 900) setPos({ ...v, left: 16, width: vw - 32 });
+      else setPos({ ...v, left: Math.max(16, Math.min(r.left, vw - panelWidth - 16)), width: panelWidth });
     };
     place();
     window.addEventListener('resize', place);
@@ -137,6 +162,7 @@ export function PatternPicker({
 
   // Focus + select the name on open (not on touch: no surprise keyboard).
   useEffect(() => {
+    if (!autoFocus) return;
     if (open && onRename && !isTouch()) {
       nameInput.current?.focus();
       nameInput.current?.select();
@@ -204,12 +230,14 @@ export function PatternPicker({
     if (cur?.builtIn) pending.current = null;
     flush();
     onSelect(id);
-    close({ focusTrigger: true });
+    close({ focusTrigger: true, reason: 'select' });
   };
 
   const onPanelKey = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement;
     const inName = t === nameInput.current;
+    // The top slot owns its keys (Enter, arrows in the text field); Tab still cycles through the whole panel.
+    if (e.key !== 'Tab' && t.closest('[data-pp-slot]')) return;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       if (inName && showSearch) {
         if (e.key === 'ArrowDown') {
@@ -223,7 +251,6 @@ export function PatternPicker({
         move(e.key === 'ArrowDown' ? 1 : -1);
       }
     } else if (e.key === 'Enter') {
-      if (t.closest('[data-pp-action]')) return;
       if (inName) {
         e.preventDefault();
         close({ focusTrigger: true });
@@ -235,7 +262,7 @@ export function PatternPicker({
         }
       }
     } else if (e.key === 'Tab') {
-      const f = [...(panel.current?.querySelectorAll<HTMLElement>('input, button') ?? [])].filter((x) => !x.hasAttribute('disabled'));
+      const f = [...(panel.current?.querySelectorAll<HTMLElement>('input, button, textarea') ?? [])].filter((x) => !x.hasAttribute('disabled'));
       const first = f[0];
       const last = f[f.length - 1];
       if (e.shiftKey && t === first) {
@@ -271,22 +298,36 @@ export function PatternPicker({
     subtitleOf?.(p) ??
     `${lengthLabel(p)} · ${feelOf(p)}${p.builtIn ? ' · built-in' : ''}`;
 
+  const toggle = () => (open ? close({ focusTrigger: true }) : doOpen());
+  const onTriggerKey = (e: KeyboardEvent) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === ' ') {
+      // Space / arrows would otherwise be the app's play / tempo keys
+      e.preventDefault();
+      e.stopPropagation();
+      if (!open) doOpen();
+    }
+  };
+
   return (
-    <div class="pp">
-      <button
-        ref={trigger}
-        type="button"
-        class={compact ? 'pp-trigger pp-compact' : 'pp-trigger'}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label={`${label}: ${triggerName ?? cur?.name ?? ''}`}
-        onClick={() => (open ? close({ focusTrigger: true }) : doOpen())}
-      >
-        <span class={compact ? 'pattern-name sr-only' : 'pattern-name'} data-testid={nameTestId}>
-          {triggerName ?? cur?.name ?? ''}
-        </span>
-        <IconChevronDown class="pp-caret" />
-      </button>
+    <div class={className ? `pp ${className}` : 'pp'}>
+      {renderTrigger ? (
+        renderTrigger({ ref: trigger, open, toggle, onKeyDown: onTriggerKey })
+      ) : (
+        <button
+          ref={trigger}
+          type="button"
+          class="pp-trigger"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-label={`${label}: ${triggerName ?? cur?.name ?? ''}`}
+          onClick={toggle}
+        >
+          <span class="pattern-name" data-testid={nameTestId}>
+            {triggerName ?? cur?.name ?? ''}
+          </span>
+          <IconChevronDown class="pp-caret" />
+        </button>
+      )}
       {open && (
         <>
           <div class="pp-catcher" onPointerDown={() => close()} />
@@ -295,24 +336,22 @@ export function PatternPicker({
             class="pp-panel"
             role="dialog"
             aria-label={label}
-            style={{ top: `${pos.top}px`, left: `${pos.left}px`, width: pos.width ? `${pos.width}px` : undefined }}
+            style={{
+              top: pos.top !== undefined ? `${pos.top}px` : undefined,
+              bottom: pos.bottom !== undefined ? `${pos.bottom}px` : undefined,
+              left: `${pos.left}px`,
+              width: pos.width ? `${pos.width}px` : undefined,
+              maxHeight: pos.maxH ? `${pos.maxH}px` : undefined,
+            }}
             onKeyDown={onPanelKey}
           >
+            {topSlot && (
+              <div class="pp-slot" data-pp-slot="">
+                {topSlot({ close })}
+              </div>
+            )}
             <div class="pp-top">
-              {actions?.map((a) => (
-                <button
-                  key={a.label}
-                  type="button"
-                  class="btn pp-new"
-                  data-pp-action=""
-                  onClick={() => {
-                    close();
-                    a.onClick();
-                  }}
-                >
-                  {a.label}
-                </button>
-              ))}
+              {topSlot && findHeading && <h3 class="label pp-find-h">{findHeading}</h3>}
               {onRename && (
                 <label class="pp-field">
                   <span class="label">name</span>

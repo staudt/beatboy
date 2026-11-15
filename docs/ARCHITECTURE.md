@@ -96,9 +96,13 @@ shared transport settings in `ui/state/drummer.ts`). A single groove is just a o
 built-in pattern "No drums (click only)" (`f-click-only`) makes a section a pure metronome. First run seeds two songs:
 "Practice" (Rock 8ths, 4 bars, loop on; selected, so Play is one tap) and a demo arrangement.
 
-- **Layout**: song picker (`PatternPicker` in song form: rename, find, New song), a compact tempo row, then the section
-  rows; a *dock* (now-playing bar + transport: PLAY, FILL, NEXT, BREAK, LOOP, CLICK) is sticky at the bottom of the
-  scroll area directly above the tab bar on phones, and the sticky left column on desktop (>= 900 px).
+- **Layout**: phones and tablets (< 900 px): song picker (`PatternPicker` in song form: rename, find, New song), a compact
+  tempo row, then the section rows; a *dock* (now-playing bar + transport: PLAY, FILL, NEXT, BREAK, LOOP, CLICK) is sticky
+  at the bottom of the scroll area directly above the tab bar. Desktop (>= 900 px, `isDesktop`): `SongView` renders a
+  full-width **sticky player** (`.sv-player`, pinned under the top tabs, <= 200 px: row 1 song picker, icons, save status
+  and tempo; row 2 now-playing panel and transport) and below it the section list centred at max 1160 px, one line per
+  row (handle, go, label, beat display, x n, F, loop, copy, delete). `SongView` publishes the player height as `--player-h`
+  (ResizeObserver); rows use it as `scroll-margin-top`, and the drag auto-scroll treats the player's bottom as the top edge.
 - **Section rows** are always editable inline: drag handle (pointer-event drag with auto-scroll, handle only; Arrow keys
   on the focused handle also move the row and announce it), label (tap to rename), fill/loop/duplicate/delete toggles,
   groove picker and bars stepper. Tapping a row jumps there at the next bar line while playing, or picks the start
@@ -121,11 +125,15 @@ built-in pattern "No drums (click only)" (`f-click-only`) makes a section a pure
 
 ## Song-local beats (typed section text)
 
-Each section row is `line 1 controls` and `line 2 = [beat combobox] [− × n +]`. The combobox is a monospace text field
-holding the section pattern as ONE line of beat text (`formatBeatText(p, { lineBreaks: false })`), with a small name tag
-("Rock 8ths" or "song beat"; on narrow rows the tag moves to the caption line below the field, which also shows
-"4 steps · 1 beat" / "3 steps" or the first error as "col N: message"). Its ▾ opens the groove picker with the actions
-"Save as groove…" (song beats only) and "Open in Beat Editor", then the saved grooves.
+Each section row is `line 1 controls` and `line 2 = [beat display] [- x n +]` (one line on desktop). The **beat display**
+is a read-only button: it shows the groove's NAME for a saved groove, or the written pattern (one line of monospace beat
+text, ellipsis) for a song beat, plus a muted length caption ("4 beats" / "3 steps"; under the text on phones, at the right
+on wider rows). Clicking it (or Space / Enter / arrow keys on it) opens a dropdown panel (`PatternPicker` with `renderTrigger`
+and `topSlot`), top to bottom: (1) the **beat text editor** (auto-growing textarea, 1-3 lines, live caption "4 steps · 1 beat"
+or the first error, "Open in Beat Editor"); (2) **name and save**: a song beat gets a name field (default "<Song> ·
+<Section>") and "Save as groove", a saved groove shows its name, "saved groove" and "Built-in" (renaming stays in the Beat
+Editor); (3) "Choose another beat": the find field and the grouped groove list (song beats excluded). Typing happens only
+in the panel; the row itself is never an input.
 
 - **Data**: `Pattern.ownerSongId?` marks a pattern owned by one song. It is a normal user pattern (patterns store,
   autosave, playable, editable) hidden from the groove pickers (`grooves`/`fills` in drummer.ts, the section and default
@@ -135,8 +143,8 @@ holding the section pattern as ONE line of beat text (`formatBeatText(p, { lineB
 - **Rules** (pure, `domain/songBeats.ts`, applied by `songs.setSectionText`): typing over a library groove creates a
   local copy (name "<Song> · <Section>", feel and mix copied) and points the section at it, the groove is never touched;
   a local beat only this section uses is updated in place; a local beat used by 2+ sections (or owned by another song) is
-  forked. Text is parsed live (250 ms debounce, Enter/blur flush); invalid text shows the error, keeps playing the last
-  valid beat and saves nothing; Escape reverts. Every typed step is one square (a 16th, or a triplet step for triplet
+  forked. Text is parsed live (250 ms debounce; Enter, closing the panel or clicking outside flush it); invalid text shows the error,
+  keeps playing the last valid beat and saves nothing (Enter on invalid text keeps the panel open); Escape discards pending text and closes. Every typed step is one square (a 16th, or a triplet step for triplet
   grooves) and the loop is exactly as long as the text, so `kh h hs h` is one beat and `s k s` a 3-step beat; the
   section's × n plays it n times. Empty text is an error ("Type at least one step").
 - **Copies**: duplicating a section, the add-section chips and duplicating a song fork song-local beats, so edits stay
@@ -145,7 +153,7 @@ holding the section pattern as ONE line of beat text (`formatBeatText(p, { lineB
   once after songs and patterns are loaded and after deleting a song; never during the section-delete Undo window.
 - **Playback**: the engine reads patterns live at every collect, so an edit is heard within the look-ahead (~120 ms),
   notes already scheduled are untouched; a changed beat count takes effect at the next bar.
-- **Save as groove** (sheet) clears `ownerSongId` (category "My beats"); sections keep referencing it.
+- **Save as groove** (the panel's name field + button; the Beat Editor uses a small sheet) clears `ownerSongId` (category "My beats"); sections keep referencing it.
   **Open in Beat Editor** selects the pattern even while a song plays (`link.openInEditor`).
 
 ## Sound

@@ -1,5 +1,5 @@
 import { signal } from '@preact/signals';
-import { useMemo } from 'preact/hooks';
+import { useEffect, useMemo, useRef } from 'preact/hooks';
 import { createPattern } from '../../domain/patternOps';
 import type { Pattern } from '../../domain/types';
 import { PATTERN_LIMITS } from '../../domain/types';
@@ -239,10 +239,51 @@ function Credits() {
   );
 }
 
+/** Keeps `--player-h` (the sticky player's height) on the section, so rows can scroll clear of it. */
+function usePlayerHeight(section: { current: HTMLElement | null }, on: boolean) {
+  useEffect(() => {
+    const el = section.current?.querySelector<HTMLElement>('.sv-player');
+    if (!on || !el || !section.current) return;
+    const root = section.current;
+    const set = () => root.style.setProperty('--player-h', `${el.offsetHeight}px`);
+    set();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [on]);
+}
+
 export function SongView() {
-  if (!songsReady.value) return <p class="boot">Loading…</p>;
+  const desktop = isDesktop.value;
+  const root = useRef<HTMLElement>(null);
+  const ready = songsReady.value;
+  usePlayerHeight(root, desktop && ready);
+  if (!ready) return <p class="boot">Loading…</p>;
+  // >= 900 px: the player (song, tempo, now playing, transport) is pinned on top; the sections use the full width below.
+  if (desktop) {
+    return (
+      <section class="sv sv-wide" aria-label="Drummer" ref={root}>
+        <div class="sv-player">
+          <div class="sv-p1">
+            <SongHeader />
+            <TempoRow />
+          </div>
+          <div class="sv-p2">
+            <NowPanel />
+            <Transport />
+          </div>
+        </div>
+        <div class="sv-main">
+          <SectionList />
+        </div>
+        <SectionAnnouncer />
+        <SettingsSheet />
+      </section>
+    );
+  }
   return (
-    <section class="sv" aria-label="Drummer">
+    <section class="sv" aria-label="Drummer" ref={root}>
       <div class="sv-main">
         <SongHeader />
         <TempoRow />

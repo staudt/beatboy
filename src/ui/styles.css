@@ -2062,120 +2062,177 @@ button.chip {
   min-width: 0;
 }
 
-.sc-combo {
-  display: flex;
+/* the beat: a read-only display (groove name, or the written pattern of a song beat) that opens the beat panel */
+.sc-display {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'main caret'
+    'cap cap';
   align-items: center;
-  gap: 6px;
-  min-width: 0;
+  column-gap: 6px;
+  row-gap: 0;
+  width: 100%;
   min-height: var(--tap);
-  padding-left: 8px;
+  padding: 4px 6px 4px 10px;
   background: #1f1d1b;
   border: 1px solid var(--line);
   border-bottom: 2px solid var(--line);
   border-radius: 8px;
+  color: var(--text);
+  text-align: left;
 }
 
-.sc-combo:focus-within {
+.sc-display:hover {
+  border-color: #4a453f;
+}
+
+.sc-display[aria-expanded='true'] {
   border-color: var(--play);
 }
 
-.sc-combo.is-invalid {
-  border-bottom-color: var(--danger);
-}
-
-.sc-tag {
-  flex: 0 1 auto;
-  max-width: 35%;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: #2c2926;
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  white-space: nowrap;
+.sc-disp-main {
+  grid-area: main;
+  min-width: 0;
   overflow: hidden;
+  white-space: pre;
   text-overflow: ellipsis;
-}
-
-.sc-tag-cap {
-  display: none;
-  max-width: 60%;
-  flex: none;
-}
-
-.sc-capt {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-/* narrow rows: the name moves from inside the field to the caption line, so the text keeps its room */
-@media (max-width: 519px) {
-  .sc-combo > .sc-tag {
-    display: none;
-  }
-  .sc-tag-cap {
-    display: block;
-  }
-  .sc-combo {
-    padding-left: 4px;
-  }
-}
-
-.sc-text {
-  flex: 1 1 0;
-  min-width: 0;
-  align-self: stretch;
-  padding: 0 4px;
-  background: transparent;
-  border: 0;
-  color: var(--text);
   font-family: var(--font-mono);
-  font-size: 16px; /* no iOS zoom */
+  font-weight: 800;
+  font-size: 14px;
   letter-spacing: 0.02em;
 }
 
-.sc-text:focus {
-  outline: none;
+.sc-display.is-text .sc-disp-main {
+  font-weight: 500;
+  font-size: 15px;
 }
 
-.sc-combo.is-invalid .sc-text {
+.sc-disp-cap {
+  grid-area: cap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.sc-display .pp-caret {
+  grid-area: caret;
+}
+
+@media (min-width: 520px) {
+  .sc-display {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: 'main cap caret';
+    column-gap: 10px;
+  }
+}
+
+.sc-err {
+  color: var(--danger);
+}
+
+/* beat panel: text editor, then name and save, then the groove list */
+.pp-slot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pp-find-h {
+  margin: 2px 0 -2px;
+}
+
+.sb-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sb-text {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 10px;
+  resize: none;
+  overflow-y: auto;
+  background: #1f1d1b;
+  border: 1px solid var(--line);
+  border-bottom: 2px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 16px; /* no iOS zoom */
+  line-height: 22px;
+  letter-spacing: 0.02em;
+}
+
+.sb-text:focus {
+  outline: none;
+  border-color: var(--play);
+}
+
+.sb-text.is-invalid {
+  border-bottom-color: var(--danger);
   text-decoration: underline wavy var(--danger);
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
 }
 
-.sc-combo .pp {
-  flex: none;
-}
-
-.sc-combo .pp-trigger.pp-compact {
-  width: 40px;
-  min-width: 40px;
-  padding: 0;
-  justify-content: center;
-  border: 0;
-  border-left: 1px solid var(--line);
-  border-radius: 0 7px 7px 0;
-  box-shadow: none;
-  background: transparent;
-}
-
-.sc-cap {
+.sb-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
-  flex-wrap: wrap;
-  margin: 2px 0 0 4px;
-  min-height: 1.3em;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-dim);
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.sc-err {
-  color: var(--danger);
+.sb-cap {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-mono);
   font-size: 12px;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.sb-cap.sc-err {
+  color: var(--danger);
+}
+
+.sb-btn {
+  flex: none;
+  min-height: var(--tap);
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.sb-save {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.sb-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-groove {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 32px;
+}
+
+.sb-groove-name {
+  font-family: var(--font-mono);
+  font-size: 15px;
 }
 
 .tag {
@@ -2431,79 +2488,165 @@ button.chip {
   position: static;
 }
 
+/* >= 900 px: the player (song, tempo, now playing, transport) is pinned under the tabs; sections use the full width below */
 @media (min-width: 900px) {
-  .sv {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-    column-gap: 48px;
-    align-items: start;
-    padding-top: 28px;
-  }
-  .sv-main {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .sv-dock {
-    grid-column: 1;
-    grid-row: 1;
-    top: 28px;
-    bottom: auto;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: none;
-    gap: 14px;
-    align-self: start;
-  }
-  .sv-bar {
-    gap: 10px;
-  }
-  .sv-btn {
-    min-height: 92px;
-    font-size: 14px;
-    gap: 4px;
-  }
-  .now {
-    padding: 16px 18px 14px 20px;
-    gap: 10px;
-  }
-  .now-tag {
+  .sv.sv-wide {
+    --gut: clamp(12px, 1.7vw, 24px);
     display: block;
+    max-width: none;
+    padding: 0;
+    gap: 0;
   }
-  .now-l1 {
-    min-height: 64px;
+  .sv-player {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: grid;
+    gap: 8px;
+    padding: 10px calc(max(0px, (100% - 1160px) / 2) + var(--gut));
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 6px 14px rgb(0 0 0 / 0.35);
   }
-  .now-name {
-    font-size: 44px;
+  .sv-p1 {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
   }
-  .now-pos {
-    font-size: 16px;
+  .sv-p1 .sv-header {
+    flex: 1 1 0;
+    min-width: 0;
   }
-  .now-count {
-    font-size: 44px;
+  .sv-p1 .sv-header .pp {
+    max-width: 460px;
   }
-  .now-lamp {
-    width: 24px;
-    height: 24px;
+  .sv-p1 .sv-tempo {
+    flex: none;
   }
-  .now-l2 {
+  .sv-p1 .sv-bpm {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .sv-p1 .sv-step {
+    min-height: 40px;
+  }
+  .sv-p1 .sv-bpm-input {
+    font-size: 26px;
+  }
+  .sv-p1 .sv-slider {
+    flex: none;
+    width: clamp(110px, 14vw, 200px);
+    min-width: 0;
+  }
+  .sv-p2 {
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
+    min-width: 0;
+  }
+  .sv-p2 .now {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 10px 14px 8px 16px;
+    gap: 4px;
+    align-content: center;
+  }
+  .sv-p2 .sv-bar {
+    flex: none;
+    display: flex;
+    gap: 6px;
+  }
+  .sv-p2 .sv-btn {
+    min-height: 0;
+    width: 74px;
+    font-size: 12px;
+    gap: 2px;
+  }
+  .sv-p2 .sv-play {
+    width: 104px;
+  }
+  .sv-p2 .sv-loop,
+  .sv-p2 .sv-clickbtn {
+    width: 66px;
+  }
+  .sv-p2 .now-l1 {
+    min-height: 34px;
+  }
+  .sv-p2 .now-name {
+    font-size: 26px;
+  }
+  .sv-p2 .now-pos {
+    font-size: 14px;
+  }
+  .sv-p2 .now-count {
+    font-size: 28px;
+  }
+  .sv-p2 .now-lamp {
+    width: 16px;
+    height: 16px;
+  }
+  .sv-p2 .now-l2 {
+    min-height: 24px;
+  }
+  .sv-p2 .now-prev {
     min-height: 32px;
   }
-  .now-next {
-    font-size: 14px;
+  .sv-p2 .now-next {
+    font-size: 12px;
   }
-  .now[data-badges] .now-next {
+  .sv-p2 .now[data-badges] .now-next {
     display: block;
   }
-  .badge {
-    min-height: 28px;
-    font-size: 11px;
+  .sv-p2 .now-info,
+  .sv-p2 .now-badges {
+    flex-wrap: nowrap;
   }
-  .now-info {
-    flex-wrap: wrap;
+  .sv-p2 .badge {
+    min-height: 22px;
+    font-size: 10.5px;
   }
-  .now-badges {
-    flex-wrap: wrap;
+  .sv-wide > .sv-main {
+    width: 100%;
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 16px var(--gut) 40px;
+    box-sizing: border-box;
+    flex: none;
+    gap: 14px;
+  }
+  .sv-wide .sc,
+  .sv-wide .sv-chips {
+    scroll-margin-top: calc(var(--player-h, 0px) + 12px);
+  }
+
+  /* one line per section: handle, go, label, beat (wide), x n, F, loop, copy, delete */
+  .sv-wide .sc {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 4px 4px;
+  }
+  .sv-wide .sc-l1,
+  .sv-wide .sc-l2 {
+    display: contents;
+  }
+  .sv-wide .sc-handle { order: 1; }
+  .sv-wide .sc-go { order: 2; }
+  .sv-wide .sc-label,
+  .sv-wide .sc-label-input { order: 3; flex: 0 0 clamp(92px, 10.5vw, 150px); }
+  .sv-wide .sc-main { order: 4; flex: 1 1 0; margin-left: 6px; }
+  .sv-wide .sc-stepper { order: 5; margin-left: 6px; }
+  .sv-wide .sc-ic { order: 6; }
+  .sv-wide .sc-display {
+    min-height: 44px;
+    padding: 4px 8px 4px 12px;
+  }
+  .sv-wide .sc-disp-main {
+    font-size: 15px;
+  }
+  .sv-wide .sc-display.is-text .sc-disp-main {
+    font-size: 16px;
   }
 }
 
