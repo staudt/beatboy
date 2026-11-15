@@ -5,6 +5,8 @@ import { SOUND_IDS } from '../../domain/types';
 import { IconSpeaker, IconSpeakerOff } from '../common/icons';
 import { current, editCurrent, selectedSound } from '../state/lab';
 import { useFollowPlayhead } from '../useFollowPlayhead';
+import { BeatTextField } from './BeatTextField';
+import { SoundKey, soundTitle } from './SoundKey';
 import { BeatsControl, FollowChip, Ruler, TrackCells } from './Timeline';
 
 /** Desktop multi-track grid: every sound × all bars, continuous to the right. */
@@ -15,6 +17,7 @@ export function FullGrid() {
   useFollowPlayhead(scroller, () => (scroller.current?.querySelector('.fg-ctrl')?.getBoundingClientRect().width ?? 0) + 12);
   return (
     <section class="fullgrid panel" aria-label="Pattern grid">
+      <BeatTextField />
       <div class="panel-head">
         <h2 class="label">grid</h2>
         <span class="hint">click: on / off · drag to paint · right-click for accent / ghost</span>
@@ -31,7 +34,8 @@ export function FullGrid() {
           return (
             <div class={`fg-row${s === sel ? ' is-selected' : ''}${mix.muted ? ' is-muted' : ''}${hasNotes(p, s) ? ' has-notes' : ''}`} key={s}>
               <div class="fg-ctrl">
-                <button type="button" class="fg-name" aria-label={`Select ${SOUNDS[s].name}`} aria-pressed={s === sel} onClick={() => (selectedSound.value = s)}>
+                <button type="button" class="fg-name" aria-label={`Select ${SOUNDS[s].name}`} aria-pressed={s === sel} title={soundTitle(s)} onClick={() => (selectedSound.value = s)}>
+                  <SoundKey sound={s} />
                   {SOUNDS[s].short}
                 </button>
                 <button

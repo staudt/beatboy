@@ -2,6 +2,7 @@ import { useComputed } from '@preact/signals';
 import { getMix, getStep, hasNotes } from '../../domain/patternOps';
 import { SOUNDS } from '../../domain/sounds';
 import { SOUND_IDS, type SoundId } from '../../domain/types';
+import { SoundKey, soundTitle } from './SoundKey';
 import { auditionSound, current, playheadStep, selectedSound } from '../state/lab';
 
 function Pad({ sound }: { sound: SoundId }) {
@@ -22,7 +23,8 @@ function Pad({ sound }: { sound: SoundId }) {
       type="button"
       class={`pad${selected ? ' is-selected' : ''}${flash.value ? ' is-flash' : ''}`}
       aria-pressed={selected}
-      aria-label={`${SOUNDS[sound].name} pad`}
+      aria-label={`${SOUNDS[sound].name} pad, letter ${SOUNDS[sound].letter}`}
+      title={soundTitle(sound)}
       onPointerDown={(e) => {
         if (e.button === 0 || e.pointerType !== 'mouse') choose();
       }}
@@ -30,6 +32,7 @@ function Pad({ sound }: { sound: SoundId }) {
         if (e.detail === 0) choose(); // keyboard activation
       }}
     >
+      <SoundKey sound={sound} />
       <span class="pad-label">{SOUNDS[sound].short}</span>
       {notes && <span class="pad-dot" aria-label="has notes" role="img" />}
     </button>

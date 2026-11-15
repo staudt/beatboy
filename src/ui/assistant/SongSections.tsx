@@ -307,15 +307,26 @@ function BeatCombo({ section, pattern }: { section: Section; pattern: Pattern | 
           aria-haspopup="dialog"
           aria-expanded={isOpen}
           aria-label={`Section groove: ${name}`}
-          title={local ? text : name}
+          title={local || !text ? (local ? text : name) : `${name}: ${text}`}
           data-testid="beat-display"
           onClick={toggle}
           onKeyDown={onKeyDown}
           onKeyUp={(e) => e.key === ' ' && e.preventDefault()}
         >
-          <span class="sc-disp-main" data-testid="beat-display-text">
-            {local ? text : name}
-          </span>
+          {local ? (
+            <span class="sc-disp-main" data-testid="beat-display-text">
+              {text}
+            </span>
+          ) : (
+            <span class="sc-disp-main has-pat">
+              <span class="sc-disp-name" data-testid="beat-display-text">
+                {name}
+              </span>
+              <span class="sc-disp-pat" data-testid="beat-display-pattern" aria-hidden="true">
+                {text}
+              </span>
+            </span>
+          )}
           <span class="sc-disp-cap" data-testid="beat-length">
             {pattern ? lengthLabel(pattern) : ''}
           </span>

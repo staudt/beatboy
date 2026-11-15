@@ -4,6 +4,7 @@ import { registerLane, laneView } from '../laneScroll';
 import { selectedSound } from '../state/lab';
 import { useFollowPlayhead } from '../useFollowPlayhead';
 import { useEffect } from 'preact/hooks';
+import { SoundKey, soundTitle } from './SoundKey';
 import { BeatsControl, FollowChip, Ruler, TrackCells } from './Timeline';
 
 /** Mobile step editor: one horizontal timeline of the selected sound across all bars. */
@@ -54,7 +55,10 @@ export function StepLane() {
   return (
     <section class="lane" aria-label={`${SOUNDS[sound].name} steps`}>
       <div class="lane-head">
-        <h3 class="stepgrid-title">{SOUNDS[sound].name}</h3>
+        <h3 class="stepgrid-title" title={soundTitle(sound)}>
+          <SoundKey sound={sound} />
+          {SOUNDS[sound].name}
+        </h3>
         <FollowChip />
         <span class="spacer" />
         <BeatsControl />

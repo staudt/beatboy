@@ -267,15 +267,51 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(box).toHaveValue(/^kh \. h \./);
     });
 
-    test('beat text sits above the pads and the grid, no tab switch needed', async ({ page }) => {
+    test('beat text sits directly above the step grid (below the pads on phones), no tab switch needed', async ({ page }) => {
       await open(page);
-      const box = await beatText(page).boundingBox();
-      const padBox = await pad(page, 'Kick').boundingBox();
-      const gridBox = await cell(page, 'kick', 0).boundingBox();
-      expect(box && padBox && gridBox).toBeTruthy();
-      expect(box!.y + box!.height).toBeLessThanOrEqual(padBox!.y);
-      expect(box!.y + box!.height).toBeLessThanOrEqual(gridBox!.y);
+      const box = (await beatText(page).boundingBox())!;
+      const padBox = (await pad(page, 'Kick').boundingBox())!;
+      const gridBox = (await cell(page, 'kick', 0).boundingBox())!;
+      expect(box.y + box.height).toBeLessThanOrEqual(gridBox.y);
+      if (isMobile(page)) {
+        expect(padBox.y + padBox.height).toBeLessThanOrEqual(box.y);
+        const tabs = (await page.getByRole('tablist', { name: 'Editor view' }).boundingBox())!;
+        expect(tabs.y + tabs.height).toBeLessThanOrEqual(box.y);
+        // The MIX tab shows the mix without the text field.
+        await press(page, page.getByRole('tab', { name: 'Mix' }));
+        await expect(beatText(page)).toHaveCount(0);
+        await press(page, page.getByRole('tab', { name: 'Grid' }));
+        await expect(beatText(page)).toBeVisible();
+      } else {
+        // Inside the grid panel, right column, beside (not above) the pads.
+        const panel = page.getByRole('region', { name: 'Pattern grid' });
+        await expect(panel.getByRole('textbox', { name: 'Beat text' })).toBeVisible();
+        expect(box.x).toBeGreaterThanOrEqual(padBox.x + padBox.width);
+        const length = (await panel.getByRole('group', { name: 'Beats', exact: true }).boundingBox())!;
+        expect(box.y + box.height).toBeLessThanOrEqual(length.y);
+      }
       await expect(page.getByRole('tab', { name: 'Text' })).toHaveCount(0);
+    });
+
+    test('every pad shows its notation letter as a key-cap badge', async ({ page }) => {
+      await open(page);
+      const expected: Record<string, string> = {
+        Kick: 'k', Snare: 's', 'Side stick': 'j', Clap: 'l', 'Hi-hat closed': 'h', 'Hi-hat pedal': 'd', 'Hi-hat open': 'o', Ride: 'r',
+        'Ride bell': 'e', Crash: 'c', 'Crash 2': 'i', 'High tom': 't', 'Mid tom': 'm', 'Floor tom': 'f', Tambourine: 'z', Cowbell: 'w',
+      };
+      expect(Object.keys(expected)).toHaveLength(16);
+      for (const [name, letter] of Object.entries(expected)) {
+        const p = page.getByRole('button', { name: `${name} pad, letter ${letter}`, exact: true });
+        await expect(p.getByTestId('sound-key')).toHaveText(letter);
+        await expect(p).toHaveAttribute('title', `${name} \u2014 type ${letter}`);
+        // The badge stays inside the pad and does not cover the label.
+        const pb = (await p.boundingBox())!;
+        const kb = (await p.getByTestId('sound-key').boundingBox())!;
+        const lb = (await p.locator('.pad-label').boundingBox())!;
+        expect(kb.x).toBeGreaterThanOrEqual(pb.x);
+        expect(kb.y + kb.height).toBeLessThanOrEqual(lb.y + lb.height);
+        expect(kb.y + kb.height <= lb.y + 1 || kb.x + kb.width <= lb.x + 1 || kb.y >= lb.y + lb.height).toBe(true);
+      }
     });
 
     test('typing applies live; grid edits rewrite the field', async ({ page }) => {
@@ -376,7 +412,9 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       expect(pb.x + pb.width - (gb.x + gb.width)).toBeGreaterThanOrEqual(-1);
       expect(pb.x + pb.width - (gb.x + gb.width)).toBeLessThanOrEqual(24);
       expect(gb.y + gb.height).toBeLessThanOrEqual(first.y);
-      expect(gb.y - pb.y).toBeLessThanOrEqual(24);
+      // Desktop: the beat text sits above the grid header inside the panel; the header follows it.
+      const textBox = isMobile(page) ? null : (await beatText(page).boundingBox())!;
+      expect(gb.y - (textBox ? textBox.y + textBox.height : pb.y)).toBeLessThanOrEqual(isMobile(page) ? 24 : 110);
       expect(gb.x).toBeGreaterThan(pb.x + pb.width / 2);
 
       // An empty last beat is removed without asking.
@@ -840,7 +878,10 @@ test.describe('editor layout across widths', () => {
       const head = (await page.locator('.pattern-header').boundingBox())!;
       const pads = (await pad(page, 'Kick').boundingBox())!;
       expect(head.y + head.height).toBeLessThanOrEqual(box.y + 1);
-      expect(box.y + box.height).toBeLessThanOrEqual(pads.y);
+      const grid = (await cell(page, 'kick', 0).boundingBox())!;
+      expect(box.y + box.height).toBeLessThanOrEqual(grid.y);
+      if (w < 900) expect(pads.y + pads.height).toBeLessThanOrEqual(box.y + 1);
+      else expect(box.x).toBeGreaterThanOrEqual(pads.x + pads.width);
       // The caption and its Syntax toggle sit side by side without overlapping.
       const cap = (await page.locator('.beattext-caption .parse').boundingBox())!;
       const tog = (await page.locator('.syntax-toggle').boundingBox())!;

@@ -6,6 +6,7 @@ import { SOUNDS } from '../../domain/sounds';
 import { SOUND_IDS } from '../../domain/types';
 import { laneView, scrollLaneToStep } from '../laneScroll';
 import { current, playheadStep, selectedSound } from '../state/lab';
+import { SoundKey, soundTitle } from './SoundKey';
 import { levelName } from './cellInput';
 
 /** Compact all-track mini grid of every bar. Tap a column to scroll the lane there, a name to select it. */
@@ -61,8 +62,10 @@ export function OverviewGrid() {
                 class="ov-name"
                 aria-label={`Select ${SOUNDS[s].name}`}
                 aria-pressed={s === sel}
+                title={soundTitle(s)}
                 onClick={() => (selectedSound.value = s)}
               >
+                <SoundKey sound={s} />
                 {SOUNDS[s].short}
               </button>
               <div

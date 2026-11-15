@@ -66,7 +66,6 @@ export function BeatLab() {
           <PatternHeader />
           <Transport />
         </div>
-        <BeatTextField />
         <div class="lab-cols">
           <div class="lab-left">
             <PadGrid />
@@ -88,7 +87,6 @@ export function BeatLab() {
     <div class="lab lab-mobile">
       <PatternHeader />
       <Transport />
-      <BeatTextField />
       <Summary />
       {settingsOpen.value && (
         <div id="pattern-settings" class="panel">
@@ -99,6 +97,7 @@ export function BeatLab() {
       <SubTabs />
       {view === 'grid' && (
         <>
+          <BeatTextField />
           <StepLane />
           <OverviewGrid />
         </>

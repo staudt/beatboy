@@ -39,6 +39,32 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       if (isMobile(page)) expect(h.over).toBe(true);
     });
 
+    test('saved groove rows add the pattern text on wide screens; song beats show only text', async ({ page }) => {
+      await open(page);
+      await newSong(page);
+      const c = cards(page).nth(0);
+      await expect(c.getByTestId('beat-display-text')).toHaveText('Rock 8ths');
+      const pat = c.getByTestId('beat-display-pattern');
+      const w = page.viewportSize()!.width;
+      if (w >= 600) {
+        await expect(pat).toBeVisible();
+        await expect(pat).toHaveText(/^kh \. h \./);
+        const nb = (await c.getByTestId('beat-display-text').boundingBox())!;
+        const pb = (await pat.boundingBox())!;
+        const cb = (await c.getByTestId('beat-length').boundingBox())!;
+        expect(nb.x + nb.width).toBeLessThanOrEqual(pb.x);
+        expect(pb.x + pb.width).toBeLessThanOrEqual(cb.x + 1);
+        await expect(c.getByTestId('beat-display')).toHaveAccessibleName('Section groove: Rock 8ths');
+      } else {
+        await expect(pat).toBeHidden();
+      }
+      await press(page, display(page, 0));
+      await page.getByTestId('beat-text').fill('s k s');
+      await page.getByTestId('beat-text').press('Enter');
+      await expect(c.getByTestId('beat-display-text')).toHaveText('s k s');
+      await expect(pat).toHaveCount(0);
+    });
+
     test('clicking the display while playing opens the panel and queues no jump', async ({ page }) => {
       await open(page);
       await pickSong(page, /^Demo song/);
