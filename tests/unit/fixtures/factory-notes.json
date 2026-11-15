@@ -1,0 +1,1736 @@
+{
+ "f-rock-8ths": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-rock-16ths": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 120,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 360,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 600,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 840,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1080,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1320,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1560,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    },
+    {
+     "tick": 1800,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-half-time": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 960,
+     "vel": 127
+    }
+   ]
+  }
+ },
+ "f-punk": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-ride-rock": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    }
+   ],
+   "ride": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-ballad": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "sidestick": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-four-floor": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ],
+   "hatOpen": [
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-motown": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ],
+   "tambourine": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-shuffle": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-slow-blues": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 3,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1280,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 160,
+     "vel": 96
+    },
+    {
+     "tick": 320,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 640,
+     "vel": 96
+    },
+    {
+     "tick": 800,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1120,
+     "vel": 96
+    },
+    {
+     "tick": 1280,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1600,
+     "vel": 96
+    },
+    {
+     "tick": 1760,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-train": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 0,
+     "vel": 40
+    },
+    {
+     "tick": 120,
+     "vel": 40
+    },
+    {
+     "tick": 240,
+     "vel": 127
+    },
+    {
+     "tick": 360,
+     "vel": 40
+    },
+    {
+     "tick": 480,
+     "vel": 40
+    },
+    {
+     "tick": 600,
+     "vel": 40
+    },
+    {
+     "tick": 720,
+     "vel": 127
+    },
+    {
+     "tick": 840,
+     "vel": 40
+    },
+    {
+     "tick": 960,
+     "vel": 40
+    },
+    {
+     "tick": 1080,
+     "vel": 40
+    },
+    {
+     "tick": 1200,
+     "vel": 127
+    },
+    {
+     "tick": 1320,
+     "vel": 40
+    },
+    {
+     "tick": 1440,
+     "vel": 40
+    },
+    {
+     "tick": 1560,
+     "vel": 40
+    },
+    {
+     "tick": 1680,
+     "vel": 127
+    },
+    {
+     "tick": 1800,
+     "vel": 40
+    }
+   ]
+  }
+ },
+ "f-jazz-ride": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "ride": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "hatPedal": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-funk-16": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 1080,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1800,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 360,
+     "vel": 40
+    },
+    {
+     "tick": 480,
+     "vel": 127
+    },
+    {
+     "tick": 840,
+     "vel": 40
+    },
+    {
+     "tick": 1320,
+     "vel": 40
+    },
+    {
+     "tick": 1440,
+     "vel": 127
+    }
+   ]
+  }
+ },
+ "f-hip-hop": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 840,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1080,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-one-drop": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "kick": [
+    {
+     "tick": 960,
+     "vel": 96
+    }
+   ],
+   "sidestick": [
+    {
+     "tick": 960,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-bossa": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 360,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 840,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1320,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1800,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "sidestick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 360,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1560,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-waltz": {
+  "timeSig": {
+   "num": 3,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-six-eight": {
+  "timeSig": {
+   "num": 2,
+   "den": 4
+  },
+  "stepsPerBeat": 3,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 160,
+     "vel": 96
+    },
+    {
+     "tick": 320,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 640,
+     "vel": 96
+    },
+    {
+     "tick": 800,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-five-four": {
+  "timeSig": {
+   "num": 5,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    },
+    {
+     "tick": 1920,
+     "vel": 96
+    },
+    {
+     "tick": 2160,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 1920,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-metal": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 120,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 360,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 600,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 840,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1080,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1320,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    },
+    {
+     "tick": 1560,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    },
+    {
+     "tick": 1800,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-click-only": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {}
+ },
+ "f-fill-toms": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 120,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 360,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 127
+    },
+    {
+     "tick": 600,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 127
+    }
+   ],
+   "tomHigh": [
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 840,
+     "vel": 96
+    },
+    {
+     "tick": 1560,
+     "vel": 96
+    }
+   ],
+   "tomMid": [
+    {
+     "tick": 960,
+     "vel": 96
+    },
+    {
+     "tick": 1080,
+     "vel": 96
+    },
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ],
+   "tomFloor": [
+    {
+     "tick": 1200,
+     "vel": 96
+    },
+    {
+     "tick": 1320,
+     "vel": 96
+    },
+    {
+     "tick": 1800,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-fill-snare": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "snare": [
+    {
+     "tick": 0,
+     "vel": 40
+    },
+    {
+     "tick": 120,
+     "vel": 40
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 360,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 600,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    },
+    {
+     "tick": 840,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 127
+    },
+    {
+     "tick": 1080,
+     "vel": 96
+    },
+    {
+     "tick": 1200,
+     "vel": 127
+    },
+    {
+     "tick": 1320,
+     "vel": 96
+    },
+    {
+     "tick": 1440,
+     "vel": 127
+    },
+    {
+     "tick": 1560,
+     "vel": 127
+    },
+    {
+     "tick": 1680,
+     "vel": 127
+    },
+    {
+     "tick": 1800,
+     "vel": 127
+    }
+   ]
+  }
+ },
+ "f-fill-8ths": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 4,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 240,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 720,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 96
+    }
+   ],
+   "tomHigh": [
+    {
+     "tick": 1200,
+     "vel": 96
+    }
+   ],
+   "tomMid": [
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ],
+   "tomFloor": [
+    {
+     "tick": 1680,
+     "vel": 96
+    }
+   ]
+  }
+ },
+ "f-fill-triplet": {
+  "timeSig": {
+   "num": 4,
+   "den": 4
+  },
+  "stepsPerBeat": 3,
+  "notes": {
+   "kick": [
+    {
+     "tick": 0,
+     "vel": 96
+    }
+   ],
+   "hatClosed": [
+    {
+     "tick": 0,
+     "vel": 96
+    },
+    {
+     "tick": 160,
+     "vel": 96
+    },
+    {
+     "tick": 320,
+     "vel": 96
+    },
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 640,
+     "vel": 96
+    },
+    {
+     "tick": 800,
+     "vel": 96
+    }
+   ],
+   "snare": [
+    {
+     "tick": 480,
+     "vel": 96
+    },
+    {
+     "tick": 960,
+     "vel": 127
+    }
+   ],
+   "tomHigh": [
+    {
+     "tick": 1120,
+     "vel": 96
+    },
+    {
+     "tick": 1280,
+     "vel": 96
+    }
+   ],
+   "tomMid": [
+    {
+     "tick": 1440,
+     "vel": 96
+    }
+   ],
+   "tomFloor": [
+    {
+     "tick": 1600,
+     "vel": 96
+    },
+    {
+     "tick": 1760,
+     "vel": 96
+    }
+   ]
+  }
+ }
+}

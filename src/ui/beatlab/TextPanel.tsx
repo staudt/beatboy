@@ -6,7 +6,7 @@ import { SOUNDS } from '../../domain/sounds';
 import { current, editCurrent, showToast, textDraft } from '../state/lab';
 
 const RULES =
-  '- or . rest · + joins hits (k+x) · UPPERCASE accent · (s) ghost · | bar line · [ … ]*2 repeat · spaces are ignored · # comment · | is cosmetic · write one token per beat, 8th or 16th';
+  'Spaces separate steps; letters written together sound together (kh = kick + hat) · . or - rest · UPPERCASE accent · (s) ghost · [ … ]*2 repeat · | is cosmetic · # comment · write one step per beat, 8th or 16th';
 
 function CheatSheet() {
   return (
@@ -21,7 +21,7 @@ function CheatSheet() {
           </div>
         ))}
       </dl>
-      <p class="cheat-rules">Aliases: b = kick, h = open hat.</p>
+      <p class="cheat-rules">Aliases: b = kick, x = closed hat. Example: kh . sh . = kick+hat, rest, snare+hat, rest.</p>
     </details>
   );
 }

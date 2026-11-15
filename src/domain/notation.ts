@@ -49,6 +49,8 @@ export function resolutionOf(d: number, spb: number): Resolution {
 
 interface Tok {
   ch: string;
+  /** True when whitespace (or a line break / comment) separates this character from the previous one. */
+  brk: boolean;
   line: number;
   col: number;
 }
@@ -69,11 +71,13 @@ function tokenize(text: string): Tok[] {
   let line = 1;
   let col = 0;
   let inComment = false;
+  let brk = true;
   for (const ch of text) {
     if (ch === '\n') {
       line++;
       col = 0;
       inComment = false;
+      brk = true;
       continue;
     }
     col++;
@@ -81,10 +85,15 @@ function tokenize(text: string): Tok[] {
     if (inComment) continue;
     if (ch === '#') {
       inComment = true;
+      brk = true;
       continue;
     }
-    if (/\s/.test(ch)) continue;
-    toks.push({ ch, line, col });
+    if (/\s/.test(ch)) {
+      brk = true;
+      continue;
+    }
+    toks.push({ ch, brk, line, col });
+    brk = false;
   }
   return toks;
 }
@@ -145,10 +154,8 @@ export function parseBeatText(text: string, opts: { timeSig: TimeSignature; step
 
   while (i < toks.length) {
     const t = toks[i]!;
-    if (t.ch === '-' || t.ch === '.') {
-      target().push({ kind: 'step', hits: new Map(), line: t.line, col: t.col });
-      i++;
-    } else if (t.ch === '|') {
+    const start = i;
+    if (t.ch === '|') {
       i++; // bar lines are cosmetic
     } else if (t.ch === '[') {
       if (bracket) {
@@ -186,19 +193,24 @@ export function parseBeatText(text: string, opts: { timeSig: TimeSignature; step
       bracketStart = null;
       if (!Number.isNaN(n)) for (let r = 0; r < n; r++) top.push(...content);
     } else {
-      // hit group
+      // One step: a rest, or hits written together (until whitespace, `|`, `[` or `]`).
       const hits = new Map<SoundId, number>();
-      parseHit(hits);
-      while (toks[i]?.ch === '+') {
-        const plus = toks[i]!;
-        i++;
-        const nxt = toks[i];
-        if (!nxt || !(nxt.ch === '(' || /^[A-Za-z]$/.test(nxt.ch))) {
-          err(nxt ?? plus, "Expected a sound after '+'");
-          break;
-        }
-        parseHit(hits);
+      let rests = 0;
+      let plusReported = false;
+      while (i < toks.length) {
+        const c = toks[i]!;
+        if (i > start && (c.brk || c.ch === '|' || c.ch === '[' || c.ch === ']')) break;
+        if (c.ch === '-' || c.ch === '.') {
+          rests++;
+          i++;
+        } else if (c.ch === '+') {
+          if (!plusReported) err(c, 'Use letters together for hits at the same time, e.g. kh (no +)');
+          plusReported = true;
+          i++;
+        } else parseHit(hits);
       }
+      if (rests > 0 && hits.size > 0) err(t, 'A step is either a rest (.) or hits');
+      else if (rests > 1) err(t, 'Separate rests with spaces, e.g. . . .');
       target().push({ kind: 'step', hits, line: t.line, col: t.col });
     }
   }
@@ -273,7 +285,7 @@ export function formatBeatText(p: Pattern): { text: string; droppedOffGrid: numb
     for (let j = 0; j < d; j++) {
       const m = grid.get(beat * spb + j * unit);
       if (!m || m.size === 0) {
-        tokens.push('-');
+        tokens.push('.');
         continue;
       }
       const parts: string[] = [];
@@ -284,7 +296,7 @@ export function formatBeatText(p: Pattern): { text: string; droppedOffGrid: numb
         const lvl = velocityLevel(vel);
         parts.push(lvl === 'accent' ? letter.toUpperCase() : lvl === 'ghost' ? `(${letter})` : letter);
       }
-      tokens.push(parts.join('+'));
+      tokens.push(parts.join(''));
     }
     beatTexts.push(tokens.join(' '));
   }

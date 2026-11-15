@@ -8,8 +8,8 @@ Ideas agreed with the user but not built yet, roughly in priority order. Each it
 - Typing creates a song-local beat (a hidden pattern owned by the song; never mutates a shared groove).
   "Save as groove" promotes it to the library; "Edit" opens it in the Beat Editor.
 - Live feedback while typing: step count, inline errors, ghosted loop continuation.
-- Syntax proposal: space-separated steps, letters together = simultaneous (`kh . sh .`), `+` still
-  accepted, one-word typeabeat strings still parse. Open question: uppercase = accent vs. extra sounds.
+- Syntax: space-separated steps, letters together = simultaneous (`kh . sh .`); implemented in the
+  Beat Editor text panel. Open question: uppercase = accent vs. extra sounds.
 
 ## Live performance
 - Full-screen perform view with an edit lock (rows become big tap targets, no accidental edits).

@@ -7,8 +7,8 @@ A super metronome and drummer for guitarists, with a pocket drum-machine Beat Ed
 - **Drummer** — songs made of sections (intro, verse, chorus…), each playing a groove a number of times.
   Press play and it follows the arrangement; NEXT / FILL / BREAK / LOOP, number keys and
   PageUp/PageDown (footswitches) while playing.
-- **Beat Editor** — tap pads and steps, or type beats as text (`k+x x s+x x`, compatible with the old
-  [typeabeat](https://github.com/staudt/typeabeat) strings). Switching tabs on the same beat is seamless.
+- **Beat Editor** — tap pads and steps, or type beats as text (`kh h sh h`: spaces separate steps, letters together
+  sound together; inspired by [typeabeat](https://github.com/staudt/typeabeat)). Switching tabs on the same beat is seamless.
 
 Everything is saved in your browser (IndexedDB); no account, no server. Works on phones and desktop.
 

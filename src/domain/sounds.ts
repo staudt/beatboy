@@ -17,7 +17,7 @@ export const SOUNDS: Record<SoundId, SoundInfo> = {
   snare: { id: 'snare', short: 'SNARE', name: 'Snare', letter: 's' },
   sidestick: { id: 'sidestick', short: 'STICK', name: 'Side stick', letter: 'j' },
   clap: { id: 'clap', short: 'CLAP', name: 'Clap', letter: 'l' },
-  hatClosed: { id: 'hatClosed', short: 'HH CL', name: 'Hi-hat closed', letter: 'x', chokeGroup: 'hat' },
+  hatClosed: { id: 'hatClosed', short: 'HH CL', name: 'Hi-hat closed', letter: 'h', chokeGroup: 'hat' },
   hatPedal: { id: 'hatPedal', short: 'HH PD', name: 'Hi-hat pedal', letter: 'd', chokeGroup: 'hat' },
   hatOpen: { id: 'hatOpen', short: 'HH OP', name: 'Hi-hat open', letter: 'o', chokeGroup: 'hat' },
   ride: { id: 'ride', short: 'RIDE', name: 'Ride', letter: 'r' },
@@ -31,20 +31,17 @@ export const SOUNDS: Record<SoundId, SoundInfo> = {
   cowbell: { id: 'cowbell', short: 'COWBL', name: 'Cowbell', letter: 'w' },
 };
 
-/**
- * Notation letters → sound. Includes typeabeat-compatible aliases:
- * `b` = kick, `h` = open hat. (typeabeat used `o` as a closed-hat alias; here `o` is open hat.)
- */
+/** Notation letters → sound. Aliases: `b` = kick, `x` = closed hat. */
 export const LETTER_TO_SOUND: Readonly<Record<string, SoundId>> = {
   k: 'kick',
   b: 'kick',
   s: 'snare',
   j: 'sidestick',
   l: 'clap',
+  h: 'hatClosed',
   x: 'hatClosed',
   d: 'hatPedal',
   o: 'hatOpen',
-  h: 'hatOpen',
   r: 'ride',
   e: 'rideBell',
   c: 'crash',

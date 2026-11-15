@@ -232,7 +232,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await openSettings(page);
       await openText(page);
       const box = page.getByRole('textbox', { name: 'Beat text' });
-      await box.fill('k+x x s+x x k+x k+x s+x x');
+      await box.fill('kh h sh h kh kh sh h');
       await expect(page.locator('.parse.ok')).toContainText('✓ 4 beats · read as 8ths');
       await press(page, page.getByRole('button', { name: 'Apply' }));
       await expect(page.getByRole('button', { name: 'Apply' })).toBeDisabled();
@@ -249,9 +249,9 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(cell(page, 'hatClosed', 1)).toHaveAttribute('aria-pressed', 'false');
 
       await openText(page);
-      await box.fill('k x\nk q');
+      await box.fill('k h\nk q');
       await expect(page.locator('.parse.err')).toContainText("Line 2, col 3: Unknown sound 'q'");
-      await box.fill('k---'.repeat(33));
+      await box.fill('k . . . '.repeat(33));
       await expect(page.locator('.parse.err')).toContainText('Too many beats: maximum is 32');
       await expect(page.getByRole('button', { name: 'Apply' })).toBeDisabled();
       await press(page, page.getByRole('button', { name: 'Revert' }));

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import snapshot from './fixtures/factory-notes.json';
 import { FACTORY_SPECS, factoryPatterns } from '../../src/domain/factory';
 import { parseBeatText } from '../../src/domain/notation';
 import { noteCount } from '../../src/domain/patternOps';
@@ -56,5 +57,16 @@ describe('factory patterns', () => {
     expect(g('f-jazz-ride').swing).toBe(0.67);
     expect(g('f-one-drop').swing).toBe(0.6);
     expect(g('f-hip-hop').swing).toBe(0.58);
+  });
+
+  it('notes are identical to the snapshot taken before the syntax change', () => {
+    const snap = snapshot as Record<string, { timeSig: unknown; stepsPerBeat: number; notes: unknown }>;
+    const ps = factoryPatterns();
+    expect(Object.keys(snap).sort()).toEqual(ps.map((p) => p.id).sort());
+    for (const p of ps) {
+      expect(p.notes, p.id).toEqual(snap[p.id]!.notes);
+      expect(p.timeSig, p.id).toEqual(snap[p.id]!.timeSig);
+      expect(p.stepsPerBeat, p.id).toBe(snap[p.id]!.stepsPerBeat);
+    }
   });
 });
