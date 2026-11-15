@@ -1,6 +1,6 @@
-import { DEFAULT_MIX, SOUND_IDS } from '../domain/types';
 import type { Pattern, TimeSignature } from '../domain/types';
-import { TPQ, beatTicks, patternTicks, swingOffset } from '../domain/time';
+import { patternTicks } from '../domain/time';
+import { BEAT, CRASH_VEL, KICK_VEL, addHit, collectClicks, collectCountIn, collectFillTail } from './drumParts';
 import { collectLoopNotes } from './patternSource';
 import type { EventSource, NoteOut } from './types';
 
@@ -27,14 +27,6 @@ export interface FillPlan {
 
 export type FillPhase = 'queued' | 'active' | 'none';
 
-const BEAT = TPQ;
-/** Count-in clicks are always at least this loud, even if the user's click volume is low. */
-const COUNT_IN_MIN_GAIN = 0.6;
-const CLICK_VEL = 100;
-const CRASH_VEL = 120;
-const KICK_VEL = 110;
-
-const mod = (a: number, n: number) => ((a % n) + n) % n;
 
 /**
  * Super-metronome source: optional drum groove + click + count-in + manual fills.
@@ -116,17 +108,7 @@ export class GrooveSource implements EventSource {
 
     // Count-in: clicks only.
     if (from < 0) {
-      const gain = Math.max(c.click.volume, COUNT_IN_MIN_GAIN);
-      const end = Math.min(to, 0);
-      for (let t = Math.ceil(from / BEAT) * BEAT; t < end; t += BEAT) {
-        out.push({
-          tick: t,
-          offsetTicks: 0,
-          sound: mod(t, bar) === 0 ? 'clickAccent' : 'click',
-          vel: CLICK_VEL,
-          gain,
-        });
-      }
+      collectCountIn(from, to, bar, c.click.volume, out);
     }
     if (to <= 0) return;
     const lo = Math.max(from, 0);
@@ -144,23 +126,7 @@ export class GrooveSource implements EventSource {
     if (c.pattern) collectLoopNotes(c.pattern, lo, to, base, silence);
 
     // Fill tail.
-    if (plan && fp && fillLen > 0) {
-      const beat = beatTicks(fp.timeSig);
-      const swing = fp.stepsPerBeat === 3 ? 0.5 : fp.swing;
-      const origin = plan.end - fillLen;
-      for (const sound of SOUND_IDS) {
-        const notes = fp.notes[sound];
-        if (!notes || notes.length === 0) continue;
-        const mix = fp.mix[sound] ?? DEFAULT_MIX;
-        if (mix.muted) continue;
-        for (const n of notes) {
-          if (n.tick < 0 || n.tick >= fillLen) continue;
-          const abs = origin + n.tick;
-          if (abs < plan.start || abs >= plan.end || abs < lo || abs >= to) continue;
-          base.push({ tick: abs, offsetTicks: swingOffset(n.tick, beat, swing), sound, vel: n.vel, gain: mix.gain });
-        }
-      }
-    }
+    if (plan && fp && fillLen > 0) collectFillTail(fp, plan.start, plan.end, lo, to, base);
 
     // Crash + kick on the downbeat after the fill (merged with identical groove sounds: max velocity).
     if (plan && this.planCrash && plan.end >= lo && plan.end < to) {
@@ -168,25 +134,13 @@ export class GrooveSource implements EventSource {
         ['crash', CRASH_VEL],
         ['kick', KICK_VEL],
       ] as const) {
-        const existing = base.find((n) => n.tick === plan.end && n.sound === sound);
-        if (existing) existing.vel = Math.max(existing.vel, vel);
-        else base.push({ tick: plan.end, offsetTicks: 0, sound, vel, gain: 1 });
+        addHit(base, plan.end, sound, vel);
       }
     }
     for (let i = 0; i < base.length; i++) out.push(base[i]!);
     base.length = 0;
 
     // Click.
-    if (c.click.enabled) {
-      for (let t = Math.ceil(lo / BEAT) * BEAT; t < to; t += BEAT) {
-        out.push({
-          tick: t,
-          offsetTicks: 0,
-          sound: t % bar === 0 ? 'clickAccent' : 'click',
-          vel: CLICK_VEL,
-          gain: c.click.volume,
-        });
-      }
-    }
+    if (c.click.enabled) collectClicks(lo, to, bar, c.click.volume, out);
   }
 }

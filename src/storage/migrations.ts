@@ -9,7 +9,8 @@ import {
 } from '../domain/types';
 import { barTicks } from '../domain/time';
 import { toBeatGrid } from '../domain/patternOps';
-import { PATTERN_SCHEMA_VERSION } from './db';
+import { SECTION_KINDS, SECTION_LABELS, SONG_LIMITS, type Section, type SectionKind, type Song } from '../domain/song';
+import { PATTERN_SCHEMA_VERSION, SONG_SCHEMA_VERSION } from './db';
 
 type Rec = Record<string, unknown>;
 
@@ -126,5 +127,71 @@ export function validatePattern(raw: unknown, version: number = PATTERN_SCHEMA_V
     builtIn: raw.builtIn,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
+  };
+}
+
+// ───────────────────────── songs ─────────────────────────
+
+/** Song migration steps keyed by the schemaVersion they upgrade FROM (none yet: v1 is current). */
+const SONG_STEPS: Record<number, (r: Rec) => Rec> = {};
+
+export function migrateSong(raw: unknown): Song | null {
+  if (!isRec(raw)) return null;
+  const sv = raw.schemaVersion ?? 1;
+  if (!isInt(sv) || sv < 1 || sv > SONG_SCHEMA_VERSION) return null; // unknown/future
+  let rec: Rec = raw;
+  for (let v = sv; v < SONG_SCHEMA_VERSION; v++) {
+    const step = SONG_STEPS[v];
+    if (!step) return null;
+    rec = step(rec);
+  }
+  return validateSong(rec);
+}
+
+const clampRound = (v: unknown, lo: number, hi: number, fallback: number) =>
+  isFiniteNum(v) ? clamp(Math.round(v), lo, hi) : fallback;
+
+/** Repairs what is reasonable (clamps, drops broken sections, fixes kinds/names); rejects non-objects and records without an id. */
+export function validateSong(raw: unknown): Song | null {
+  if (!isRec(raw)) return null;
+  if (typeof raw.id !== 'string' || raw.id === '') return null;
+
+  const sections: Section[] = [];
+  const seen = new Set<string>();
+  if (Array.isArray(raw.sections)) {
+    for (const s of raw.sections) {
+      if (sections.length >= SONG_LIMITS.maxSections) break;
+      if (!isRec(s)) continue;
+      if (typeof s.id !== 'string' || s.id === '') continue;
+      if (typeof s.patternId !== 'string' || s.patternId === '') continue;
+      const kind: SectionKind = (SECTION_KINDS as readonly unknown[]).includes(s.kind) ? (s.kind as SectionKind) : 'custom';
+      const f = isRec(s.fill) ? s.fill : {};
+      let id = s.id;
+      if (seen.has(id)) id = crypto.randomUUID();
+      seen.add(id);
+      sections.push({
+        id,
+        kind,
+        name: cleanString(s.name, SECTION_LABELS[kind]),
+        patternId: s.patternId,
+        bars: clampRound(s.bars, SONG_LIMITS.minBars, SONG_LIMITS.maxBars, 4),
+        fill: {
+          enabled: f.enabled === true,
+          patternId: typeof f.patternId === 'string' && f.patternId !== '' ? f.patternId : null,
+        },
+        loop: s.loop === true,
+      });
+    }
+  }
+
+  return {
+    id: raw.id,
+    name: cleanString(raw.name, 'Untitled song'),
+    bpm: clampRound(raw.bpm, 30, 300, 100),
+    beatsPerBar: clampRound(raw.beatsPerBar, SONG_LIMITS.minBeatsPerBar, SONG_LIMITS.maxBeatsPerBar, 4),
+    fillId: typeof raw.fillId === 'string' && raw.fillId !== '' ? raw.fillId : null,
+    sections,
+    createdAt: isFiniteNum(raw.createdAt) ? raw.createdAt : 0,
+    updatedAt: isFiniteNum(raw.updatedAt) ? raw.updatedAt : 0,
   };
 }

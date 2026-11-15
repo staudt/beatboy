@@ -1,9 +1,55 @@
 import type { Pattern } from '../domain/types';
-import { openBeatboyDb, PATTERN_SCHEMA_VERSION, type BeatboyDb, type StoredPattern } from './db';
-import { migratePattern } from './migrations';
+import type { Song } from '../domain/song';
+import {
+  openBeatboyDb,
+  PATTERN_SCHEMA_VERSION,
+  SONG_SCHEMA_VERSION,
+  type BeatboyDb,
+  type StoredPattern,
+  type StoredSong,
+} from './db';
+import { migratePattern, migrateSong } from './migrations';
+
+/** Songs store; shares the connection of the PatternRepo that owns it (`repo.songs`). */
+export class SongRepo {
+  constructor(private readonly db: BeatboyDb) {}
+
+  /** Newest first; corrupt records are skipped with a warning. */
+  async list(): Promise<Song[]> {
+    const raws = await this.db.getAll('songs');
+    const out: Song[] = [];
+    for (const raw of raws) {
+      const s = migrateSong(raw);
+      if (s) out.push(s);
+      else console.warn('[beatboy] skipping corrupt song record', (raw as { id?: unknown })?.id);
+    }
+    return out.sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
+  async get(id: string): Promise<Song | undefined> {
+    const raw = await this.db.get('songs', id);
+    if (raw === undefined) return undefined;
+    const s = migrateSong(raw);
+    if (!s) console.warn('[beatboy] corrupt song record', id);
+    return s ?? undefined;
+  }
+
+  async put(s: Song): Promise<void> {
+    const rec: StoredSong = { ...s, schemaVersion: SONG_SCHEMA_VERSION };
+    await this.db.put('songs', rec);
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.db.delete('songs', id);
+  }
+}
 
 export class PatternRepo {
-  private constructor(private readonly db: BeatboyDb) {}
+  readonly songs: SongRepo;
+
+  private constructor(private readonly db: BeatboyDb) {
+    this.songs = new SongRepo(db);
+  }
 
   static async open(dbName?: string): Promise<PatternRepo> {
     return new PatternRepo(await openBeatboyDb(dbName));
