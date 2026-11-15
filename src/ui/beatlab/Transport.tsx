@@ -44,6 +44,16 @@ export function Transport() {
           <IconPlus />
         </button>
       </div>
+      <input
+        class="range tempo-slider"
+        type="range"
+        min={PATTERN_LIMITS.minBpm}
+        max={PATTERN_LIMITS.maxBpm}
+        step={1}
+        value={b}
+        aria-label="Tempo slider"
+        onInput={(e) => setTempo(Number(e.currentTarget.value))}
+      />
       <button type="button" class="btn btn-tap" aria-label="Tap tempo" onPointerDown={() => tap()}  onClick={(e) => e.detail === 0 && tap()}>
         TAP
       </button>

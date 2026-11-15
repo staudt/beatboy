@@ -425,6 +425,12 @@ button.chip {
   gap: 8px;
 }
 
+/* Full-width tempo fader on its own row under the transport (mobile). */
+.tempo-slider {
+  order: 10;
+  flex: 1 1 100%;
+}
+
 .btn-play {
   width: 60px;
   height: 52px;
@@ -1251,6 +1257,12 @@ button.chip {
 
   .lab-top .transport {
     flex: 0 1 auto;
+    flex-wrap: nowrap;
+  }
+
+  .lab-top .tempo-slider {
+    order: 0;
+    flex: 0 0 200px;
   }
 
   .swing-chip {

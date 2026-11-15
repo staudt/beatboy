@@ -264,6 +264,58 @@ test('desktop: click-drag paints a row and Space toggles playback', async ({ bro
   await ctx.close();
 });
 
+test('desktop: Space plays/stops even when a button, step, slider or select has focus', async ({ browser }) => {
+  const ctx = await browser.newContext(LAYOUTS.desktop);
+  const page = await ctx.newPage();
+  await page.goto('./');
+  await expect(patternName(page)).toBeVisible();
+  const play = page.getByRole('button', { name: 'Play' });
+  const stop = page.getByRole('button', { name: 'Stop' });
+
+  // A clicked step cell keeps focus; Space must toggle playback, not the cell.
+  const c = cell(page, 'tomFloor', 3);
+  await c.click();
+  await expect(c).toHaveAttribute('aria-pressed', 'true');
+  for (const target of [
+    c,
+    pad(page, 'Snare'),
+    page.getByRole('button', { name: 'Tap tempo' }),
+    page.getByRole('slider', { name: 'Tempo slider' }),
+    page.getByRole('combobox').first(),
+  ]) {
+    await target.focus();
+    await page.keyboard.press('Space');
+    await expect(stop).toBeVisible();
+    await page.keyboard.press('Space');
+    await expect(play).toBeVisible();
+  }
+  await expect(c).toHaveAttribute('aria-pressed', 'true'); // Space never cycled the step
+
+  // Space still types in the beat text editor.
+  const text = page.getByRole('textbox', { name: 'Beat text' });
+  await text.fill('k');
+  await text.press('Space');
+  await expect(text).toHaveValue('k ');
+  await expect(play).toBeVisible();
+  await ctx.close();
+});
+
+for (const layout of ['mobile', 'desktop'] as const) {
+  test(`${layout}: tempo slider sets BPM`, async ({ browser }) => {
+    const ctx = await browser.newContext(LAYOUTS[layout]);
+    const page = await ctx.newPage();
+    await page.goto('./');
+    await expect(patternName(page)).toBeVisible();
+    const slider = page.getByRole('slider', { name: 'Tempo slider' });
+    await expect(slider).toBeVisible();
+    await slider.fill('150');
+    await expect(page.getByRole('spinbutton', { name: 'Tempo in BPM' })).toHaveValue('150');
+    await page.getByRole('button', { name: 'Tempo up' }).click();
+    await expect(slider).toHaveValue('151');
+    await ctx.close();
+  });
+}
+
 test('assistant tab shows the iteration placeholder', async ({ page }) => {
   await open(page);
   await page.getByRole('button', { name: /Assistant/ }).click();

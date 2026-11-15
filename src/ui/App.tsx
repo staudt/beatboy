@@ -45,7 +45,11 @@ function Assistant() {
 function isTypingTarget(t: EventTarget | null): boolean {
   const el = t as HTMLElement | null;
   if (!el) return false;
-  return !!el.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]');
+  // Only fields where Space types a character keep it; sliders, selects, buttons and the
+  // numeric BPM field don't, so Space always means play/stop there.
+  return !!el.closest(
+    'textarea, [contenteditable=""], [contenteditable="true"], input:is([type=text], [type=search], [type=email], [type=url], [type=password], [type=tel], :not([type]))',
+  );
 }
 
 export function App() {
@@ -58,9 +62,7 @@ export function App() {
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== 'Space' || e.repeat) return;
       const t = e.target as HTMLElement | null;
-      if (isTypingTarget(t) || route.value !== 'lab' || t?.closest('[role=dialog]')) return;
-      // A button focused with the keyboard keeps Space for activation; mouse-focused ones don't.
-      if (t?.closest('button, [role=tab]')?.matches(':focus-visible')) return;
+      if (isTypingTarget(t) || route.value !== 'lab') return;
       e.preventDefault();
       spaceHandled = true;
       togglePlay();
