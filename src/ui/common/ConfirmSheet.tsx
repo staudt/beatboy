@@ -9,19 +9,27 @@ export function ConfirmSheet() {
     <Sheet title={req.title} onClose={close} className="sheet-small">
       <p class="sheet-text">{req.body}</p>
       <div class="sheet-actions">
-        <button type="button" class="btn" data-autofocus onClick={close}>
-          Cancel
-        </button>
-        <button
-          type="button"
-          class="btn btn-danger"
-          onClick={() => {
-            close();
-            req.onConfirm();
-          }}
-        >
-          {req.confirmLabel}
-        </button>
+        {req.blocked ? (
+          <button type="button" class="btn" data-autofocus onClick={close}>
+            OK
+          </button>
+        ) : (
+          <>
+            <button type="button" class="btn" data-autofocus onClick={close}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-danger"
+              onClick={() => {
+                close();
+                req.onConfirm();
+              }}
+            >
+              {req.confirmLabel}
+            </button>
+          </>
+        )}
       </div>
     </Sheet>
   );

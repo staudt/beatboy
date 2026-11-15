@@ -3,7 +3,7 @@ import type { Pattern } from '../domain/types';
 import { TPQ, beatTicks, patternTicks, swingOffset } from '../domain/time';
 import type { NoteOut, SinkSound } from './types';
 
-/** Building blocks shared by GrooveSource and SongSource. */
+/** Building blocks shared by the song source. */
 
 export const BEAT = TPQ;
 /** Count-in clicks are always at least this loud, even if the user's click volume is low. */

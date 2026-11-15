@@ -21,7 +21,8 @@ describe('factory patterns', () => {
     for (const p of ps) {
       expect(p.builtIn).toBe(true);
       expect(p.id.startsWith('f-')).toBe(true);
-      expect(noteCount(p)).toBeGreaterThan(0);
+      if (p.id === 'f-click-only') expect(noteCount(p)).toBe(0);
+      else expect(noteCount(p)).toBeGreaterThan(0);
       expect(Object.isFrozen(p)).toBe(true);
     }
   });

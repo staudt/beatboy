@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  practiceSong,
   addSection,
   createSection,
   createSong,
@@ -114,5 +115,14 @@ describe('songOps', () => {
     for (const s of d.sections) expect(ids.has(s.patternId)).toBe(true);
     expect(ids.has(d.fillId!)).toBe(true);
     expect(new Set(d.sections.map((s) => s.id)).size).toBe(8);
+  });
+});
+
+describe('practiceSong', () => {
+  it('is one looping Rock 8ths section of 4 bars at the given tempo', () => {
+    const s = practiceSong(133);
+    expect(s).toMatchObject({ name: 'Practice', bpm: 133, beatsPerBar: 4 });
+    expect(s.sections).toHaveLength(1);
+    expect(s.sections[0]).toMatchObject({ patternId: 'f-rock-8ths', bars: 4, loop: true });
   });
 });

@@ -1,4 +1,4 @@
-/** Pure link rules between the Drummer and the Beat Editor (unit-tested; see link.ts for the wiring). */
+/** Pure link rules between the Drummer (songs) and the Beat Editor (unit-tested; see link.ts for the wiring). */
 import type { EngineMode } from '../../audio/engine';
 import type { Route } from '../router';
 
@@ -9,43 +9,30 @@ export interface RouteChangeAction {
   stop: boolean;
 }
 
-/** What to do when the user switches tabs. */
+/**
+ * What to do when the user switches tabs. Drummer -> Editor while a song plays links the editor to the groove of
+ * the section that is playing right now (playback continues); Editor -> Drummer stops only the editor's own loop.
+ */
 export function routeChangeAction(
   from: Route,
   to: Route,
-  s: { mode: EngineMode; grooveId: string | null; editorId: string },
+  s: { mode: EngineMode; editorId: string; songPatternId?: string | null },
 ): RouteChangeAction {
   if (from === 'drummer' && to === 'editor') {
-    const linked = s.mode === 'groove' && s.grooveId !== null && s.grooveId !== s.editorId;
-    return { selectEditor: linked ? s.grooveId : null, stop: false };
+    const id = s.mode === 'song' ? (s.songPatternId ?? null) : null;
+    return { selectEditor: id !== null && id !== s.editorId ? id : null, stop: false };
   }
   if (from === 'editor' && to === 'drummer') return { selectEditor: null, stop: s.mode === 'lab' };
   return { selectEditor: null, stop: false };
 }
 
-/** What the editor's Play/Stop button does. */
-export type EditorPlayAction = 'stop' | 'groove' | 'pattern';
-export function editorPlayAction(s: {
-  playing: boolean;
-  grooveId: string | null;
-  editorId: string;
-}): EditorPlayAction {
-  if (s.playing) return 'stop';
-  return s.grooveId !== null && s.grooveId === s.editorId ? 'groove' : 'pattern';
-}
-
-/**
- * The Drummer's groove after the editor copied a built-in (copy-on-write): if the Drummer was on that
- * built-in it follows the copy — playing or not — so both tabs stay on the same beat.
- */
-export function grooveAfterCopy(grooveId: string | null, fromId: string, copyId: string): string | null {
-  return grooveId !== null && grooveId === fromId ? copyId : grooveId;
+/** What the editor's Play/Stop button does: stop whatever plays, else loop the editor's pattern. */
+export type EditorPlayAction = 'stop' | 'pattern';
+export function editorPlayAction(s: { playing: boolean }): EditorPlayAction {
+  return s.playing ? 'stop' : 'pattern';
 }
 
 /** Which tab shows the "playing" dot. */
-export function playingTabs(s: { mode: EngineMode; grooveId: string | null; editorId: string }): Record<Route, boolean> {
-  return {
-    drummer: s.mode === 'groove',
-    editor: s.mode === 'lab' || (s.mode === 'groove' && s.grooveId !== null && s.grooveId === s.editorId),
-  };
+export function playingTabs(s: { mode: EngineMode }): Record<Route, boolean> {
+  return { drummer: s.mode === 'song', editor: s.mode === 'lab' };
 }

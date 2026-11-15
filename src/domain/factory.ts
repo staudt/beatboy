@@ -66,6 +66,9 @@ const SPECS: FactorySpec[] = [
     text: 'k+x x  s+x x  k+x x  k+x x  s+x x |' },
   { id: 'f-metal', name: 'Double Kick', category: 'Metal', stepsPerBeat: 4, bpm: 140,
     text: 'k+x k k k  k+s+x k k k  k+x k k k  k+s+x k k k |' },
+  // ── Basics ────────────────────────────────────────────────
+  { id: 'f-click-only', name: 'No drums (click only)', category: 'Basics', stepsPerBeat: 4, bpm: 100,
+    text: '- -  - -  - -  - - |' },
   // ── Fills (1 bar) ─────────────────────────────────────────
   { id: 'f-fill-toms', name: 'Tom Roll', category: 'Fills', kind: 'fill', stepsPerBeat: 4, bpm: 110,
     text: 'k+x x s+x x  S s t t  m m f f  S t m f |' },

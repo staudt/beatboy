@@ -17,7 +17,7 @@ export function FullGrid() {
     <section class="fullgrid panel" aria-label="Pattern grid">
       <div class="panel-head">
         <h2 class="label">grid</h2>
-        <span class="hint">click to cycle · drag to paint · right-click for velocity</span>
+        <span class="hint">click: on / off · drag to paint · right-click for accent / ghost</span>
         <FollowChip />
         <BeatsControl />
       </div>

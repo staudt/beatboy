@@ -1,7 +1,7 @@
 import { PATTERN_LIMITS } from '../../domain/types';
 import { IconMinus, IconPlay, IconPlus, IconStop } from '../common/icons';
 import { isDesktop } from '../media';
-import { bpm, nudgeBpm, setBpm as setTempo, tap } from '../state/groove';
+import { bpm, nudgeBpm, setBpm as setTempo, tap } from '../state/drummer';
 import { current, kitStatus, playing, settingsOpen } from '../state/lab';
 import { editorTogglePlay as togglePlay } from '../state/link';
 

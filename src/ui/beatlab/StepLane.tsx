@@ -66,7 +66,7 @@ export function StepLane() {
         </div>
       </div>
       <p class="hint lane-hint" aria-hidden="true">
-        tap: <i class="glyph g-normal" /> → <i class="glyph g-accent" /> → <i class="glyph g-ghost" /> → off · hold for velocity · swipe to scroll
+        tap: on / off · hold for <i class="glyph g-accent" /> accent or <i class="glyph g-ghost" /> ghost · swipe to scroll
       </p>
     </section>
   );

@@ -6,6 +6,7 @@ import { patternTicks, stepTicks } from '../../domain/time';
 import type { Pattern, SoundId } from '../../domain/types';
 import { Autosaver, installLifecycleFlush, type SaveStatus } from '../../storage/autosave';
 import { PatternRepo, requestPersistentStorage } from '../../storage/patternRepo';
+import { usedInMessage } from './songLogic';
 import { applyEdit, findPattern, nextBeatName, removePattern } from './labLogic';
 
 export const DEFAULT_PATTERN_ID = 'f-rock-8ths';
@@ -23,6 +24,8 @@ export interface ConfirmReq {
   body: string;
   confirmLabel: string;
   onConfirm: () => void;
+  /** Informational only: a single OK button (nothing to confirm). */
+  blocked?: boolean;
 }
 export interface VelPopover {
   sound: SoundId;
@@ -42,7 +45,7 @@ export const selectedSound = signal<SoundId>('kick');
 export const followPlayhead = signal(true);
 export const labView = signal<LabView>('grid');
 export const playheadStep = signal<number | null>(null);
-/** True while anything is audible (editor loop or the Drummer's groove). */
+/** True while anything is audible (editor loop or a song). */
 export const playing = signal(false);
 /** Mirror of engine.mode. */
 export const mode = signal<EngineMode>('idle');
@@ -96,13 +99,13 @@ function save(p: Pattern | null): void {
 // ── toast ────────────────────────────────────────────────────────
 let toastSeq = 0;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
-export function showToast(message: string, action?: ToastMsg['action']): void {
+export function showToast(message: string, action?: ToastMsg['action'], ms?: number): void {
   const id = ++toastSeq;
   toast.value = action ? { id, message, action } : { id, message };
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
     if (toast.peek()?.id === id) toast.value = null;
-  }, action ? 8000 : 3200);
+  }, ms ?? (action ? 8000 : 3200));
 }
 export function dismissToast(): void {
   toast.value = null;
@@ -110,7 +113,11 @@ export function dismissToast(): void {
 
 // ── editing ──────────────────────────────────────────────────────
 /** Set by state/link.ts: called when a built-in was copied by an edit (so the Drummer can follow). */
-export const hooks: { onCopied?: (from: Pattern, copy: Pattern) => void } = {};
+export const hooks: {
+  onCopied?: (from: Pattern, copy: Pattern) => void;
+  /** Names of the songs that use a pattern (delete protection); set by state/songs.ts. */
+  songsUsing?: (patternId: string) => string[];
+} = {};
 
 /** Copy-on-write edit of the current pattern. */
 export function editCurrent(fn: (p: Pattern) => Pattern, opts: { quiet?: boolean } = {}): void {
@@ -133,11 +140,11 @@ export function selectPattern(id: string): void {
 }
 
 /**
- * The editor moved to a different pattern on its own initiative ("something else"): if the Drummer's groove is
+ * The editor moved to a different pattern on its own initiative ("something else"): if a song is
  * playing, keep the transport running but loop the editor's new pattern instead (no click, no fills).
  */
 function followEditorPattern(): void {
-  if (engine.mode === 'groove') void engine.playPattern(() => current.peek()).catch(() => {});
+  if (engine.mode === 'song') void engine.playPattern(() => current.peek()).catch(() => {});
 }
 
 /** User picked a pattern in the editor. */
@@ -172,6 +179,17 @@ export function renameCurrent(name: string): void {
 export function requestDelete(id: string): void {
   const p = findPattern(library.peek(), id);
   if (!p || p.builtIn) return;
+  const usedBy = hooks.songsUsing?.(id) ?? [];
+  if (usedBy.length > 0) {
+    confirmReq.value = {
+      title: "Can't delete this pattern",
+      body: `"${p.name}" is part of a song. ${usedInMessage(usedBy)} Pick another groove there first.`,
+      confirmLabel: 'OK',
+      blocked: true,
+      onConfirm: () => {},
+    };
+    return;
+  }
   confirmReq.value = {
     title: 'Delete pattern?',
     body: `"${p.name}" will be removed from this device. This can't be undone.`,

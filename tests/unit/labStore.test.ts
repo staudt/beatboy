@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { factoryPatterns } from '../../src/domain/factory';
 import { createPattern, getStep, hasNotes, rename, setStep } from '../../src/domain/patternOps';
 import { VELOCITY, type Pattern } from '../../src/domain/types';
-import { clampBpm } from '../../src/ui/state/grooveLogic';
+import { clampBpm } from '../../src/ui/state/drummerLogic';
 import { applyEdit, nextBeatName, removePattern } from '../../src/ui/state/labLogic';
 
 const builtin = factoryPatterns().find((p) => p.id === 'f-rock-8ths') as Pattern;

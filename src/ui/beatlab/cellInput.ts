@@ -1,5 +1,5 @@
-import { cycleStep, getStep, setStep, velocityLevel } from '../../domain/patternOps';
-import type { SoundId } from '../../domain/types';
+import { getStep, setStep, velocityLevel } from '../../domain/patternOps';
+import { VELOCITY, type SoundId } from '../../domain/types';
 import { current, auditionSound, editCurrent, playing } from '../state/lab';
 
 export function levelName(vel: number): 'off' | 'ghost' | 'normal' | 'accent' {
@@ -13,9 +13,12 @@ export function setCell(sound: SoundId, step: number, vel: number): void {
   if (vel > 0 && !playing.peek()) auditionSound(sound, vel);
 }
 
-/** off → normal → accent → ghost → off. Returns the new velocity. */
-export function cycleCell(sound: SoundId, step: number): number {
-  const next = getStep(cycleStep(current.peek(), sound, step), sound, step);
+/**
+ * Tap/click toggles a step: off → normal, any hit (normal, accent or ghost) → off.
+ * Accent and ghost are set from the velocity popover (long-press / right-click). Returns the new velocity.
+ */
+export function toggleCell(sound: SoundId, step: number): number {
+  const next = getStep(current.peek(), sound, step) > 0 ? 0 : VELOCITY.normal;
   setCell(sound, step, next);
   return next;
 }
@@ -40,9 +43,9 @@ function endPaint(): void {
   document.removeEventListener('pointercancel', endPaint);
 }
 
-/** Start painting: the first cell cycles, the rest of the drag copies its new state. */
+/** Start painting: the first cell toggles, the rest of the drag copies its new state (on or off). */
 export function startPaint(sound: SoundId, step: number): void {
-  const vel = cycleCell(sound, step);
+  const vel = toggleCell(sound, step);
   painting = { sound, vel, last: step };
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', endPaint);

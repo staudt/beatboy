@@ -109,6 +109,20 @@ export function songsUsingPattern(songs: readonly Song[], patternId: string): So
   );
 }
 
+/** The quick-start song: one looping groove (open the app, press play). */
+export function practiceSong(bpm = 100, now: number = Date.now()): Song {
+  return createSong(
+    {
+      name: 'Practice',
+      bpm,
+      beatsPerBar: 4,
+      fillId: 'f-fill-toms',
+      sections: [{ ...createSection('verse', 'f-rock-8ths', 4), name: 'Groove', loop: true }],
+    },
+    now,
+  );
+}
+
 /** A ready-made arrangement from factory patterns. */
 export function demoSong(now: number = Date.now()): Song {
   const sec = (kind: SectionKind, name: string, patternId: string, bars: number, fill = false): Section => ({

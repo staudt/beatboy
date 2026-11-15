@@ -4,7 +4,7 @@
 
 ```
 src/domain   pure model: Pattern, ticks/time math, sounds, beat-text notation, factory patterns
-src/engine   pure timing: TempoMap, Scheduler (look-ahead), EventSources (PatternLoopSource; SongPerformer later)
+src/engine   pure timing: TempoMap, Scheduler (look-ahead), EventSources (PatternLoopSource, SongSource)
 src/audio    Web Audio: AudioContext unlock, sprite kit loader, Sampler (NoteSink), DrumEngine facade
 src/storage  IndexedDB (idb): PatternRepo, validation + migrations, debounced Autosaver
 src/ui       Preact + signals: stores in ui/state, components per tab
@@ -64,23 +64,51 @@ Timing is the top product requirement, so sounds are never triggered from a JS t
 Two tabs: **Drummer** (`#/drummer`, default, first) and **Beat Editor** (`#/editor`). Old `#/assistant` / `#/lab`
 hashes are rewritten with `replaceState`. (Internal names `assistant/`, `beatlab/`, `lab.ts` are unchanged.)
 
-- **One tempo**: both tabs read and write `groove.bpm` (persisted with the Drummer settings); the engine follows
-  it in every mode. `Pattern.bpm` stays in the data model but no longer drives playback; selecting or creating a
-  pattern never changes the tempo.
-- **Link rules** (pure functions in `ui/state/linkLogic.ts`, wired in `ui/state/link.ts` by one effect on the
-  route signal, so tab clicks, keyboard and back button behave the same). `engine.mode` is `idle | lab | groove`.
-  - Drummer -> Editor while mode is `groove` and a groove is selected: the editor selects that pattern before it
-    renders; playback (same GrooveSource: click, fills, position) is untouched. `GrooveSource` reads the pattern
-    from the shared library on every collect, so editor edits are heard live. Click-only: nothing is linked.
-  - Copy-on-write of a built-in that is the playing groove sets the Drummer's groove to the copy.
+- **One tempo**: both tabs read and write `drummer.bpm` (persisted with the Drummer settings); the engine follows it
+  in every mode. In the Drummer it is the current song's tempo (see below). `Pattern.bpm` stays in the data model but
+  no longer drives playback; selecting or creating a pattern never changes the tempo.
+- **Link rules** (pure functions in `ui/state/linkLogic.ts`, wired in `ui/state/link.ts` by one effect on the route
+  signal, so tab clicks, keyboard and the back button behave the same). `engine.mode` is `idle | lab | song`.
+  - Drummer -> Editor while a song plays: the editor selects the pattern of the section playing right now before it
+    renders; playback (same `SongSource`, which reads patterns from the shared library on every collect, so editor
+    edits are heard live) is untouched.
+  - Copy-on-write of a built-in that the playing section uses repoints that section to the copy.
   - "Something else" in the editor (pick another pattern, New beat, Duplicate, delete the current one) while mode is
-    `groove`: `engine.playPattern` swaps the source to a `PatternLoopSource` without restarting the scheduler (same
-    transport position, no count-in, no click or fills) and mode becomes `lab`.
-  - Editor -> Drummer: `groove` continues; `lab` stops; `idle` nothing.
-  - Editor Play when stopped: if the editor's pattern is the Drummer's groove it starts the groove with no count-in
-    (so the Drummer can continue it), otherwise it loops the pattern (`lab`). Stop stops whatever plays.
-  - Playing dot: Drummer tab when mode is `groove`; Beat Editor tab when `lab`, or `groove` with editor pattern ==
-    groove.
+    `song`: `engine.playPattern` swaps the source to a `PatternLoopSource` without restarting the scheduler (same
+    transport position, no count-in, no click) and mode becomes `lab`.
+  - Editor -> Drummer: `song` continues; `lab` stops; `idle` nothing.
+  - Editor Play when stopped always loops the editor's pattern (`lab`); Stop stops whatever plays.
+  - Playing dot: Drummer tab when mode is `song`; Beat Editor tab when `lab`.
+
+## Drummer (songs)
+
+The Drummer tab is song-only (`ui/assistant/Song*.tsx`, state in `ui/state/songs.ts`, pure helpers in `songLogic.ts`,
+shared transport settings in `ui/state/drummer.ts`). A single groove is just a one-section song with LOOP on; the
+built-in pattern "No drums (click only)" (`f-click-only`) makes a section a pure metronome. First run seeds two songs:
+"Practice" (Rock 8ths, 4 bars, loop on; selected, so Play is one tap) and a demo arrangement.
+
+- **Layout**: song picker (`PatternPicker` in song form: rename, find, New song), a compact tempo row, then the section
+  rows; a *dock* (now-playing bar + transport: PLAY, FILL, NEXT, BREAK, LOOP, CLICK) is sticky at the bottom of the
+  scroll area directly above the tab bar on phones, and the sticky left column on desktop (>= 900 px).
+- **Section rows** are always editable inline: drag handle (pointer-event drag with auto-scroll, handle only; Arrow keys
+  on the focused handle also move the row and announce it), label (tap to rename), fill/loop/duplicate/delete toggles,
+  groove picker and bars stepper. Tapping a row jumps there at the next bar line while playing, or picks the start
+  section while stopped. Delete has no confirmation, the toast offers Undo for 5 s.
+- **Songs** live in `repo.songs` (shared connection with the pattern repo). Edits go through `editSong(fn)` (immutable
+  `songOps`) and a dedicated debounced `Autosaver<Song>`. `currentSongId` is a setting.
+- **Settings** (`drummer.ts`, persisted under `drummer`; the legacy `groove` record of the old Groove mode is read when
+  `drummer` is missing): shared BPM, click on/off + volume, count-in bars, crash after fill, last groove (default for
+  new songs). CLICK is a live toggle in the dock (key C); the rest is in the settings sheet.
+- **Tempo**: the shared `drummer.bpm` is the transport tempo. Selecting/creating a song sets it to `song.bpm`; any BPM
+  change is written back to the current song.
+- **Playback**: `engine.playSong(() => SongConfig, { startSection, countIn })` is called synchronously in the gesture;
+  the config is rebuilt with `.peek()` on every collect (`buildSongConfig`), so click/count-in/groove edits apply
+  within the look-ahead (~120 ms). A rAF loop mirrors `engine.songInfo()` into a signal only when a displayed field
+  changes. The wake lock is held while a song plays.
+- **Delete protection**: `lab.requestDelete` asks `hooks.songsUsing(id)` and shows an informational ConfirmSheet
+  ("Used in: ...") instead of deleting a pattern a song uses.
+- Keys (not while typing): Space play/stop, F fill, Right/PageDown next, Left/PageUp prev, B break, L loop, C click,
+  T tap, Up/Down BPM.
 
 ## Sound
 
@@ -95,7 +123,7 @@ hashes are rewritten with `replaceState`. (Internal names `assistant/`, `beatlab
 
 ## Persistence
 
-- IndexedDB stores `patterns` and `settings` (more stores in later schema versions).
+- IndexedDB stores `patterns` and `settings` .
 - Every record carries `schemaVersion`; `migratePattern` runs ordered migration steps, then a validator
   repairs what it can (sorting, clamping, dropping bad notes) and rejects the rest.
 - Factory patterns live in code (`src/domain/factory.ts`) and are read-only; editing one saves a copy

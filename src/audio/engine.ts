@@ -1,6 +1,4 @@
 import type { Pattern, SoundId } from '../domain/types';
-import { TPQ } from '../domain/time';
-import { GrooveSource, type FillPhase, type FillPlan, type GrooveConfig } from '../engine/grooveSource';
 import { VELOCITY } from '../domain/types';
 import { SongSource, type SongConfig, type SongInfo } from '../engine/songSource';
 import type { SongAction } from '../domain/song';
@@ -19,17 +17,7 @@ export interface ScheduledLogEntry {
   vel: number;
 }
 
-export type EngineMode = 'idle' | 'lab' | 'groove' | 'song';
-
-export interface BeatInfo {
-  tick: number;
-  /** Bar index (0 = first bar after the count-in; negative during the count-in). */
-  bar: number;
-  /** 0-based beat within the bar. */
-  beat: number;
-  /** Beats remaining in the count-in (e.g. 4,3,2,1), else null. */
-  countIn: number | null;
-}
+export type EngineMode = 'idle' | 'lab' | 'song';
 
 const DEBUG = import.meta.env.DEV || import.meta.env.MODE === 'test';
 const LOG_MAX = 500;
@@ -46,8 +34,6 @@ export class DrumEngine {
   readonly scheduledLog: ScheduledLogEntry[] = [];
   kitReady = false;
   private _mode: EngineMode = 'idle';
-  private groove: GrooveSource | null = null;
-  private grooveConfig: (() => GrooveConfig) | null = null;
   private song: SongSource | null = null;
   private songConfig: (() => SongConfig) | null = null;
 
@@ -110,18 +96,15 @@ export class DrumEngine {
     return Promise.all([running, this.kitPromise]).then(() => this.emit());
   }
 
-  /** Start looping a pattern, or (if already playing, in lab or groove mode) switch to it without restarting the transport. */
+  /** Start looping a pattern, or (if already playing, in lab or song mode) switch to it without restarting the transport. */
   async playPattern(getPattern: () => Pattern): Promise<void> {
     const ready = this.ensureReady();
     const source = new PatternLoopSource(getPattern);
     await ready;
-    this.groove?.reset();
-    this.groove = null;
-    this.grooveConfig = null;
     this.song = null;
     this.songConfig = null;
     if (this.scheduler.playing) {
-      // Already playing (lab loop or groove): swap the source, keep the transport position (the loop is
+      // Already playing (lab loop or song): swap the source, keep the transport position (the loop is
       // indexed by absolute tick, so the phase stays aligned).
       this.scheduler.setSource(source);
       const changed = this._mode !== 'lab';
@@ -133,31 +116,6 @@ export class DrumEngine {
     this.scheduler.start(0);
     this.ticker.start();
     this._mode = 'lab';
-    this.emit();
-  }
-
-  /**
-   * Start the Drum Assistant groove (pattern + click + count-in + fills). Call from a user gesture.
-   * Already playing a groove: just swaps the config getter (no restart). Playing from Beat Lab: restarts
-   * with the count-in.
-   */
-  async playGroove(getConfig: () => GrooveConfig): Promise<void> {
-    const ready = this.ensureReady();
-    await ready;
-    this.grooveConfig = getConfig;
-    this.song = null;
-    this.songConfig = null;
-    if (this.scheduler.playing && this._mode === 'groove' && this.groove) return;
-    if (this.scheduler.playing) {
-      this.ticker.stop();
-      this.scheduler.stop();
-    }
-    const source = new GrooveSource(() => this.grooveConfig!());
-    this.groove = source;
-    this.scheduler.setSource(source);
-    this.scheduler.start(source.startTick());
-    this.ticker.start();
-    this._mode = 'groove';
     this.emit();
   }
 
@@ -174,9 +132,6 @@ export class DrumEngine {
       this.ticker.stop();
       this.scheduler.stop();
     }
-    this.groove?.reset();
-    this.groove = null;
-    this.grooveConfig = null;
     const source = new SongSource(() => this.songConfig!(), { startSection: opts.startSection });
     this.song = source;
     this.scheduler.setSource(source);
@@ -208,47 +163,10 @@ export class DrumEngine {
     if (audible >= this.scheduler.timeAt(s.ended) + SONG_RING_OUT) this.stop();
   }
 
-  /** Plan a fill at the next beat boundary (see GrooveSource.triggerFill). In song mode routes to songAct. */
-  triggerFill(): FillPlan | null {
-    if (this._mode === 'song') {
-      this.songAct({ type: 'fill' });
-      return null;
-    }
-    if (!this.groove || !this.scheduler.playing) return null;
-    const plan = this.groove.triggerFill(this.scheduler.scheduledUntil);
-    this.emit();
-    return plan;
-  }
-
-  /** Fill phase at the currently audible tick. */
-  fillPhase(): FillPhase {
-    if (this._mode === 'song') {
-      const i = this.songInfo();
-      return !i ? 'none' : i.phase === 'fill' ? 'active' : i.fillQueued ? 'queued' : 'none';
-    }
-    const tick = this.currentTick();
-    if (!this.groove || tick === null) return 'none';
-    return this.groove.fillPhase(tick);
-  }
-
-  /** Bar/beat position at the audible tick, for the groove UI; null unless a groove is playing. */
-  beatInfo(): BeatInfo | null {
-    const tick = this.currentTick();
-    if (!this.groove || tick === null || this._mode !== 'groove') return null;
-    const bpb = this.groove.timeSig().num;
-    const barTicks = bpb * TPQ;
-    const bar = Math.floor(tick / barTicks);
-    const beat = Math.floor((tick - bar * barTicks) / TPQ);
-    const countIn = tick < 0 ? Math.min(Math.ceil(-tick / TPQ), 99) : null;
-    return { tick, bar, beat, countIn };
-  }
-
   stop(): void {
     if (!this.scheduler.playing) return;
     this.ticker.stop();
     this.scheduler.stop();
-    this.groove?.reset();
-    this.groove = null;
     this.song = null;
     this.songConfig = null;
     this._mode = 'idle';

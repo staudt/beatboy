@@ -4,7 +4,7 @@ import { getStep } from '../../domain/patternOps';
 import { SOUNDS } from '../../domain/sounds';
 import type { SoundId } from '../../domain/types';
 import { current, playheadStep, velPopover } from '../state/lab';
-import { cycleCell, levelName, startPaint } from './cellInput';
+import { toggleCell, levelName, startPaint } from './cellInput';
 
 interface Props {
   sound: SoundId;
@@ -78,7 +78,7 @@ export function StepCell({ sound, step, beatStart }: Props) {
         // Touch/pen: a tap toggles on release, but never after a drag or a scroll of the lane.
         const sc = e.currentTarget.closest('.lane-scroll, .fg-scroll');
         const scrolled = sc !== null && Math.abs(sc.scrollLeft - start.current.scroll) > 1;
-        if (wasPressing && !moved.current && !scrolled) cycleCell(sound, step);
+        if (wasPressing && !moved.current && !scrolled) toggleCell(sound, step);
       }}
       onPointerCancel={clearTimer}
       onContextMenu={(e) => {
@@ -91,7 +91,7 @@ export function StepCell({ sound, step, beatStart }: Props) {
           long.current = false;
           return;
         }
-        cycleCell(sound, step);
+        toggleCell(sound, step);
       }}
     />
   );

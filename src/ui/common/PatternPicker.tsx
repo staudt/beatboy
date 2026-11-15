@@ -18,7 +18,11 @@ export interface PatternPickerProps {
   label?: string;
   /** data-testid for the trigger's name text. */
   nameTestId?: string;
+  /** Wording for other kinds of items (songs). */
+  words?: { newLabel: string; nameLabel: string; findPlaceholder: string; findLabel: string; empty: string; list: string };
 }
+
+const BEAT_WORDS = { newLabel: 'New beat', nameLabel: 'Pattern name', findPlaceholder: 'Find a beat…', findLabel: 'Find pattern', empty: 'No beats match.', list: 'Patterns' };
 
 const SEARCH_MIN = 8;
 const RENAME_DEBOUNCE = 300;
@@ -51,6 +55,7 @@ export function PatternPicker({
   subtitleOf,
   label = 'Patterns',
   nameTestId,
+  words = BEAT_WORDS,
 }: PatternPickerProps) {
   const cur = patterns.find((p) => p.id === currentId);
   const [open, setOpen] = useState(false);
@@ -289,7 +294,7 @@ export function PatternPicker({
                     type="text"
                     value={name}
                     maxLength={48}
-                    aria-label="Pattern name"
+                    aria-label={words.nameLabel}
                     autoComplete="off"
                     onInput={(e) => onNameInput(e.currentTarget.value)}
                   />
@@ -301,8 +306,8 @@ export function PatternPicker({
                   class="input pp-search"
                   type="search"
                   value={query}
-                  placeholder="Find a beat…"
-                  aria-label="Find pattern"
+                  placeholder={words.findPlaceholder}
+                  aria-label={words.findLabel}
                   autoComplete="off"
                   aria-controls={listId}
                   aria-activedescendant={activeOpt}
@@ -322,12 +327,12 @@ export function PatternPicker({
                     onNew();
                   }}
                 >
-                  <IconPlus /> New beat
+                  <IconPlus /> {words.newLabel}
                 </button>
               )}
             </div>
-            <div class="pp-list" id={listId} role="listbox" aria-label="Patterns">
-              {groups.length === 0 && <p class="pp-empty">No beats match.</p>}
+            <div class="pp-list" id={listId} role="listbox" aria-label={words.list}>
+              {groups.length === 0 && <p class="pp-empty">{words.empty}</p>}
               {groups.map(([cat, list]) => (
                 <div role="group" aria-label={cat} key={cat}>
                   <h3 class="label pp-cat" aria-hidden="true">

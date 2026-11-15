@@ -67,8 +67,8 @@ export const IconMinus = (p: P) => (
 );
 export const IconGear = (p: P) => (
   <svg {...base} {...p}>
+    <path d="M10.03 4.66 L10.40 1.93 L13.60 1.93 L13.97 4.66 L15.80 5.42 L18.00 3.75 L20.25 6.00 L18.58 8.20 L19.34 10.03 L22.07 10.40 L22.07 13.60 L19.34 13.97 L18.58 15.80 L20.25 18.00 L18.00 20.25 L15.80 18.58 L13.97 19.34 L13.60 22.07 L10.40 22.07 L10.03 19.34 L8.20 18.58 L6.00 20.25 L3.75 18.00 L5.42 15.80 L4.66 13.97 L1.93 13.60 L1.93 10.40 L4.66 10.03 L5.42 8.20 L3.75 6.00 L6.00 3.75 L8.20 5.42 Z" />
     <circle cx="12" cy="12" r="3" />
-    <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" />
   </svg>
 );
 export const IconSpeaker = (p: P) => (
@@ -95,5 +95,23 @@ export const IconBot = (p: P) => (
   <svg {...base} {...p}>
     <rect x="5" y="8" width="14" height="11" rx="3" />
     <path d="M12 4v4M9 13h.01M15 13h.01M9 16.5h6" />
+  </svg>
+);
+export const IconLoop = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M17 2l4 4-4 4" />
+    <path d="M3 11V9a3 3 0 013-3h15" />
+    <path d="M7 22l-4-4 4-4" />
+    <path d="M21 13v2a3 3 0 01-3 3H3" />
+  </svg>
+);
+export const IconArrowUp = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M12 19V5M5 12l7-7 7 7" />
+  </svg>
+);
+export const IconArrowDown = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M12 5v14M19 12l-7 7-7-7" />
   </svg>
 );

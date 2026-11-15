@@ -1,15 +1,16 @@
 import { useEffect } from 'preact/hooks';
-import { GrooveView } from './assistant/GrooveView';
+import { SongView } from './assistant/SongView';
 import { BeatLab } from './beatlab/BeatLab';
 import { ConfirmSheet } from './common/ConfirmSheet';
 import { IconBot, IconGrid } from './common/icons';
 import { Toast } from './common/Toast';
 import { isDesktop } from './media';
 import { navigate, route, type Route } from './router';
-import * as groove from './state/groove';
+import * as drummer from './state/drummer';
 import { editorTogglePlay, initLink } from './state/link';
 import { playingTabs } from './state/linkLogic';
-import { currentId, initLab, mode, prepareAudio, ready } from './state/lab';
+import * as songs from './state/songs';
+import { initLab, mode, prepareAudio, ready } from './state/lab';
 
 const TABS: { id: Route; label: string; icon: typeof IconGrid }[] = [
   { id: 'drummer', label: 'Drummer', icon: IconBot },
@@ -17,7 +18,7 @@ const TABS: { id: Route; label: string; icon: typeof IconGrid }[] = [
 ];
 
 function Tabs({ where }: { where: 'top' | 'bottom' }) {
-  const dots = playingTabs({ mode: mode.value, grooveId: groove.grooveId.value, editorId: currentId.value });
+  const dots = playingTabs({ mode: mode.value });
   return (
     <nav class={`tabs tabs-${where}`} aria-label="Sections">
       {TABS.map((t) => (
@@ -53,7 +54,8 @@ export function App() {
   useEffect(() => {
     initLink();
     void initLab();
-    void groove.initGroove();
+    void drummer.initDrummer();
+    void songs.initSongs();
     // First gesture warms up audio + loads the kit.
     const warm = () => prepareAudio();
     document.addEventListener('pointerdown', warm, { once: true, capture: true });
@@ -62,28 +64,32 @@ export function App() {
       if (e.repeat && e.code === 'Space') return;
       const t = e.target as HTMLElement | null;
       if (isTypingTarget(t) || t?.closest('.pp-panel')) return;
-      const drummer = route.value === 'drummer';
+      const onDrummer = route.value === 'drummer';
       if (e.code === 'Space') {
         e.preventDefault();
         spaceHandled = true;
-        if (drummer) groove.togglePlay();
+        if (onDrummer) songs.toggleSongPlay();
         else editorTogglePlay();
         return;
       }
-      if (!drummer || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key === 'f' || e.key === 'F') {
+      if (!onDrummer || e.ctrlKey || e.metaKey || e.altKey) return;
+      const inField = !!t?.closest('input, select, textarea, [role=listbox]');
+      const key = e.key;
+      const once = (fn: () => void) => {
         if (e.repeat) return;
         e.preventDefault();
-        groove.fill();
-      } else if (e.key === 't' || e.key === 'T') {
-        if (e.repeat) return;
+        fn();
+      };
+      if (key === 'c' || key === 'C') once(drummer.toggleClick);
+      else if (key === 'f' || key === 'F') once(songs.songFill);
+      else if (key === 'b' || key === 'B') once(songs.songBreak);
+      else if (key === 'l' || key === 'L') once(songs.songLoop);
+      else if (key === 't' || key === 'T') once(drummer.tap);
+      else if (key === 'PageDown' || (key === 'ArrowRight' && !inField)) once(songs.songNext);
+      else if (key === 'PageUp' || (key === 'ArrowLeft' && !inField)) once(songs.songPrev);
+      else if ((key === 'ArrowUp' || key === 'ArrowDown') && !inField) {
         e.preventDefault();
-        groove.tap();
-      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-        // Sliders, selects and fields keep their own arrow-key behavior.
-        if (t?.closest('input, select, textarea, [role=listbox]')) return;
-        e.preventDefault();
-        groove.nudgeBpm(e.key === 'ArrowUp' ? 1 : -1);
+        drummer.nudgeBpm(key === 'ArrowUp' ? 1 : -1);
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -103,14 +109,14 @@ export function App() {
 
   const desktop = isDesktop.value;
   return (
-    <div class="app">
+    <div class="app" data-bar={route.value === 'drummer' ? 'song' : undefined}>
       {desktop && (
         <header class="topbar">
           <span class="brand">BEATBOY</span>
           <Tabs where="top" />
         </header>
       )}
-      <main class="view">{route.value === 'editor' ? ready.value ? <BeatLab /> : <p class="boot">Loading…</p> : <GrooveView />}</main>
+      <main class="view">{route.value === 'editor' ? ready.value ? <BeatLab /> : <p class="boot">Loading…</p> : <SongView />}</main>
       {!desktop && <Tabs where="bottom" />}
       <Toast />
       <ConfirmSheet />

@@ -134,7 +134,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
   test.describe(`${name} layout`, () => {
     test.use(LAYOUTS[name]);
 
-    test('select a pad and cycle a step', async ({ page }) => {
+    test('select a pad and toggle a step on/off (accent/ghost only via the popover)', async ({ page }) => {
       await open(page);
       await press(page, pad(page, 'Snare'));
       await expect(pad(page, 'Snare')).toHaveAttribute('aria-pressed', 'true');
@@ -147,12 +147,10 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(c).toHaveAttribute('aria-pressed', 'true');
       await expect(c).toHaveAttribute('aria-label', 'Snare step 1, normal');
       await press(page, c);
-      await expect(c).toHaveAttribute('aria-label', 'Snare step 1, accent');
-      await press(page, c);
-      await expect(c).toHaveAttribute('aria-label', 'Snare step 1, ghost');
-      await press(page, c);
       await expect(c).toHaveAttribute('aria-label', 'Snare step 1, off');
       await expect(c).toHaveAttribute('aria-pressed', 'false');
+      await press(page, c);
+      await expect(c).toHaveAttribute('aria-label', 'Snare step 1, normal');
     });
 
     test('velocity popover sets an exact level', async ({ page }) => {
@@ -172,6 +170,9 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       }
       await page.getByRole('button', { name: 'Accent', exact: true }).click();
       await expect(c).toHaveAttribute('aria-label', 'Snare step 2, accent');
+      // A plain tap on an accented step turns it off (it does not cycle to ghost).
+      await press(page, c);
+      await expect(c).toHaveAttribute('aria-label', 'Snare step 2, off');
     });
 
     test('play moves the playhead and schedules notes; stop works', async ({ page }) => {
@@ -569,7 +570,7 @@ test.describe('mobile touch', () => {
     await expect(cell(page, 'kick', 2)).toHaveAttribute('aria-pressed', 'true');
     await expect(pressed).toHaveCount(1);
     await cell(page, 'kick', 2).tap();
-    await expect(cell(page, 'kick', 2)).toHaveAttribute('aria-label', 'Kick step 3, accent');
+    await expect(cell(page, 'kick', 2)).toHaveAttribute('aria-label', 'Kick step 3, off');
   });
 
   test('overview: tapping a column scrolls the lane, tapping a name selects the sound', async ({ page }) => {
