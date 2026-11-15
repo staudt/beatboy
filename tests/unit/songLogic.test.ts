@@ -7,6 +7,7 @@ import {
   newSectionFor,
   nextSongName,
   sameInfo,
+  sectionIndexForKey,
   sectionName,
   songBpmToWrite,
   usedInMessage,
@@ -70,5 +71,17 @@ describe('misc', () => {
     expect(sameInfo(i, { ...i, beat: 3 })).toBe(false);
     expect(sameInfo(i, { ...i, queued: { kind: 'next', sectionIndex: 1 } })).toBe(false);
     expect(sameInfo(null, i)).toBe(false);
+  });
+});
+
+describe('sectionIndexForKey', () => {
+  it('maps digit keys to section indexes (0 = section 10), top row and numpad', () => {
+    expect(sectionIndexForKey({ code: 'Digit1', key: '1' }, 5)).toBe(0);
+    expect(sectionIndexForKey({ code: 'Numpad3', key: '3' }, 5)).toBe(2);
+    expect(sectionIndexForKey({ code: '', key: '5' }, 5)).toBe(4);
+    expect(sectionIndexForKey({ code: 'Digit6', key: '6' }, 5)).toBeNull();
+    expect(sectionIndexForKey({ code: 'Digit0', key: '0' }, 10)).toBe(9);
+    expect(sectionIndexForKey({ code: 'Digit0', key: '0' }, 9)).toBeNull();
+    expect(sectionIndexForKey({ code: 'KeyA', key: 'a' }, 5)).toBeNull();
   });
 });

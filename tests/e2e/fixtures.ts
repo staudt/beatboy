@@ -112,7 +112,7 @@ export async function newSong(page: Page): Promise<void> {
 }
 
 export async function setBars(page: Page, i: number, bars: number): Promise<void> {
-  const input = cards(page).nth(i).getByRole('textbox', { name: 'Bars in section' });
+  const input = cards(page).nth(i).getByRole('textbox', { name: /Plays \d+ times?/  });
   await input.fill(String(bars));
   await input.press('Enter');
   await expect(input).toHaveValue(String(bars));

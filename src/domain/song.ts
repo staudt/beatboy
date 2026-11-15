@@ -2,8 +2,9 @@
  * Song model (contract shared by the engine's SongSource, storage and the Drummer UI).
  *
  * A song is an ordered list of sections. Each section plays one groove pattern for a number of bars;
- * the bar length comes from the song (`beatsPerBar` × one quarter-note beat = 480 ticks). The groove
- * restarts at every section start (its phase is relative to the section, not the song).
+ * one "bar" is one pass of the section's groove,
+ * so `bars` means "how many times the groove plays" and the time signature comes from the grooves. The groove
+ * restarts at every section start.
  */
 
 export const SECTION_KINDS = ['intro', 'verse', 'chorus', 'bridge', 'solo', 'outro', 'custom'] as const;
@@ -35,7 +36,7 @@ export interface Song {
   name: string;
   /** Tempo in quarter-note BPM (shared transport tempo while the song is loaded). */
   bpm: number;
-  /** Beats per bar, 1..7 (shown as 4/4, 3/4 …). */
+  /** @deprecated Ignored by the engine (bar length = the section's groove length); kept for stored-song compatibility. */
   beatsPerBar: number;
   /** Default fill pattern id for sections whose fill.patternId is null. */
   fillId: string | null;

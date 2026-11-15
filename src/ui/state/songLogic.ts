@@ -50,6 +50,14 @@ export function newSectionFor(song: Song, kind: SectionKind, at: number, fallbac
   return { ...s, name: sectionName(song, kind) };
 }
 
+/** Number keys pick sections: 1-9 -> index 0-8, 0 -> index 9 (top row or numpad). Null when not a digit key or out of range. */
+export function sectionIndexForKey(e: { code: string; key: string }, count: number): number | null {
+  const m = /^(?:Digit|Numpad)(\d)$/.exec(e.code) ?? (/^\d$/.test(e.key) ? [e.key, e.key] : null);
+  if (!m) return null;
+  const i = (Number(m[1]) + 9) % 10;
+  return i < count ? i : null;
+}
+
 export const clampStartIndex = (song: Song | null, id: string | null): number => {
   if (!song || id === null) return 0;
   const i = song.sections.findIndex((s) => s.id === id);
@@ -82,6 +90,7 @@ export function sameInfo(a: InfoLike | null, b: InfoLike | null): boolean {
     a.sectionIndex === b.sectionIndex &&
     a.barInSection === b.barInSection &&
     a.sectionBars === b.sectionBars &&
+    (a as { beatsPerBar?: number }).beatsPerBar === (b as { beatsPerBar?: number }).beatsPerBar &&
     a.beat === b.beat &&
     a.countIn === b.countIn &&
     a.loop === b.loop &&

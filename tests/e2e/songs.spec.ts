@@ -4,6 +4,7 @@ import {
   BAR,
   LAYOUTS,
   ORIGIN,
+  setBars,
   at,
   bpmInput,
   breakBtn,
@@ -143,7 +144,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       expect(await labels(page)).toEqual(['Intro', 'Verse', 'Chorus']);
       for (const [i, g] of ['Ride Rock', 'Rock 8ths', 'Rock 16ths'].entries()) {
         await expect(cards(page).nth(i).getByRole('button', { name: /^Section groove:/ })).toContainText(g);
-        await expect(cards(page).nth(i).getByRole('textbox', { name: 'Bars in section' })).toHaveValue('2');
+        await expect(cards(page).nth(i).getByRole('textbox', { name: /Plays \d+ times?/  })).toHaveValue('2');
       }
     });
 
@@ -342,12 +343,12 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await page.keyboard.press('Escape');
       await expect(cards(page).nth(0).locator('.sc-label')).toHaveText('Count off');
       // bars stepper
-      const bars = cards(page).nth(1).getByRole('textbox', { name: 'Bars in section' });
+      const bars = cards(page).nth(1).getByRole('textbox', { name: /Plays \d+ times?/  });
       await expect(bars).toHaveValue('8');
-      await press(page, cards(page).nth(1).getByRole('button', { name: 'Bars up' }));
+      await press(page, cards(page).nth(1).getByRole('button', { name: 'Plays more' }));
       await expect(bars).toHaveValue('9');
-      await press(page, cards(page).nth(1).getByRole('button', { name: 'Bars down' }));
-      await press(page, cards(page).nth(1).getByRole('button', { name: 'Bars down' }));
+      await press(page, cards(page).nth(1).getByRole('button', { name: 'Plays fewer' }));
+      await press(page, cards(page).nth(1).getByRole('button', { name: 'Plays fewer' }));
       await expect(bars).toHaveValue('7');
       // copy: inserted right below
       await press(page, cards(page).nth(1).getByRole('button', { name: 'Duplicate section' }));
@@ -355,7 +356,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       const l = await labels(page);
       expect(l[2]).toBe(l[1]);
       expect(l[0]).toBe('Count off');
-      await expect(cards(page).nth(2).getByRole('textbox', { name: 'Bars in section' })).toHaveValue('7');
+      await expect(cards(page).nth(2).getByRole('textbox', { name: /Plays \d+ times?/  })).toHaveValue('7');
       // delete + undo restores it in place
       await press(page, cards(page).nth(2).getByRole('button', { name: 'Delete section' }));
       await expect(cards(page)).toHaveCount(8);
@@ -448,6 +449,33 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       expect(await mode(page)).toBe('idle');
     });
 
+    test('14b. number keys jump to sections (desktop)', async ({ page }) => {
+      test.skip(isMobile(page), 'keyboard');
+      await open(page);
+      await makeShortSong(page);
+      await page.locator('body').click({ position: { x: 5, y: 300 } });
+      await page.keyboard.press('2'); // stopped: start section
+      await expect(cards(page).nth(1)).toHaveClass(/is-selected/);
+      await page.keyboard.press('9'); // out of range: nothing
+      await expect(cards(page).nth(1)).toHaveClass(/is-selected/);
+      await clearLog(page);
+      await page.keyboard.press('Space');
+      await expect(stopBtn(page)).toBeVisible();
+      await expect(nowName(page)).toHaveText(/^Verse/);
+      await page.keyboard.press('3');
+      await expect(queued(page)).toContainText(/Jump → CHORUS/i);
+      await expect(nowName(page)).toHaveText(/^Chorus/, { timeout: 6000 });
+      // Rock 16ths has a hat on the 16th after the downbeat (tick 120 of its bar); Rock 8ths never does.
+      const es = await log(page);
+      const t0 = es.find((e) => Math.round(e.tick) === 0)!.time;
+      const h = es.filter((e) => e.sound === 'hatClosed' && Math.round(e.tick) % 240 === 120).sort((x, y) => x.tick - y.tick)[0]!;
+      const start = Math.round(h.tick) - 120;
+      expect(start % BAR).toBe(0); // the change lands on a bar line
+      expect(start).toBeGreaterThanOrEqual(BAR);
+      expect(Math.abs(h.time - (t0 + ((start + 120) / 480) * 0.3))).toBeLessThan(0.005);
+      await press(page, stopBtn(page));
+    });
+
     test('15. link: a playing song follows into the Beat Editor and back', async ({ page }) => {
       await open(page);
       await pickSong(page, /^Demo song/);
@@ -530,6 +558,35 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await page.waitForTimeout(400);
       expect(await page.evaluate(() => document.querySelector('.view')!.scrollTop)).toBeGreaterThan(scroll0 + 50);
       expect(await labels(page)).toEqual(before);
+    });
+
+    test('18. bar = one pass of the groove: Waltz 3/4 x2 then Rock 8ths x1 at 200 BPM', async ({ page }) => {
+      await open(page);
+      await newSong(page);
+      await expect(cards(page)).toHaveCount(1);
+      await press(page, page.getByRole('button', { name: 'Add Chorus', exact: true }));
+      await expect(cards(page)).toHaveCount(2);
+      await pickGroove(page, cards(page).nth(0), 'Waltz 3/4');
+      await setBars(page, 0, 2);
+      await pickGroove(page, cards(page).nth(1), 'Rock 8ths');
+      await setBars(page, 1, 1);
+      await setBpm(page, 200);
+      await setCountInOff(page);
+      await waitSaved(page);
+      await clearLog(page);
+      await press(page, play(page));
+      await expect(stopBtn(page)).toBeVisible();
+      await expect(page.locator('.now-lamp')).toHaveCount(3);
+      await expect.poll(async () => at(await log(page), 2880, 'kick'), { timeout: 5000 }).toBeTruthy();
+      const es = await log(page);
+      const k0 = at(es, 0, 'kick')!;
+      const k1 = at(es, 1440, 'kick')!;
+      const k2 = at(es, 2880, 'kick')!;
+      // 200 BPM = 0.3 s per beat: waltz bars are 3 beats, so Rock starts 6 beats after the song start
+      expect(k1.time - k0.time).toBeCloseTo(0.9, 2);
+      expect(k2.time - k0.time).toBeCloseTo(1.8, 2);
+      await expect(page.locator('.now-lamp')).toHaveCount(4, { timeout: 4000 });
+      await press(page, stopBtn(page));
     });
   });
 }

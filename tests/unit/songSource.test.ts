@@ -99,20 +99,20 @@ describe('SongSource traversal', () => {
     expect(out.filter((n) => n.sound === 'crash').map((n) => n.tick)).toEqual([6 * BAR]);
   });
 
-  it('groove phase is relative to the section start (2-bar pattern in a 3-bar section)', () => {
+  it('groove phase is relative to the section start (a 2-bar pattern is one pass = one bar, played 3 times)', () => {
     const p2 = mkPattern({ id: 'p2', bars: 2, notes: { kick: notes([0]), snare: notes([BAR]) } });
     lib.p2 = p2;
     const { src } = mk([sec('pA', 1), sec('p2', 3), sec('pA', 1)]);
-    const out = playTo(src, 0, 8 * BAR);
+    const out = playTo(src, 0, 12 * BAR);
     delete lib.p2;
-    // p2 starts at bar 1: kick at bars 1,3 ; snare at bar 2 (phase restarts at section start, 3 bars of a 2-bar loop)
-    expect(ticksOf(out, 'kick').filter((t) => t >= BAR && t < 4 * BAR)).toEqual([BAR, 3 * BAR]);
-    expect(ticksOf(out, 'snare')).toEqual([2 * BAR]);
-    expect(has(out, 4 * BAR, 'kick')).toBe(true); // next section's groove (pA) starts at bar 4
+    // p2 (2 bars long) starts at BAR and plays 3 passes of 2 bars: kicks at 1,3,5 (x BAR), snares at 2,4,6
+    expect(ticksOf(out, 'kick').filter((t) => t >= BAR && t < 7 * BAR)).toEqual([BAR, 3 * BAR, 5 * BAR]);
+    expect(ticksOf(out, 'snare')).toEqual([2 * BAR, 4 * BAR, 6 * BAR]);
+    expect(has(out, 7 * BAR, 'kick')).toBe(true); // next section's groove (pA) starts after 3 passes
   });
 
-  it('3/4 song: bars of 1440 ticks', () => {
-    const { src } = mk([sec('waltz', 2), sec('waltz', 1)], {}, { beatsPerBar: 3 });
+  it('3/4 song: bars of 1440 ticks (from the grooves)', () => {
+    const { src } = mk([sec('waltz', 2), sec('waltz', 1)]);
     expect(src.timeSig()).toEqual({ num: 3, den: 4 });
     const out = playTo(src, 0, 8 * 1440, 360);
     expect(src.ended).toBe(3 * 1440);
@@ -657,14 +657,98 @@ describe('live edits while playing', () => {
     expect(src.infoAt(BAR)!.sectionIndex).toBe(1);
   });
 
-  it('beatsPerBar change keeps the transport continuous', () => {
-    const { src, edit } = mk([sec('waltz', 4)], {}, { beatsPerBar: 4 });
-    src.collect(0, BAR + 10, []);
-    edit((s) => ({ ...s, beatsPerBar: 3 }));
+  it('changing a section groove to another length keeps the transport continuous (applies from the next bar)', () => {
+    const { src, edit } = mk([sec('pA', 4)]);
+    src.collect(0, BAR + 10, []); // bars 0 and 1 planned
+    edit((s) => ({ ...s, sections: s.sections.map((x) => ({ ...x, patternId: 'waltz' })) }));
     const out = collect(src, BAR + 10, 6 * BAR);
     expect(src.timeSig().num).toBe(3);
     expect(src.ended).toBe(BAR * 2 + 1440 * 2);
     expect(out.length).toBeGreaterThan(0);
+  });
+});
+
+describe('per-section bar length (bar = one pass of the groove)', () => {
+  const p8 = mkPattern({ id: 'p8', timeSig: { num: 8, den: 4 }, notes: { kick: notes([0]) } });
+  lib.p8 = p8;
+  const clicks = (o: NoteOut[]) => o.filter((n) => n.sound.startsWith('click')).sort((a, b) => a.tick - b.tick);
+
+  it('3-beat waltz x2 then 4-beat x2: boundaries, end and click accents', () => {
+    const { src } = mk([sec('waltz', 2), sec('pA', 2)], { click: { enabled: true, volume: 0.5 } });
+    const out = playTo(src, 0, 8 * BAR, 240);
+    expect(src.ended).toBe(2 * 1440 + 2 * BAR);
+    expect(src.ended).toBe(6720);
+    expect(has(out, 2880, 'kick')).toBe(true); // pA starts at the section boundary
+    expect(has(out, 2880 + 480, 'hatClosed')).toBe(true);
+    const acc = clicks(out).filter((n) => n.sound === 'clickAccent').map((n) => n.tick);
+    expect(acc).toEqual([0, 1440, 2880, 4800, 6720]);
+    expect(clicks(out).filter((n) => n.tick < 6720)).toHaveLength(2 * 3 + 2 * 4);
+    expect(src.infoAt(1500)).toMatchObject({ sectionIndex: 0, barInSection: 1, beat: 0, beatsPerBar: 3 });
+    expect(src.infoAt(3000)).toMatchObject({ sectionIndex: 1, barInSection: 0, beatsPerBar: 4 });
+  });
+
+  it('count-in uses the start section groove length', () => {
+    const w = mk([sec('waltz', 1), sec('pA', 1)], { countInBars: 2, click: { enabled: true, volume: 0.5 } });
+    expect(w.src.startTick()).toBe(-2 * 1440);
+    const out = collect(w.src, -2 * 1440, 0);
+    expect(clicks(out).map((n) => `${n.tick}:${n.sound}`)).toEqual([
+      '-2880:clickAccent', '-2400:click', '-1920:click', '-1440:clickAccent', '-960:click', '-480:click',
+    ]);
+    expect(w.src.infoAt(-1000)).toMatchObject({ countIn: 3, beatsPerBar: 3 });
+    const f = mk([sec('pA', 1), sec('waltz', 1)], { countInBars: 1 }, {}, { startSection: 1 });
+    expect(f.src.startTick()).toBe(-1440);
+  });
+
+  it('8-beat groove x2 with a 4-beat fill: groove plays 4 beats, the fill covers the last 4', () => {
+    const { src } = mk([sec('p8', 2, { fill: { enabled: true, patternId: 'fill4' } }), sec('pA', 1)]);
+    const out = playTo(src, 0, 8 * BAR);
+    expect(src.infoAt(0)).toMatchObject({ beatsPerBar: 8 });
+    // pass 2 spans 3840..7680; fill tail occupies 5760..7680 (toms in beats 3-4 of the fill)
+    expect(ticksOf(out, 'tomMid')).toEqual([6720, 6960, 7200, 7440]);
+    expect(ticksOf(out, 'kick').filter((t) => t < 7680)).toEqual([0, 3840]);
+    expect(src.ended).toBe(7680 + BAR);
+  });
+
+  it('NEXT applies at the current section pass boundary', () => {
+    const { src } = mk([sec('p8', 4), sec('pB', 1)]);
+    src.collect(0, 1000, []);
+    src.act({ type: 'next' }, 1000);
+    const out = collect(src, 1000, 8 * BAR);
+    expect(ticksOf(out, 'snare')[0]).toBe(3840); // end of pass 1 (8 beats)
+    expect(ticksOf(out, 'kick').filter((t) => t > 1000 && t < 5760)).toEqual([]); // 5760 = final hit
+  });
+
+  it('missing pattern keeps 4-beat bars', () => {
+    const { src } = mk([sec('nope', 3), sec('waltz', 1)]);
+    expect(src.timeSig()).toEqual({ num: 4, den: 4 });
+    const out = playTo(src, 0, 6 * BAR);
+    expect(ticksOf(out, 'kick')[0]).toBe(3 * BAR);
+    expect(src.ended).toBe(3 * BAR + 1440);
+  });
+
+  it('tempo is constant across sections of different lengths (fake clock, 120 BPM)', () => {
+    class FakeClock implements Clock {
+      t = 10;
+      now() {
+        return this.t;
+      }
+    }
+    const { src } = mk([sec('waltz', 2), sec('pA', 1), sec('p8', 1)], { click: { enabled: true, volume: 0.5 } });
+    const clock = new FakeClock();
+    const rec: Array<{ time: number; sound: SinkSound }> = [];
+    const sink: NoteSink = { play: (time, sound) => rec.push({ time, sound }), stopAll: () => {} };
+    const s = new Scheduler({ clock, sink, source: src });
+    s.setBpm(120);
+    const t0 = clock.t + 0.06;
+    s.start(0);
+    for (let i = 0; i < 1200; i++) {
+      clock.t += 0.025;
+      s.pump();
+    }
+    const acc = rec.filter((r) => r.sound === 'clickAccent').map((r) => +(r.time - t0).toFixed(6));
+    // bars: 3, 3, 4, 8 beats at 0.5 s per beat
+    expect(acc.slice(0, 4)).toEqual([0, 1.5, 3, 5]);
+    expect(rec.filter((r) => r.sound === 'click' || r.sound === 'clickAccent').slice(0, 6).map((r) => +(r.time - t0).toFixed(6))).toEqual([0, 0.5, 1, 1.5, 2, 2.5]);
   });
 });
 

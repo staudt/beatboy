@@ -38,7 +38,8 @@ export function NowPanel() {
   const idx = live ? info.sectionIndex : clampStartIndex(song, selectedSectionId.value);
   const sec = song.sections[idx];
   const bars = live ? info.sectionBars : (sec?.bars ?? 0);
-  const bpb = song.beatsPerBar;
+  // One bar = one pass of the section's groove: its beat count comes from the engine while playing.
+  const bpb = live ? info.beatsPerBar : 4;
   // With the count-in off, the audible tick is a few ms negative at the start (output latency): not a count-in.
   const countIn = live && countInBars.value > 0 ? info.countIn : null;
   const progress = live && countIn === null && bars > 0 ? ((info.barInSection * bpb + info.beat) / (bars * bpb)) * 100 : 0;
@@ -75,7 +76,11 @@ export function NowPanel() {
         </button>
       </div>
       <div class="now-l2">
-        {live ? (
+        {live && bpb > 8 ? (
+          <span class="now-song" data-testid="now-beat">
+            beat {info.beat + 1} / {bpb}
+          </span>
+        ) : live ? (
           <div class="now-lamps" aria-hidden="true">
             {Array.from({ length: bpb }, (_, b) => (
               <span key={b} class={`now-lamp${b === 0 ? ' is-accent' : ''}${info.beat === b ? ' is-on' : ''}`} />

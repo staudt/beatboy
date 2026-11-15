@@ -29,8 +29,10 @@ export interface SongInfo {
   sectionBars: number;
   /** Absolute bar index (0 = first bar after the count-in, negative in the count-in). */
   bar: number;
-  /** 0-based beat in the bar. */
+  /** 0-based beat in the bar (= one pass of the section's groove). */
   beat: number;
+  /** Beats in the current bar (the section's groove length). */
+  beatsPerBar: number;
   /** Beats remaining in the count-in, else null. */
   countIn: number | null;
   /** Where the arrangement goes after this section (null = the song ends). */
@@ -60,7 +62,8 @@ export interface SongInfo {
  *   follows a break or a crashAfterFill fill.
  * - Live actions (`act`) never touch planned bars: they are applied at the first unplanned bar boundary
  *   (cursor.nextStart, always >= scheduledUntil) or, for manual fills, as an overlay on not-yet-scheduled ticks.
- * - Groove phase is relative to the section start: pattern tick = (tick - sectionStart) mod patternLen.
+ * - A bar is one pass of the section's groove (its length varies per section; missing pattern = 4 beats), so
+ *   the time signature comes from the grooves. Groove phase = tick - bar start.
  *   Section/pattern/fill ids are resolved against the live song at collect time; the arrangement (section,
  *   bar counts, order) is re-resolved by section id at every bar plan, so edits never crash.
  */
@@ -139,12 +142,20 @@ export class SongSource implements EventSource {
     return this._ended;
   }
 
+  /**
+   * Num = beats of the current section's groove; den stays 4 so the tempo pulse is always the quarter note
+   * (simple meter: secondsPerTick never depends on num) and sections of different lengths never change tempo.
+   */
   timeSig(): TimeSignature {
-    return { num: this.bpb(), den: 4 };
+    const cfg = this.getConfig();
+    const last = this.plans[this.plans.length - 1];
+    const sec = (last && cfg.song.sections.find((s) => s.id === last.sectionId)) ?? this.startSec(cfg);
+    return { num: Math.min(32, Math.max(1, Math.round(this.barLenFor(cfg, sec) / BEAT))), den: 4 };
   }
 
   startTick(): number {
-    return -this.getConfig().countInBars * this.bpb() * BEAT;
+    const cfg = this.getConfig();
+    return -cfg.countInBars * this.barLenFor(cfg, this.startSec(cfg));
   }
 
   reset(): void {
@@ -163,9 +174,16 @@ export class SongSource implements EventSource {
     this._ended = null;
   }
 
-  private bpb(): number {
-    const n = Math.round(this.getConfig().song.beatsPerBar);
-    return Math.min(7, Math.max(1, Number.isFinite(n) ? n : 4));
+  private startSec(cfg: SongConfig): Section | undefined {
+    const secs = cfg.song.sections;
+    return secs.length ? secs[Math.min(this.startSection, secs.length - 1)] : undefined;
+  }
+
+  /** A bar is one pass of the section's groove; a missing/empty pattern keeps time as 4 beats. */
+  private barLenFor(cfg: SongConfig, sec: Section | undefined): number {
+    const pat = sec ? cfg.getPattern(sec.patternId) : null;
+    const len = pat ? patternTicks(pat) : 0;
+    return len > 0 ? len : 4 * BEAT;
   }
 
   // ───────────────────────── planning ─────────────────────────
@@ -178,7 +196,6 @@ export class SongSource implements EventSource {
     const cfg = this.getConfig();
     const secs = cfg.song.sections;
     const t = this.nextStart;
-    const barLen = this.bpb() * BEAT;
     const prev = this.plans[this.plans.length - 1] ?? null;
 
     // 1. Which section does this bar belong to?
@@ -213,6 +230,7 @@ export class SongSource implements EventSource {
     }
 
     if (enter === null) {
+      const barLen = prev ? prev.end - prev.start : 4 * BEAT;
       const plan: BarPlan = {
         n: this.barCount++,
         start: t,
@@ -250,6 +268,7 @@ export class SongSource implements EventSource {
     const idx = this.curIndex;
     const sec = secs[idx]!;
     const bars = Math.max(1, sec.bars);
+    const barLen = this.barLenFor(cfg, sec);
 
     // 2. Break / transition fill / hit at start.
     let brk = false;
@@ -370,7 +389,7 @@ export class SongSource implements EventSource {
         const id = this.fillPatternFor(cfg, secs[this.baseIndex(secs)]!);
         if (!id) return;
         const start = Math.ceil(sU / BEAT) * BEAT;
-        const end = start < B ? B : B + this.bpb() * BEAT;
+        const end = start < B ? B : B + this.barLenFor(cfg, secs[this.baseIndex(secs)]);
         this.overlay = { start, end, patternId: id, crash: cfg.crashAfterFill, origin: 'manual' };
         return;
       }
@@ -419,7 +438,7 @@ export class SongSource implements EventSource {
     if (to <= from) return;
     const cfg = this.getConfig();
     const vol = cfg.click.volume;
-    if (from < 0) collectCountIn(from, to, this.bpb() * BEAT, vol, out);
+    if (from < 0) collectCountIn(from, to, this.barLenFor(cfg, this.startSec(cfg)), vol, out);
     if (to <= 0) return;
     const lo = Math.max(from, 0);
     this.planUpTo(to);
@@ -465,8 +484,9 @@ export class SongSource implements EventSource {
       const pat = sec ? cfg.getPattern(sec.patternId) : null;
       if (pat) {
         const n0 = base.length;
-        collectLoopNotes(pat, a - p.sectionStart, b - p.sectionStart, base);
-        for (let i = n0; i < base.length; i++) base[i]!.tick += p.sectionStart;
+        // One bar = one pass of the groove, so its phase is relative to the bar start.
+        collectLoopNotes(pat, a - p.start, b - p.start, base);
+        for (let i = n0; i < base.length; i++) base[i]!.tick += p.start;
         if (regions.length) {
           let w = n0;
           for (let i = n0; i < base.length; i++) {
@@ -502,8 +522,6 @@ export class SongSource implements EventSource {
   infoAt(tick: number): SongInfo | null {
     const cfg = this.getConfig();
     const secs = cfg.song.sections;
-    const bpb = this.bpb();
-    const barLen = bpb * BEAT;
     const queuedOf = (via: Via | null | undefined): SongInfo['queued'] => {
       if (via) return { kind: via.kind, sectionIndex: via.sectionIndex };
       const q = this.queue;
@@ -511,15 +529,18 @@ export class SongSource implements EventSource {
     };
 
     if (tick < 0) {
-      const bar = Math.floor(tick / barLen);
       const si = secs.length ? Math.min(this.startSection, secs.length - 1) : 0;
       const sec = secs[si];
+      const barLen = this.barLenFor(cfg, sec);
+      const bpb = Math.max(1, Math.round(barLen / BEAT));
+      const bar = Math.floor(tick / barLen);
       return {
         sectionIndex: si,
         barInSection: 0,
         sectionBars: sec ? Math.max(1, sec.bars) : 0,
         bar,
         beat: Math.min(bpb - 1, Math.floor((tick - bar * barLen) / BEAT)),
+        beatsPerBar: bpb,
         countIn: Math.ceil(-tick / BEAT),
         nextSectionIndex: sec ? (sec.loop ? si : si + 1 < secs.length ? si + 1 : null) : null,
         queued: queuedOf(null),
@@ -566,7 +587,8 @@ export class SongSource implements EventSource {
       barInSection: Math.min(p.barInSection, Math.max(0, p.sectionBars - 1)),
       sectionBars: p.sectionBars,
       bar: p.n,
-      beat: Math.min(Math.floor((p.end - p.start) / BEAT) - 1, Math.floor((tick - p.start) / BEAT)),
+      beat: Math.min(Math.max(1, Math.round((p.end - p.start) / BEAT)) - 1, Math.floor((tick - p.start) / BEAT)),
+      beatsPerBar: Math.max(1, Math.round((p.end - p.start) / BEAT)),
       countIn: null,
       nextSectionIndex,
       queued,

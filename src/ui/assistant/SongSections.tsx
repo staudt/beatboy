@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { SECTION_KINDS, SECTION_LABELS, SONG_LIMITS, type Section } from '../../domain/song';
 import { feelOf } from '../../domain/patternOps';
+import { patternTicks } from '../../domain/time';
 import type { Pattern } from '../../domain/types';
 import { IconCopy, IconLoop, IconMinus, IconPlus, IconTrash } from '../common/icons';
 import { PatternPicker } from '../common/PatternPicker';
@@ -22,20 +23,24 @@ import {
 
 const beatsLabel = (p: Pattern) => `${p.timeSig.num} beat${p.timeSig.num === 1 ? '' : 's'} · ${feelOf(p)}`;
 
-function BarsEditor({ section }: { section: Section }) {
+function BarsEditor({ section, beats }: { section: Section; beats: number }) {
+  const total = beats * section.bars;
   const set = (v: number) => patchSection(section.id, { bars: v });
   return (
-    <div class="stepper sc-stepper" role="group" aria-label="Bars">
-      <button type="button" class="btn btn-icon" aria-label="Bars down" disabled={section.bars <= SONG_LIMITS.minBars} onClick={() => set(section.bars - 1)}>
+    <div class="stepper sc-stepper" role="group" aria-label="Repeats" title={`Plays the groove ${section.bars} time${section.bars === 1 ? '' : 's'}${beats !== 4 ? ` (${total} beats)` : ''}`}>
+      <button type="button" class="btn btn-icon" aria-label="Plays fewer" disabled={section.bars <= SONG_LIMITS.minBars} onClick={() => set(section.bars - 1)}>
         <IconMinus />
       </button>
+      <span class="sc-times" aria-hidden="true">
+        ×
+      </span>
       <input
         class="sc-bars-input"
         type="text"
         inputMode="numeric"
         maxLength={2}
         value={section.bars}
-        aria-label="Bars in section"
+        aria-label={`Plays ${section.bars} time${section.bars === 1 ? '' : 's'}`}
         onFocus={(e) => e.currentTarget.select()}
         onChange={(e) => {
           const v = Number(e.currentTarget.value);
@@ -44,7 +49,7 @@ function BarsEditor({ section }: { section: Section }) {
         }}
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
       />
-      <button type="button" class="btn btn-icon" aria-label="Bars up" disabled={section.bars >= SONG_LIMITS.maxBars} onClick={() => set(section.bars + 1)}>
+      <button type="button" class="btn btn-icon" aria-label="Plays more" disabled={section.bars >= SONG_LIMITS.maxBars} onClick={() => set(section.bars + 1)}>
         <IconPlus />
       </button>
     </div>
@@ -108,7 +113,7 @@ interface RowProps {
 
 function SectionRow({ section, index, count, current, selected, shift, dragging, onHandleDown }: RowProps) {
   const groove = library.value.find((p) => p.id === section.patternId);
-  const label = `${index + 1}. ${section.name}, ${groove?.name ?? 'missing groove'}, ${section.bars} bar${section.bars === 1 ? '' : 's'}`;
+  const label = `${index + 1}. ${section.name}, ${groove?.name ?? 'missing groove'}, plays ${section.bars} time${section.bars === 1 ? '' : 's'}`;
   return (
     <li
       class={`sc${current ? ' is-current' : ''}${selected ? ' is-selected' : ''}${dragging ? ' is-dragging' : ''}`}
@@ -183,7 +188,7 @@ function SectionRow({ section, index, count, current, selected, shift, dragging,
           subtitleOf={beatsLabel}
           label="Section groove"
         />
-        <BarsEditor section={section} />
+        <BarsEditor section={section} beats={groove ? Math.max(1, Math.round(patternTicks(groove) / 480)) : 4} />
       </div>
     </li>
   );

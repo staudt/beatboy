@@ -1,3 +1,4 @@
+import { signal } from '@preact/signals';
 import { useEffect } from 'preact/hooks';
 import { SongView } from './assistant/SongView';
 import { BeatLab } from './beatlab/BeatLab';
@@ -10,6 +11,7 @@ import * as drummer from './state/drummer';
 import { editorTogglePlay, initLink } from './state/link';
 import { playingTabs } from './state/linkLogic';
 import * as songs from './state/songs';
+import * as songLogic from './state/songLogic';
 import { initLab, mode, prepareAudio, ready } from './state/lab';
 
 const TABS: { id: Route; label: string; icon: typeof IconGrid }[] = [
@@ -50,12 +52,22 @@ function isTypingTarget(t: EventTarget | null): boolean {
   );
 }
 
+/**
+ * True once ALL persisted state (patterns, Drummer settings, songs) has been loaded and applied.
+ * Nothing is editable before that, so a late restore (e.g. the song's saved tempo) can never
+ * overwrite something the user already changed.
+ */
+const appReady = signal(false);
+
 export function App() {
   useEffect(() => {
     initLink();
     void initLab();
     void drummer.initDrummer();
-    void songs.initSongs();
+    // initSongs waits for the Drummer settings, which wait for the lab (library + repo).
+    void songs.initSongs().finally(() => {
+      appReady.value = true;
+    });
     // First gesture warms up audio + loads the kit.
     const warm = () => prepareAudio();
     document.addEventListener('pointerdown', warm, { once: true, capture: true });
@@ -80,7 +92,9 @@ export function App() {
         e.preventDefault();
         fn();
       };
-      if (key === 'c' || key === 'C') once(drummer.toggleClick);
+      const num = songLogic.sectionIndexForKey(e, songs.currentSong.peek()?.sections.length ?? 0);
+      if (!inField && !e.shiftKey && num !== null) once(() => songs.selectSectionByIndex(num));
+      else if (key === 'c' || key === 'C') once(drummer.toggleClick);
       else if (key === 'f' || key === 'F') once(songs.songFill);
       else if (key === 'b' || key === 'B') once(songs.songBreak);
       else if (key === 'l' || key === 'L') once(songs.songLoop);
@@ -116,7 +130,7 @@ export function App() {
           <Tabs where="top" />
         </header>
       )}
-      <main class="view">{route.value === 'editor' ? ready.value ? <BeatLab /> : <p class="boot">Loading…</p> : <SongView />}</main>
+      <main class="view">{!appReady.value || !ready.value ? <p class="boot">Loading…</p> : route.value === 'editor' ? <BeatLab /> : <SongView />}</main>
       {!desktop && <Tabs where="bottom" />}
       <Toast />
       <ConfirmSheet />

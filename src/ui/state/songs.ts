@@ -206,6 +206,14 @@ export function tapSection(id: string): void {
   else selectedSectionId.value = selectedSectionId.peek() === id ? null : id;
 }
 
+/** Keyboard number keys: playing = queued jump to section i; stopped = make it the start section. */
+export function selectSectionByIndex(i: number): void {
+  const sec = currentSong.peek()?.sections[i];
+  if (!sec) return;
+  if (engine.mode === 'song') engine.songAct({ type: 'jump', sectionIndex: i });
+  else selectedSectionId.value = sec.id;
+}
+
 // ── transport ────────────────────────────────────────────────────
 /** Call synchronously from a user gesture. */
 export function playSong(): void {

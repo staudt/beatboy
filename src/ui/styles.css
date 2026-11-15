@@ -2161,6 +2161,13 @@ button.chip {
   width: 40px;
 }
 
+.sc-times {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  color: var(--text-dim);
+  margin-left: 2px;
+}
+
 .sc-bars-input {
   width: 3ch;
   text-align: center;
