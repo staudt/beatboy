@@ -30,7 +30,12 @@ export class Scheduler {
   private readonly buf: NoteOut[] = [];
   private _playing = false;
   private _bpm = 100;
-  private scheduledUntil = 0;
+  private _scheduledUntil = 0;
+
+  /** First tick not yet handed to the sink; nothing before it can change anymore. */
+  get scheduledUntil(): number {
+    return this._scheduledUntil;
+  }
 
   constructor(opts: SchedulerOptions) {
     this.clock = opts.clock;
@@ -60,7 +65,7 @@ export class Scheduler {
 
   start(fromTick = 0): void {
     this.map.reset(fromTick, this.clock.now() + this.startDelay, secondsPerTick(this._bpm, this.source.timeSig()));
-    this.scheduledUntil = fromTick;
+    this._scheduledUntil = fromTick;
     this._playing = true;
     this.pump();
   }
@@ -74,13 +79,13 @@ export class Scheduler {
     if (!this._playing) return;
     const now = this.clock.now();
     const spt = secondsPerTick(this._bpm, this.source.timeSig());
-    if (spt !== this.map.rate) this.map.change(this.scheduledUntil, spt);
+    if (spt !== this.map.rate) this.map.change(this._scheduledUntil, spt);
 
     const horizon = Math.floor(this.map.tickAt(now + this.lookahead));
-    if (horizon > this.scheduledUntil) {
+    if (horizon > this._scheduledUntil) {
       const buf = this.buf;
       buf.length = 0;
-      this.source.collect(this.scheduledUntil, horizon, buf);
+      this.source.collect(this._scheduledUntil, horizon, buf);
       for (let i = 0; i < buf.length; i++) {
         const n = buf[i]!;
         const t = this.map.timeAt(n.tick + n.offsetTicks);
@@ -88,7 +93,7 @@ export class Scheduler {
         this.sink.play(Math.max(t, now), n.sound, n.vel, n.gain);
       }
       buf.length = 0;
-      this.scheduledUntil = horizon;
+      this._scheduledUntil = horizon;
     }
     this.map.prune(now - 1);
   }

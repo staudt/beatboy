@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Scheduler } from '../../src/engine/scheduler';
 import { PatternLoopSource } from '../../src/engine/patternSource';
-import type { Clock, EventSource, NoteOut, NoteSink } from '../../src/engine/types';
-import type { Pattern, SoundId, TimeSignature } from '../../src/domain/types';
+import type { Clock, EventSource, NoteOut, NoteSink, SinkSound } from '../../src/engine/types';
+import type { Pattern, TimeSignature } from '../../src/domain/types';
 import { mkPattern } from './helpers';
 
 class FakeClock implements Clock {
@@ -14,7 +14,7 @@ class FakeClock implements Clock {
 
 interface Rec {
   time: number;
-  sound: SoundId;
+  sound: SinkSound;
   vel: number;
   gain: number;
   at: number; // clock when scheduled

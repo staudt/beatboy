@@ -1,5 +1,8 @@
 import type { SoundId, TimeSignature } from '../domain/types';
 
+/** What a sink can play: a kit sound or a synthesized metronome click. */
+export type SinkSound = SoundId | 'click' | 'clickAccent';
+
 /**
  * A note produced by an EventSource for the scheduler.
  * `tick` is the absolute transport tick of the note's *grid* position and is what
@@ -8,7 +11,7 @@ import type { SoundId, TimeSignature } from '../domain/types';
 export interface NoteOut {
   tick: number;
   offsetTicks: number;
-  sound: SoundId;
+  sound: SinkSound;
   /** 1..127 */
   vel: number;
   /** Linear track gain (pattern mix), already accounting for mute (muted notes are not emitted). */
@@ -34,7 +37,7 @@ export interface Clock {
 
 /** Receives fully resolved notes with absolute audio times. */
 export interface NoteSink {
-  play(time: number, sound: SoundId, vel: number, gain: number): void;
+  play(time: number, sound: SinkSound, vel: number, gain: number): void;
   /** Silence everything (short fade to avoid clicks) and cancel notes scheduled in the future. */
   stopAll(): void;
 }

@@ -1,6 +1,6 @@
 import { VELOCITY } from '../domain/types';
 import type { SoundId } from '../domain/types';
-import type { NoteSink } from '../engine/types';
+import type { NoteSink, SinkSound } from '../engine/types';
 import type { LoadedKit } from './kitLoader';
 import { velocityToGain } from './velocity';
 import { planVoiceCuts, type ActiveVoice } from './voiceCuts';
@@ -20,6 +20,7 @@ export class Sampler implements NoteSink {
   private readonly master: GainNode;
   private readonly limiter: DynamicsCompressorNode;
   private voices: Voice[] = [];
+  private clicks = new Set<OscillatorNode>();
   private nextId = 1;
 
   constructor(
@@ -45,7 +46,11 @@ export class Sampler implements NoteSink {
     return this.kit !== null;
   }
 
-  play(time: number, sound: SoundId, vel: number, trackGain: number): void {
+  play(time: number, sound: SinkSound, vel: number, trackGain: number): void {
+    if (sound === 'click' || sound === 'clickAccent') {
+      this.playClick(time, sound === 'clickAccent', vel, trackGain);
+      return;
+    }
     const kit = this.kit;
     const buffer = kit?.buffers[sound];
     if (!kit || !buffer) return;
@@ -83,6 +88,33 @@ export class Sampler implements NoteSink {
     src.start(time);
   }
 
+  /** Synthesized metronome tick: no samples, no choke/polyphony logic, sample-accurate start/stop. */
+  private playClick(time: number, accent: boolean, vel: number, trackGain: number): void {
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = accent ? 1600 : 1000;
+    const g = this.ctx.createGain();
+    const peak = Math.max(0.0002, velocityToGain(vel) * trackGain);
+    g.gain.setValueAtTime(0, time);
+    g.gain.linearRampToValueAtTime(peak, time + 0.001);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 0.04);
+    g.gain.setValueAtTime(0, time + 0.041);
+    osc.connect(g);
+    g.connect(this.master);
+    this.clicks.add(osc);
+    osc.addEventListener('ended', () => {
+      this.clicks.delete(osc);
+      try {
+        g.disconnect();
+        osc.disconnect();
+      } catch {
+        /* ignore */
+      }
+    });
+    osc.start(time);
+    osc.stop(time + 0.045);
+  }
+
   audition(sound: SoundId, vel: number = VELOCITY.normal): void {
     this.play(this.ctx.currentTime, sound, vel, 1);
   }
@@ -100,6 +132,14 @@ export class Sampler implements NoteSink {
         /* may throw if never started / already stopped */
       }
     }
+    for (const o of this.clicks) {
+      try {
+        o.stop(now + 0.035);
+      } catch {
+        /* ignore */
+      }
+    }
+    this.clicks.clear();
     this.voices = [];
     m.setValueAtTime(1, now + 0.04);
   }

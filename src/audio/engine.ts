@@ -1,9 +1,11 @@
 import type { Pattern, SoundId } from '../domain/types';
+import { TPQ } from '../domain/time';
+import { GrooveSource, type FillPhase, type FillPlan, type GrooveConfig } from '../engine/grooveSource';
 import { VELOCITY } from '../domain/types';
 import { PatternLoopSource } from '../engine/patternSource';
 import { Scheduler } from '../engine/scheduler';
 import { createTicker, type Ticker } from '../engine/timer';
-import type { NoteSink } from '../engine/types';
+import type { NoteSink, SinkSound } from '../engine/types';
 import { ensureRunning, getAudioContext, onAudioStateChange } from './context';
 import { loadKit } from './kitLoader';
 import { Sampler } from './sampler';
@@ -11,8 +13,20 @@ import { Sampler } from './sampler';
 export interface ScheduledLogEntry {
   time: number;
   tick: number;
-  sound: SoundId;
+  sound: SinkSound;
   vel: number;
+}
+
+export type EngineMode = 'idle' | 'lab' | 'groove';
+
+export interface BeatInfo {
+  tick: number;
+  /** Bar index (0 = first bar after the count-in; negative during the count-in). */
+  bar: number;
+  /** 0-based beat within the bar. */
+  beat: number;
+  /** Beats remaining in the count-in (e.g. 4,3,2,1), else null. */
+  countIn: number | null;
 }
 
 const DEBUG = import.meta.env.DEV || import.meta.env.MODE === 'test';
@@ -27,6 +41,9 @@ export class DrumEngine {
   private readonly ticker: Ticker;
   readonly scheduledLog: ScheduledLogEntry[] = [];
   kitReady = false;
+  private _mode: EngineMode = 'idle';
+  private groove: GrooveSource | null = null;
+  private grooveConfig: (() => GrooveConfig) | null = null;
 
   constructor(opts: { kitUrl?: string } = {}) {
     this.kitUrl = opts.kitUrl ?? `${import.meta.env.BASE_URL}kits/virtuosity/kit.json`;
@@ -53,6 +70,10 @@ export class DrumEngine {
 
   get playing(): boolean {
     return this.scheduler.playing;
+  }
+
+  get mode(): EngineMode {
+    return this._mode;
   }
 
   get bpm(): number {
@@ -85,20 +106,81 @@ export class DrumEngine {
     const ready = this.ensureReady();
     const source = new PatternLoopSource(getPattern);
     await ready;
+    if (this.scheduler.playing && this._mode === 'groove') {
+      // leaving groove mode: restart cleanly from tick 0
+      this.ticker.stop();
+      this.scheduler.stop();
+    }
+    this.groove = null;
     if (this.scheduler.playing) {
       this.scheduler.setSource(source);
+      this._mode = 'lab';
       return;
     }
     this.scheduler.setSource(source);
     this.scheduler.start(0);
     this.ticker.start();
+    this._mode = 'lab';
     this.emit();
+  }
+
+  /**
+   * Start the Drum Assistant groove (pattern + click + count-in + fills). Call from a user gesture.
+   * Already playing a groove: just swaps the config getter (no restart). Playing from Beat Lab: restarts
+   * with the count-in.
+   */
+  async playGroove(getConfig: () => GrooveConfig): Promise<void> {
+    const ready = this.ensureReady();
+    await ready;
+    this.grooveConfig = getConfig;
+    if (this.scheduler.playing && this._mode === 'groove' && this.groove) return;
+    if (this.scheduler.playing) {
+      this.ticker.stop();
+      this.scheduler.stop();
+    }
+    const source = new GrooveSource(() => this.grooveConfig!());
+    this.groove = source;
+    this.scheduler.setSource(source);
+    this.scheduler.start(source.startTick());
+    this.ticker.start();
+    this._mode = 'groove';
+    this.emit();
+  }
+
+  /** Plan a fill at the next beat boundary (see GrooveSource.triggerFill). */
+  triggerFill(): FillPlan | null {
+    if (!this.groove || !this.scheduler.playing) return null;
+    const plan = this.groove.triggerFill(this.scheduler.scheduledUntil);
+    this.emit();
+    return plan;
+  }
+
+  /** Fill phase at the currently audible tick. */
+  fillPhase(): FillPhase {
+    const tick = this.currentTick();
+    if (!this.groove || tick === null) return 'none';
+    return this.groove.fillPhase(tick);
+  }
+
+  /** Bar/beat position at the audible tick, for the groove UI; null unless a groove is playing. */
+  beatInfo(): BeatInfo | null {
+    const tick = this.currentTick();
+    if (!this.groove || tick === null || this._mode !== 'groove') return null;
+    const bpb = this.groove.timeSig().num;
+    const barTicks = bpb * TPQ;
+    const bar = Math.floor(tick / barTicks);
+    const beat = Math.floor((tick - bar * barTicks) / TPQ);
+    const countIn = tick < 0 ? Math.min(Math.ceil(-tick / TPQ), 99) : null;
+    return { tick, bar, beat, countIn };
   }
 
   stop(): void {
     if (!this.scheduler.playing) return;
     this.ticker.stop();
     this.scheduler.stop();
+    this.groove?.reset();
+    this.groove = null;
+    this._mode = 'idle';
     this.emit();
   }
 
