@@ -127,8 +127,13 @@ built-in pattern "No drums (click only)" (`f-click-only`) makes a section a pure
   changes. The wake lock is held while a song plays.
 - **Delete protection**: `lab.requestDelete` asks `hooks.songsUsing(id)` and shows an informational ConfirmSheet
   ("Used in: ...") instead of deleting a pattern a song uses.
-- Keys (not while typing): Space play/stop, F fill, Right/PageDown next, Left/PageUp prev, B break, L loop, C click,
-  T tap, Up/Down BPM.
+- Keys (not while typing): Space play/stop, F fill, Right/Down/PageDown next, Left/Up/PageUp prev (stopped: move the
+  start section), B break, L loop, C click, T tap. Tempo has no arrow keys (slider, +/-, TAP).
+- **Sticky LOOP**: a user LOOP toggle (`userLoop`) persists across section changes until the song restarts; untouched,
+  each section's saved `loop` flag applies. `SongInfo.loopLocked` reports it.
+- **Accumulating NEXT/PREV**: while a change is queued each press moves the queued *target* by one (clamped; past the last
+  section = final hit, PREV from it = last section); returning to the current section cancels the queue. Jump replaces
+  the queue. Timing is unchanged (next unplanned bar line); the NEXT fill is armed only by the first step.
 
 ## Song-local beats (typed section text)
 

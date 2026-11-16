@@ -77,6 +77,7 @@ export interface InfoLike {
   beat: number;
   countIn: number | null;
   loop: boolean;
+  loopLocked?: boolean;
   phase: string;
   breakQueued: boolean;
   fillQueued: boolean;
@@ -94,6 +95,7 @@ export function sameInfo(a: InfoLike | null, b: InfoLike | null): boolean {
     a.beat === b.beat &&
     a.countIn === b.countIn &&
     a.loop === b.loop &&
+    a.loopLocked === b.loopLocked &&
     a.phase === b.phase &&
     a.breakQueued === b.breakQueued &&
     a.fillQueued === b.fillQueued &&

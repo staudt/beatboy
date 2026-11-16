@@ -297,13 +297,13 @@ describe('NEXT / PREV / jump', () => {
     expect(src.infoAt(2 * BAR)!.sectionIndex).toBe(1);
   });
 
-  it('NEXT twice cancels (and a not-yet-started fill)', () => {
+  it('NEXT then PREV cancels the change (and a not-yet-started fill)', () => {
     const { src } = mk([sec('pA', 4, { fill: { enabled: true, patternId: null } }), sec('pB', 4)]);
     const out: NoteOut[] = [];
     src.collect(0, 500, out);
     src.act({ type: 'next' }, 500);
     expect(src.infoAt(100)!.fillQueued).toBe(true);
-    src.act({ type: 'next' }, 500);
+    src.act({ type: 'prev' }, 500);
     expect(src.infoAt(100)!.queued).toBeNull();
     expect(src.infoAt(100)!.fillQueued).toBe(false);
     src.collect(500, 3 * BAR, out);
@@ -313,6 +313,77 @@ describe('NEXT / PREV / jump', () => {
     src.act({ type: 'next' }, 3 * BAR);
     src.collect(3 * BAR, 5 * BAR, out);
     expect(src.infoAt(4 * BAR)!.sectionIndex).toBe(1);
+  });
+
+  describe('accumulating NEXT / PREV', () => {
+    const four = () => mk([sec('pA', 8), sec('pB', 8), sec('pC', 8), sec('pA', 8)]);
+    const land = (src: SongSource) => {
+      src.collect(500, 3 * BAR, []);
+      return src.infoAt(BAR + 5)!.sectionIndex;
+    };
+
+    it('NEXT x3 from section 1 lands on section 4 at the next bar line', () => {
+      const { src } = four();
+      src.collect(0, 500, []);
+      for (let i = 0; i < 3; i++) src.act({ type: 'next' }, 500);
+      expect(src.infoAt(100)!.queued).toEqual({ kind: 'next', sectionIndex: 3 });
+      expect(src.infoAt(BAR - 1)!.sectionIndex).toBe(0);
+      expect(land(src)).toBe(3);
+    });
+
+    it('NEXT x2 then PREV -> section 2', () => {
+      const { src } = four();
+      src.collect(0, 500, []);
+      src.act({ type: 'next' }, 500);
+      src.act({ type: 'next' }, 500);
+      src.act({ type: 'prev' }, 500);
+      expect(src.infoAt(100)!.queued).toEqual({ kind: 'prev', sectionIndex: 1 });
+      expect(land(src)).toBe(1);
+    });
+
+    it('NEXT past the last section = final hit; one more NEXT does nothing; PREV returns to the last section', () => {
+      const { src } = mk([sec('pA', 8), sec('pB', 8)]);
+      src.collect(0, 500, []);
+      src.act({ type: 'next' }, 500); // section 2
+      src.act({ type: 'next' }, 500); // end
+      expect(src.infoAt(100)!.queued).toEqual({ kind: 'next', sectionIndex: null });
+      src.act({ type: 'next' }, 500);
+      expect(src.infoAt(100)!.queued).toEqual({ kind: 'next', sectionIndex: null });
+      src.act({ type: 'prev' }, 500);
+      expect(src.infoAt(100)!.queued).toEqual({ kind: 'prev', sectionIndex: 1 });
+      src.act({ type: 'next' }, 500);
+      src.collect(500, 3 * BAR, []);
+      expect(src.ended).toBe(BAR);
+    });
+
+    it('PREV accumulates down and clamps at the first section', () => {
+      const { src } = mk([sec('pA', 8), sec('pB', 8), sec('pC', 8)], {}, {}, { startSection: 2 });
+      src.collect(0, 500, []);
+      for (let i = 0; i < 5; i++) src.act({ type: 'prev' }, 500);
+      expect(src.infoAt(100)!.queued).toEqual({ kind: 'prev', sectionIndex: 0 });
+    });
+
+    it('only the first step arms the NEXT fill', () => {
+      const { src } = mk([sec('pA', 8, { fill: { enabled: true, patternId: null } }), sec('pB', 8), sec('pC', 8)]);
+      const out: NoteOut[] = [];
+      src.collect(0, 1000, out);
+      src.act({ type: 'next' }, 1000);
+      src.act({ type: 'next' }, 1000);
+      src.collect(1000, 3 * BAR, out);
+      expect(ticksOf(out, 'tomMid')).toEqual([1440, 1680]); // a single fill tail
+      expect(src.infoAt(BAR + 5)!.sectionIndex).toBe(2);
+    });
+
+    it('jump replaces the queue', () => {
+      const { src } = four();
+      src.collect(0, 500, []);
+      src.act({ type: 'next' }, 500);
+      src.act({ type: 'next' }, 500);
+      src.act({ type: 'jump', sectionIndex: 3 }, 500);
+      expect(src.infoAt(100)!.queued).toEqual({ kind: 'jump', sectionIndex: 3 });
+      src.act({ type: 'next' }, 500); // steps from the jump target: end
+      expect(src.infoAt(100)!.queued).toEqual({ kind: 'next', sectionIndex: null });
+    });
   });
 
   it('NEXT in the last section goes to the final hit at the next boundary', () => {
@@ -346,13 +417,13 @@ describe('NEXT / PREV / jump', () => {
     expect(ticksOf(o2, 'kick').filter((t) => t >= 3 * BAR)).toContain(3 * BAR);
   });
 
-  it('PREV has no fill; PREV twice cancels', () => {
+  it('PREV has no fill; PREV then NEXT cancels', () => {
     const { src } = mk([sec('pA', 4), sec('pB', 4, { fill: { enabled: true, patternId: null } })], {}, {}, { startSection: 1 });
     const out: NoteOut[] = [];
     src.collect(0, 500, out);
     src.act({ type: 'prev' }, 500);
     expect(src.infoAt(0)!.queued).toEqual({ kind: 'prev', sectionIndex: 0 });
-    src.act({ type: 'prev' }, 500);
+    src.act({ type: 'next' }, 500);
     expect(src.infoAt(0)!.queued).toBeNull();
     src.act({ type: 'prev' }, 500);
     src.collect(500, 3 * BAR, out);
@@ -444,6 +515,47 @@ describe('BREAK', () => {
     src.act({ type: 'break' }, 5 * BAR);
     src.act({ type: 'next' }, 5 * BAR);
     expect(collect(src, 5 * BAR, 6 * BAR)).toEqual([]);
+  });
+});
+
+describe('sticky loop', () => {
+  it('a user LOOP persists into the next section and keeps looping past its bars', () => {
+    const { src } = mk([sec('pA', 2), sec('pB', 2), sec('pC', 2)]);
+    const out: NoteOut[] = [];
+    src.collect(0, 500, out);
+    src.act({ type: 'toggleLoop' }, 500);
+    expect(src.infoAt(10)).toMatchObject({ loop: true, loopLocked: true });
+    src.act({ type: 'next' }, 500);
+    src.collect(500, 8 * BAR, out);
+    expect(src.infoAt(BAR + 5)).toMatchObject({ sectionIndex: 1, loop: true });
+    expect(src.infoAt(5 * BAR)).toMatchObject({ sectionIndex: 1, loop: true }); // past its 2 bars
+    expect(src.infoAt(7 * BAR)).toMatchObject({ sectionIndex: 1 });
+    src.act({ type: 'toggleLoop' }, 8 * BAR); // off: continues after this pass
+    src.collect(8 * BAR, 14 * BAR, out);
+    expect(src.infoAt(10 * BAR)).toMatchObject({ sectionIndex: 2, loop: false, loopLocked: true });
+  });
+
+  it('without a user toggle the saved flag of each section applies; reset clears the lock', () => {
+    const { src } = mk([sec('pA', 1, { loop: false }), sec('pB', 1, { loop: true })]);
+    const out: NoteOut[] = [];
+    src.collect(0, 3 * BAR, out);
+    expect(src.infoAt(0)).toMatchObject({ loop: false, loopLocked: false });
+    expect(src.infoAt(BAR + 5)).toMatchObject({ sectionIndex: 1, loop: true, loopLocked: false });
+    src.act({ type: 'toggleLoop' }, 3 * BAR);
+    src.reset();
+    src.collect(0, BAR, []);
+    expect(src.infoAt(5)).toMatchObject({ loop: false, loopLocked: false });
+  });
+
+  it('a user LOOP off overrides a section saved as looping', () => {
+    const { src } = mk([sec('pA', 1), sec('pB', 1, { loop: true }), sec('pC', 1)]);
+    src.collect(0, 100, []);
+    src.act({ type: 'toggleLoop' }, 100); // on
+    src.act({ type: 'toggleLoop' }, 100); // off, locked
+    src.act({ type: 'next' }, 100);
+    src.collect(100, 6 * BAR, []);
+    expect(src.infoAt(BAR + 5)).toMatchObject({ sectionIndex: 1, loop: false });
+    expect(src.infoAt(2 * BAR + 5)).toMatchObject({ sectionIndex: 2 });
   });
 });
 

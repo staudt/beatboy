@@ -193,7 +193,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       expect(await mode(page)).toBe('idle');
     });
 
-    test('4. NEXT lands on the next bar line; pressing it twice cancels', async ({ page }) => {
+    test('4. NEXT lands on the next bar line; NEXT then PREV cancels', async ({ page }) => {
       await open(page);
       await makeShortSong(page);
       await clearLog(page);
@@ -217,7 +217,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(stopBtn(page)).toBeVisible();
       await press(page, nextBtn(page));
       await expect(queued(page)).toBeVisible();
-      await press(page, nextBtn(page));
+      await press(page, page.getByRole('button', { name: 'Previous section' }));
       await expect(queued(page)).toHaveCount(0);
       await expect.poll(async () => at(await log(page), BAR, 'ride'), { timeout: 3000 }).toBeTruthy();
       await expect(nowName(page)).toHaveText('Intro');
@@ -596,7 +596,7 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await expect(stopBtn(page)).toBeVisible();
       await page.keyboard.press('ArrowRight');
       await expect(queued(page)).toContainText(/Next → VERSE/i);
-      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowLeft');
       await expect(queued(page)).toHaveCount(0);
       await page.keyboard.press('ArrowRight');
       await expect(nowName(page)).toHaveText(/^Verse/, { timeout: 4000 });
@@ -621,6 +621,66 @@ for (const name of Object.keys(LAYOUTS) as LayoutName[]) {
       await page.keyboard.press('Space');
       await expect(play(page)).toBeVisible();
       expect(await mode(page)).toBe('idle');
+    });
+
+    test('14c. Up/Down = prev/next and accumulate; sticky LOOP; stopped arrows pick the start; no BPM arrows (desktop)', async ({ page }) => {
+      test.skip(isMobile(page), 'keyboard');
+      await open(page);
+      await makeShortSong(page);
+      for (let i = 0; i < 3; i++) await setBars(page, i, 4);
+      await press(page, page.getByRole('button', { name: 'Add Verse', exact: true }));
+      await expect(cards(page)).toHaveCount(4);
+      await setBars(page, 3, 4);
+      await waitSaved(page);
+      await page.locator('body').click({ position: { x: 5, y: 300 } });
+
+      // stopped: arrows move the start section; ArrowUp never touches the tempo
+      const bpm0 = await engineBpm(page);
+      await page.keyboard.press('ArrowDown');
+      await expect(cards(page).nth(1)).toHaveClass(/is-selected/);
+      await page.keyboard.press('ArrowRight');
+      await expect(cards(page).nth(2)).toHaveClass(/is-selected/);
+      await page.keyboard.press('ArrowUp');
+      await expect(cards(page).nth(1)).toHaveClass(/is-selected/);
+      await page.keyboard.press('ArrowLeft');
+      await expect(cards(page).nth(0)).toHaveClass(/is-selected/);
+      await page.keyboard.press('ArrowUp');
+      await expect(cards(page).nth(0)).toHaveClass(/is-selected/);
+      await expect(bpmInput(page)).toHaveValue('200');
+      expect(await engineBpm(page)).toBe(bpm0);
+
+      // playing: three presses accumulate to the 4th section, landing on one bar line
+      await clearLog(page);
+      await page.keyboard.press('Space');
+      await expect(stopBtn(page)).toBeVisible();
+      for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown');
+      await expect(queued(page)).toContainText(/Next → VERSE/i);
+      await expect(cards(page).nth(3)).toHaveClass(/is-current/, { timeout: 3000 });
+      await expect(cards(page).nth(1)).not.toHaveClass(/is-current/);
+      const es = await log(page);
+      const t0 = at(es, 0, 'kick')!.time;
+      // section 4 (default Verse groove) starts at a bar line: some bar after 0 with no Ride Rock ride notes
+      const rides = es.filter((e) => e.sound === 'ride').map((e) => Math.round(e.tick));
+      expect(rides.every((t) => t < BAR)).toBe(true);
+      const first = at(es, BAR, 'kick')!; // the new section's groove starts on the bar line
+      expect(first).toBeTruthy();
+      expect(Math.abs(first.time - t0 - 1.2)).toBeLessThan(0.005);
+
+      // sticky LOOP: on, then Right -> the next section keeps looping past its 4 bars
+      await page.keyboard.press('l');
+      await expect(loopBtn(page)).toHaveAttribute('aria-pressed', 'true');
+      await page.keyboard.press('ArrowUp'); // back to section 3
+      await expect(cards(page).nth(2)).toHaveClass(/is-current/, { timeout: 3000 });
+      await expect(loopBtn(page)).toHaveAttribute('aria-pressed', 'true');
+      await page.keyboard.press('ArrowRight');
+      await expect(cards(page).nth(3)).toHaveClass(/is-current/, { timeout: 3000 });
+      await expect(page.getByTestId('loop-badge')).toBeVisible();
+      await expect(page.getByTestId('now-bar')).toContainText('bar 1 / 4', { timeout: 3000 });
+      await expect(page.getByTestId('now-bar')).toContainText('bar 4 / 4', { timeout: 6000 });
+      await expect(page.getByTestId('now-bar')).toContainText('bar 1 / 4', { timeout: 3000 });
+      await expect(cards(page).nth(3)).toHaveClass(/is-current/);
+      await page.keyboard.press('Space');
+      await expect(play(page)).toBeVisible();
     });
 
     test('14b. number keys jump to sections (desktop)', async ({ page }) => {

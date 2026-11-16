@@ -104,12 +104,8 @@ export function App() {
       else if (key === 'b' || key === 'B') once(songs.songBreak);
       else if (key === 'l' || key === 'L') once(songs.songLoop);
       else if (key === 't' || key === 'T') once(drummer.tap);
-      else if (key === 'PageDown' || (key === 'ArrowRight' && !inField)) once(songs.songNext);
-      else if (key === 'PageUp' || (key === 'ArrowLeft' && !inField)) once(songs.songPrev);
-      else if ((key === 'ArrowUp' || key === 'ArrowDown') && !inField) {
-        e.preventDefault();
-        drummer.nudgeBpm(key === 'ArrowUp' ? 1 : -1);
-      }
+      else if (key === 'PageDown' || ((key === 'ArrowRight' || key === 'ArrowDown') && !inField)) once(songs.songNext);
+      else if (key === 'PageUp' || ((key === 'ArrowLeft' || key === 'ArrowUp') && !inField)) once(songs.songPrev);
     };
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space' && spaceHandled) {

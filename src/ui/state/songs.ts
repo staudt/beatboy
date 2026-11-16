@@ -360,8 +360,18 @@ export function songAct(action: SongAction): void {
   engine.songAct(action);
   pollInfo();
 }
-export const songNext = (): void => songAct({ type: 'next' });
-export const songPrev = (): void => songAct({ type: 'prev' });
+/** Playing: queue/accumulate a section change. Stopped: move the start section (the focus follows). */
+function step(d: 1 | -1, type: 'next' | 'prev'): void {
+  if (engine.mode === 'song') return songAct({ type });
+  const song = currentSong.peek();
+  if (!song || song.sections.length === 0) return;
+  const i = Math.min(song.sections.length - 1, Math.max(0, clampStartIndex(song, selectedSectionId.peek()) + d));
+  const sec = song.sections[i]!;
+  selectedSectionId.value = sec.id;
+  focusSectionId.value = sec.id;
+}
+export const songNext = (): void => step(1, 'next');
+export const songPrev = (): void => step(-1, 'prev');
 export const songBreak = (): void => songAct({ type: 'break' });
 export const songLoop = (): void => songAct({ type: 'toggleLoop' });
 export const songFill = (): void => songAct({ type: 'fill' });

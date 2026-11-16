@@ -42,6 +42,8 @@ export interface SongInfo {
   queued: { kind: 'next' | 'prev' | 'jump'; sectionIndex: number | null } | null;
   /** Runtime loop flag of the current section. */
   loop: boolean;
+  /** The user has taken over LOOP (it now persists across section changes until the song restarts). */
+  loopLocked: boolean;
   phase: 'normal' | 'fill' | 'break' | 'final';
   breakQueued: boolean;
   fillQueued: boolean;
@@ -124,6 +126,8 @@ export class SongSource implements EventSource {
   private curBarInSection = 0;
   private curSectionStart = 0;
   private curLoop = false;
+  /** User's LOOP choice (null = untouched since start: follow each section's saved flag). */
+  private userLoop: boolean | null = null;
   private queue: Queued | null = null;
   private breakQ: { applyTick: number } | null = null;
   private overlay: FillSpan | null = null;
@@ -169,6 +173,7 @@ export class SongSource implements EventSource {
     this.curBarInSection = 0;
     this.curSectionStart = 0;
     this.curLoop = false;
+    this.userLoop = null;
     this.queue = null;
     this.breakQ = null;
     this.overlay = null;
@@ -269,7 +274,7 @@ export class SongSource implements EventSource {
       this.curIndex = enter;
       this.curBarInSection = 0;
       this.curSectionStart = t;
-      if (reinitLoop) this.curLoop = sec.loop;
+      if (reinitLoop) this.curLoop = this.userLoop ?? sec.loop;
     }
     const idx = this.curIndex;
     const sec = secs[idx]!;
@@ -367,7 +372,8 @@ export class SongSource implements EventSource {
         if (!this.entered) {
           // Count-in: pre-enter the start section's flag lazily.
           const i = Math.min(this.startSection, secs.length - 1);
-          this.curLoop = !secs[i]!.loop;
+          this.userLoop = !(this.userLoop ?? secs[i]!.loop);
+          this.curLoop = this.userLoop;
           this.entered = true;
           this.curId = secs[i]!.id;
           this.curIndex = i;
@@ -375,7 +381,8 @@ export class SongSource implements EventSource {
           this.curSectionStart = 0;
           return;
         }
-        this.curLoop = !this.curLoop;
+        this.userLoop = !this.curLoop;
+        this.curLoop = this.userLoop;
         return;
       }
       case 'break': {
@@ -405,16 +412,24 @@ export class SongSource implements EventSource {
         if (secs.length === 0) return;
         const kind = action.type;
         if (action.type === 'jump' && !Number.isFinite(action.sectionIndex)) return;
-        if (this.queue && kind !== 'jump' && this.queue.kind === kind) {
-          this.dropQueue(sU); // pressing the same button again cancels
-          return;
-        }
-        if (this.queue) this.dropQueue(sU);
         const base = this.baseIndex(secs);
+        const hadQueue = this.queue !== null;
         let target: number | null;
-        if (kind === 'next') target = base + 1 < secs.length ? base + 1 : null;
-        else if (kind === 'prev') target = Math.max(0, base - 1);
-        else target = Math.min(secs.length - 1, Math.max(0, Math.floor((action as { sectionIndex: number }).sectionIndex)));
+        if (kind === 'jump') {
+          if (hadQueue) this.dropQueue(sU);
+          target = Math.min(secs.length - 1, Math.max(0, Math.floor((action as { sectionIndex: number }).sectionIndex)));
+        } else {
+          // Accumulating: step from the queued target (secs.length = "end of song"), clamped.
+          const q = this.queue;
+          const pos = q ? (q.targetIndex ?? secs.length) : base;
+          if (kind === 'next' && pos >= secs.length) return; // already the final hit
+          const np = kind === 'next' ? Math.min(secs.length, pos + 1) : Math.max(0, pos - 1);
+          if (hadQueue && np === base) {
+            this.dropQueue(sU); // back on the current section: nothing to change
+            return;
+          }
+          target = np >= secs.length ? null : np;
+        }
         this.queue = {
           kind,
           applyTick: B,
@@ -422,8 +437,8 @@ export class SongSource implements EventSource {
           targetId: target === null ? null : secs[target]!.id,
           targetIndex: target,
         };
-        // Leaving a section with fills enabled: fill the rest of the current bar (>= 1 beat left).
-        if (kind !== 'prev' && sU >= 0) {
+        // Leaving a section with fills enabled: fill the rest of the current bar (>= 1 beat left); only for the first step.
+        if (kind !== 'prev' && sU >= 0 && !(hadQueue && kind === 'next')) {
           const cur = secs[base]!;
           if (cur.fill.enabled && !this.fillBusy(sU)) {
             const id = this.fillPatternFor(cfg, cur);
@@ -550,7 +565,8 @@ export class SongSource implements EventSource {
         countIn: Math.ceil(-tick / BEAT),
         nextSectionIndex: sec ? (sec.loop ? si : si + 1 < secs.length ? si + 1 : null) : null,
         queued: queuedOf(null),
-        loop: sec ? (this.entered ? this.curLoop : sec.loop) : false,
+        loop: sec ? (this.entered ? this.curLoop : (this.userLoop ?? sec.loop)) : false,
+        loopLocked: this.userLoop !== null,
         phase: 'normal',
         breakQueued: this.breakQ !== null,
         fillQueued: false,
@@ -599,6 +615,7 @@ export class SongSource implements EventSource {
       nextSectionIndex,
       queued,
       loop,
+      loopLocked: this.userLoop !== null,
       phase,
       breakQueued: !p.final && (this.breakQ !== null || (nextPlan?.brk ?? false)),
       fillQueued: !p.final && this.overlay !== null && tick < this.overlay.start,
