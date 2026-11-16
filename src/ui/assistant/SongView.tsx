@@ -3,8 +3,10 @@ import { useEffect, useMemo, useRef } from 'preact/hooks';
 import { createPattern } from '../../domain/patternOps';
 import type { Pattern } from '../../domain/types';
 import { PATTERN_LIMITS } from '../../domain/types';
-import { IconCopy, IconGear, IconLoop, IconMinus, IconPlay, IconPlus, IconStop, IconTrash } from '../common/icons';
+import { IconCopy, IconDownload, IconGear, IconLoop, IconMinus, IconPlay, IconPlus, IconStop, IconTrash } from '../common/icons';
 import { Sheet } from '../common/Sheet';
+import { agoLabel } from '../../storage/exportImport';
+import { exportCurrentSong, exportEverything, lastExportAt, startImport } from '../state/backup';
 import { PatternPicker } from '../common/PatternPicker';
 import { isDesktop } from '../media';
 import { bpm, click, countInBars, crashAfterFill, setBpm, setClickVolume, setCountIn, tap, toggleClick } from '../state/drummer';
@@ -91,6 +93,9 @@ function SongHeader() {
       </button>
       <button type="button" class="btn btn-icon" aria-label="Duplicate song" disabled={!song} onClick={duplicateSong}>
         <IconCopy />
+      </button>
+      <button type="button" class="btn btn-icon" aria-label="Export song" disabled={!song} onClick={() => void exportCurrentSong()}>
+        <IconDownload />
       </button>
       <button type="button" class="btn btn-icon" aria-label="Delete song" disabled={!song} onClick={requestDeleteSong}>
         <IconTrash />
@@ -214,8 +219,47 @@ function SettingsSheet() {
         </label>
         <DefaultFill />
       </div>
+      <Backup />
       <Credits />
     </Sheet>
+  );
+}
+
+/** Export / import of everything (the data lives only in this browser). */
+function Backup() {
+  const input = useRef<HTMLInputElement>(null);
+  const last = lastExportAt.value;
+  return (
+    <section class="backup" aria-label="Backup">
+      <span class="label">backup</span>
+      <p>Your songs and beats are stored only in this browser. Export a backup to keep them safe or move them to another device.</p>
+      <div class="backup-actions">
+        <button type="button" class="btn" onClick={() => void exportEverything()}>
+          <IconDownload /> Export everything
+        </button>
+        <button type="button" class="btn" onClick={() => input.current?.click()}>
+          Import…
+        </button>
+        <input
+          ref={input}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          aria-label="Import file"
+          data-testid="import-file"
+          onChange={(e) => {
+            const f = e.currentTarget.files?.[0];
+            e.currentTarget.value = '';
+            if (!f) return;
+            settingsOpen.value = false;
+            void startImport(f);
+          }}
+        />
+      </div>
+      <p class="backup-last" data-testid="last-backup">
+        Last backup: {agoLabel(last)}
+      </p>
+    </section>
   );
 }
 

@@ -184,6 +184,36 @@ in the panel; the row itself is never an input.
 - The `Autosaver` debounces (400 ms), coalesces per id, serializes writes, keeps failed writes pending for
   retry, and flushes on `visibilitychange`/`pagehide`.
 
+## Export / import (backup and sharing)
+
+Everything lives only in the browser, so the Drummer settings sheet has a Backup section (Export everything, Import…,
+"Last backup", persisted as the `lastExportAt` setting) and the song header has Export song. Pure code:
+`src/storage/exportImport.ts`; file I/O, preview and persistence: `src/ui/state/backup.ts`, `ui/common/ImportSheet.tsx`.
+
+```
+{ format: 'beatboy', version: 1, kind: 'library' | 'song', exportedAt: ISO, app?: string,
+  patterns: StoredPattern[]   // user patterns incl. song-local beats, each with schemaVersion
+  songs: StoredSong[],        // each with schemaVersion
+  settings?: { drummer?: … } } // library exports only (not applied on import: it would clobber the tempo)
+```
+- `version` is the file format. A larger version is refused ("made by a newer version of Beatboy"); wrong `format`,
+  invalid JSON or an empty file give readable errors. Each record goes through `migratePattern` / `migrateSong`, so older
+  schema versions import; unreadable records are skipped and counted ("2 patterns could not be read and were skipped").
+- `exportSong` = the song + every non-built-in pattern it references (grooves, fills, its song-local beats). Built-ins
+  are referenced by their stable `f-…` ids and are never exported or imported (`builtIn` records and `f-` ids are ignored).
+- `planImport(local, incoming, 'keepBoth' | 'replace')` returns the records to put plus a summary
+  `{songsAdded, songsReplaced, patternsAdded, patternsReplaced, skipped}`, a conflict count, the song to select and warnings.
+  Same id + identical content (key order ignored) = skipped. Same id + different content:
+  - keepBoth: the incoming record gets a new id (`crypto.randomUUID`) and every reference follows (section `patternId`,
+    fill `patternId`, `fillId`). A conflicting song's own beats get new ids and the new `ownerSongId`; a copied library
+    groove is named "… (imported)". A song added while its name is taken becomes "<name> (imported)".
+  - replace: local records with those ids are overwritten.
+  - A beat whose owner song is in neither the file nor the library becomes a normal groove. References to non-built-in
+    patterns found nowhere are kept (the section plays silence) and reported as a warning in the preview.
+- Imports go through the shared autosavers (`putImportedPatterns` / `putImportedSongs`, patterns first, then flush), so they are
+  persisted before the toast. On phones that can `navigator.canShare({files})` the file goes through the share sheet,
+  otherwise a Blob download. Drop a file on the page (desktop) or use Import… to get the preview.
+
 ## Deployment
 
 Static build (`base: './'`, hash routes) deployable to GitHub Pages by `.github/workflows/deploy.yml`.

@@ -115,3 +115,8 @@ export const IconArrowDown = (p: P) => (
     <path d="M12 5v14M19 12l-7 7-7-7" />
   </svg>
 );
+export const IconDownload = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M12 4v11M7 11l5 5 5-5M5 20h14" />
+  </svg>
+);

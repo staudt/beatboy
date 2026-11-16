@@ -5,9 +5,11 @@ import { BeatLab } from './beatlab/BeatLab';
 import { ConfirmSheet } from './common/ConfirmSheet';
 import { SaveGrooveSheet } from './common/SaveGrooveSheet';
 import { IconBot, IconGrid } from './common/icons';
+import { ImportSheet } from './common/ImportSheet';
 import { Toast } from './common/Toast';
 import { isDesktop } from './media';
 import { navigate, route, type Route } from './router';
+import { initBackup, startImport } from './state/backup';
 import * as drummer from './state/drummer';
 import { editorTogglePlay, initLink } from './state/link';
 import { playingTabs } from './state/linkLogic';
@@ -64,6 +66,7 @@ export function App() {
   useEffect(() => {
     initLink();
     void initLab();
+    void initBackup();
     void drummer.initDrummer();
     // initSongs waits for the Drummer settings, which wait for the lab (library + repo).
     void songs.initSongs().finally(() => {
@@ -123,8 +126,19 @@ export function App() {
   }, []);
 
   const desktop = isDesktop.value;
+  // Drop a backup / shared song file anywhere: it opens the import preview.
+  const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
   return (
-    <div class="app" data-bar={route.value === 'drummer' ? 'song' : undefined}>
+    <div
+      class="app"
+      onDragOver={(e) => hasFiles(e) && e.preventDefault()}
+      onDrop={(e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        const f = e.dataTransfer?.files[0];
+        if (f) void startImport(f);
+      }}
+      data-bar={route.value === 'drummer' ? 'song' : undefined}>
       {desktop && (
         <header class="topbar">
           <span class="brand">BEATBOY</span>
@@ -136,6 +150,7 @@ export function App() {
       <Toast />
       <ConfirmSheet />
       <SaveGrooveSheet />
+      <ImportSheet />
     </div>
   );
 }

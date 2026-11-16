@@ -122,6 +122,16 @@ export function dropLibraryPatterns(ids: readonly string[]): void {
   for (const id of ids) saver?.scheduleDelete(id);
 }
 
+/** Imported patterns (new or replacing the same ids): into the library, then written and flushed. */
+export async function putImportedPatterns(ps: readonly Pattern[]): Promise<void> {
+  if (ps.length === 0) return;
+  const ids = new Set(ps.map((p) => p.id));
+  library.value = [...library.peek().filter((p) => p.builtIn || !ids.has(p.id)), ...ps];
+  for (const p of ps) saver?.schedule(p);
+  await saver?.flush();
+  if (saver?.status === 'error') throw new Error("Couldn't save the imported beats.");
+}
+
 export function requestSaveAsGroove(id: string): void {
   const p = findPattern(library.peek(), id);
   if (p && isSongLocal(p)) saveGrooveReq.value = { id, name: p.name };

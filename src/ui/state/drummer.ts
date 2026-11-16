@@ -23,7 +23,8 @@ export const lastGrooveId = signal<string | null>(D.lastGrooveId);
 export const grooves = computed(() => library.value.filter((p) => p.kind === 'groove' && !p.ownerSongId));
 export const fills = computed(() => library.value.filter((p) => p.kind === 'fill' && !p.ownerSongId));
 
-function currentSettings(): DrummerSettings {
+/** The persisted Drummer settings as they are now (exported in backups). */
+export function currentSettings(): DrummerSettings {
   return {
     bpm: bpm.peek(),
     countInBars: countInBars.peek(),

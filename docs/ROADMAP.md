@@ -8,7 +8,6 @@ Ideas agreed with the user but not built yet (text-first song sections are done:
 - Custom key mapping for footswitches (learn mode, conflict warnings); optional Web MIDI input.
 
 ## Durability
-- Export / import songs and patterns as versioned JSON (validated, migrated).
 - Installable PWA with offline support (precache app + kit).
 
 ## Section feel

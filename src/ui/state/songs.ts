@@ -80,6 +80,24 @@ export function editSong(fn: (s: Song) => Song): void {
   saver?.schedule(next);
 }
 
+/** Imported songs (new or replacing the same ids): into the list (newest first), then written and flushed. */
+export async function putImportedSongs(list: readonly Song[]): Promise<void> {
+  if (list.length === 0) return;
+  const ids = new Set(list.map((s) => s.id));
+  songs.value = [...list, ...songs.peek().filter((s) => !ids.has(s.id))];
+  for (const s of list) saver?.schedule(s);
+  await saver?.flush();
+  if (saver?.status === 'error') throw new Error("Couldn't save the imported songs.");
+}
+
+/** Removes songs by id (used by import to drop untouched starter songs replaced by a backup). */
+export function removeSongs(ids: readonly string[]): void {
+  if (ids.length === 0) return;
+  const drop = new Set(ids);
+  songs.value = songs.peek().filter((s) => !drop.has(s.id));
+  for (const id of ids) saver?.scheduleDelete(id);
+}
+
 export function retrySongSave(): void {
   void saver?.retry();
 }
