@@ -1,0 +1,20 @@
+{
+  "description": "Repeat bar with first/second endings above the staff: |: A |1. B :|2. C plays A B A C.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Verse",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h .  kh . h .  sh . h .  kh . h .  sh . sh .  kh . h .  sh . h .  kh . h .  sh . h .  kh . h .  sh . h .  kh . h .  sh s sh s"
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Header section holds the whole play-through as one 64-step beat (A, ending 1, A, ending 2), times 1. Not periodic, so no collapse."
+}

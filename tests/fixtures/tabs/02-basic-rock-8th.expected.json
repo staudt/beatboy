@@ -1,0 +1,20 @@
+{
+  "description": "Same beat as 01 written at 8 chars per bar (8th resolution).",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "8 chars = 8ths, each spread onto every other 16th, so beat equals fixture 01."
+}

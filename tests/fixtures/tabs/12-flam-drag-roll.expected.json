@@ -1,0 +1,22 @@
+{
+  "description": "Snare ornaments f d b r with a legend; each collapses to one snare hit.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "ksh . h .  sh . h .  ksh . h .  sh . h ."
+    }
+  ],
+  "warningsContain": [
+    "simplified"
+  ],
+  "notes": "Flam, drag, buzz roll and ruff simplified to a single normal snare hit each."
+}

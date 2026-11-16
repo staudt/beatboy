@@ -2891,3 +2891,238 @@ button.chip {
 .imp-choice legend {
   padding: 0 0 4px;
 }
+
+/* ── Import drum tab (paste a tab, get a song) ─────────────────── */
+.pp-extra {
+  width: 100%;
+  min-height: var(--tap);
+  justify-content: center;
+  color: var(--text-dim);
+}
+
+.sheet-tab {
+  max-width: none;
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+  border: 0;
+  padding-top: max(6px, env(safe-area-inset-top, 0px));
+}
+
+.sheet-tab .sheet-body {
+  flex: 1;
+  gap: 10px;
+}
+
+.tab-cols {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 0 auto;
+  min-width: 0;
+}
+
+.tab-in {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tab-text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  height: 26dvh;
+  min-height: 130px;
+  resize: vertical;
+  white-space: pre;
+  overflow: auto;
+  padding: 8px 10px;
+}
+
+.tab-tools {
+  display: flex;
+  gap: 4px;
+}
+
+.tab-out {
+  min-width: 0;
+}
+
+.tab-hint code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.tab-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  transition: opacity 120ms;
+}
+
+.tab-preview.is-stale {
+  opacity: 0.55;
+}
+
+.tab-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+}
+
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.tab-badge.is-good {
+  color: #7ddc8c;
+}
+
+.tab-badge.is-check {
+  color: var(--break);
+}
+
+.tab-badge.is-bad {
+  color: var(--danger);
+}
+
+.tab-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.tab-field-bpm {
+  flex: 0 0 84px;
+}
+
+.tab-count {
+  margin-top: 2px;
+}
+
+.tab-sections,
+.tab-warns {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tab-warns {
+  gap: 4px;
+}
+
+.tab-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-ctl);
+}
+
+.tab-sec-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tab-sec-name {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.tab-sec-meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--play-hot);
+  white-space: nowrap;
+}
+
+.tab-beat {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow-x: auto;
+  padding: 6px 8px;
+  background: #1f1d1b;
+  border-radius: 8px;
+  color: var(--text);
+}
+
+.sheet-tab .sheet-actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  padding: 10px 0 2px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+
+@media (min-width: 900px) {
+  .sheet-tab {
+    width: min(1180px, 94vw);
+    height: min(86dvh, 820px);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding-bottom: 16px;
+  }
+
+  .tab-cols {
+    flex-direction: row;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .tab-in {
+    flex: 1 1 46%;
+  }
+
+  .tab-out {
+    flex: 1 1 54%;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .tab-text {
+    flex: 1;
+    height: auto;
+    min-height: 240px;
+    resize: none;
+    font-size: 13px;
+  }
+
+  .sheet-tab .sheet-body {
+    overflow: hidden;
+  }
+
+  .sheet-tab .sheet-actions {
+    position: static;
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "description": "Headers [Intro], Verse 1 (0:23), Pre-Chorus, Chorus x2, Solo, Outro; lyrics between systems; tempo q=96.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": 96
+  },
+  "sections": [
+    {
+      "name": "Intro",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . . .  h . . .  kh . . .  h . . ."
+    },
+    {
+      "name": "Verse 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . kh .  sh . h ."
+    },
+    {
+      "name": "Pre-Chorus",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . sh ."
+    },
+    {
+      "name": "Chorus",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kc . h .  sh . h .  kh . kh .  sh . h ."
+    },
+    {
+      "name": "Solo",
+      "feel": "straight",
+      "times": 1,
+      "beat": "ks s s s  t t t t  km m m m  f f f f"
+    },
+    {
+      "name": "Outro",
+      "feel": "straight",
+      "times": 1,
+      "beat": "ksc . . .  . . . .  . . . .  . . . ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Timestamp stripped from name. Lyric line ignored. Verse 1 is two systems of one identical bar."
+}

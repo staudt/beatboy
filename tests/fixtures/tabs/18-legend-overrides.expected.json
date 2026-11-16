@@ -1,0 +1,22 @@
+{
+  "description": "Legend inverts the usual hat reading: o closed, x open on the HH line.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  ko . h .  sh . h ."
+    }
+  ],
+  "warningsContain": [
+    "legend"
+  ],
+  "notes": "Scoped to the HH line (snare/kick o stays a normal hit). The doc's 'HH = open hi-hat' variant is not used; the o/x swap is what is tested. Legend wins with a warning."
+}

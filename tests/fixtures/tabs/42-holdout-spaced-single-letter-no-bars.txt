@@ -1,0 +1,4 @@
+   1 & 2 & 3 & 4 &
+H  x x x x x x x x
+S  - - o - - - o -
+B  o - - - o o - -

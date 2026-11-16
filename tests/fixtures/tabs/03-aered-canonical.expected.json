@@ -1,0 +1,20 @@
+{
+  "description": "Aered-style header (Song/Band/Tempo), S/B/H/C/Hf labels, bracket |- x4 -| over a 2-bar phrase.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Four Walls",
+    "bpm": 100
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 4,
+      "beat": "kdc . h .  shd . h .  khd . h .  shd . h .  khd . h .  shd . h .  khd . kh .  shd . sh ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "The 2-bar phrase repeats 4 times (x4 = 4 total plays), so beat is 32 tokens and times is 4. Hf = hat pedal (d), also hit with the closed hat in bar 2 (kept as written)."
+}

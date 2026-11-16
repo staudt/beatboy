@@ -1,0 +1,26 @@
+Road Trip
+Tempo: 110
+
+Verse
+HH|x-x-x-x-x-x-x-x-|x-x-x-x-x-x-x-x-|
+SD|----o-------o---|----o-------o---|
+BD|o-------o-------|o-------o-------|
+
+Chorus
+CC|x---------------|
+RD|--x-x-x-x-x-x-x-|
+SD|----o-------o---|
+BD|o-------o-o-----|
+
+==============================
+Slow Dance   Tempo: 66
+
+Verse
+Hi-Hat   |x-xx-xx-xx-x|x-xx-xx-xx-x|
+Snare    |---o-----o--|---o-----o--|
+Bass Drum|o-----o-----|o-----o-----|
+
+Bridge
+Hi-Hat   |xxxxxxxxxxxx|
+Snare    |---o-----ooo|
+Bass Drum|o-----o-----|

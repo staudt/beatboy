@@ -1,0 +1,18 @@
+Drum part for my band's song - "Night Drive"
+tempo: 132 bpm
+
+intro
+Cr|x---------------|----------------|
+Hh|----x-x-x-x-x-x-|x-x-x-x-x-x-x-x-|
+Sn|----o-------o---|----o-------o---|
+Bd|o-------o-o-----|o-------o-o-----|
+
+verse  (x4)
+Hh|x-x-x-x-x-x-x-x-|
+Sn|----o-------o---|
+Bd|o-------o-o-----|
+
+chorus
+Rd|x-x-x-x-x-x-x-x-|x-x-x-x-x-x-x-x-|
+Sn|----o-------o---|----o-------o-oo|
+Bd|o-o-----o-o-----|o-o-----o-o-----|

@@ -1,0 +1,6 @@
+Basic rock beat
+
+   1e&a2e&a3e&a4e&a 1e&a2e&a3e&a4e&a
+HH|x-x-x-x-x-x-x-x-|x-x-x-x-x-x-x-x-|
+SD|----o-------o---|----o-------o---|
+BD|o-------o-------|o-------o-------|

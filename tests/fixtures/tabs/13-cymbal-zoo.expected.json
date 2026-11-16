@@ -1,0 +1,29 @@
+{
+  "description": "Cymbal lines CC, C2, Ch, Sp, Rd with chars x X # s c b.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kc . r .  sr . r .  kr . r .  se . r ."
+    },
+    {
+      "name": "Part 2",
+      "feel": "straight",
+      "times": 1,
+      "beat": "ki . r .  sr . r .  ki . . .  sc . I ."
+    }
+  ],
+  "warningsContain": [
+    "china",
+    "splash"
+  ],
+  "notes": "China, splash and C2 all map to crash2 (i). # (choke) is a normal crash hit. b on the ride line = ride bell (e). X on C2 = accent (I)."
+}

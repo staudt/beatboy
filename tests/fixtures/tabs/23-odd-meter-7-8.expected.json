@@ -1,0 +1,26 @@
+{
+  "description": "7/8 bars of 14 chars (2+2+3) then a 5/4 bar of 20 chars; bar lengths differ per section.",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Odd Time",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Verse",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . kh .  sh . h .  h ."
+    },
+    {
+      "name": "Chorus",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h .  kh . h ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "CONVENTION: a 7/8 bar of 14 chars is a 14-step straight beat (14 sixteenths = 3.5 quarter beats); 5/4 at 20 chars is 20 steps. The time signature is not stored; the step count carries it."
+}

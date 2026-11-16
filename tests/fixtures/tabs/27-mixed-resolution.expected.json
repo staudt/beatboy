@@ -1,0 +1,34 @@
+{
+  "description": "Three bars, three grids: 8 chars (8ths), 16 chars (16ths fill), 12 chars (triplet).",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Part 2",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh . h .  sh s sh s"
+    },
+    {
+      "name": "Part 3",
+      "feel": "triplet",
+      "times": 1,
+      "beat": "kh . h  sh . h  kh . h  sh . h"
+    }
+  ],
+  "warningsContain": [
+    "mixed"
+  ],
+  "notes": "Each bar keeps its own grid; feel per section. Part 1 is spread to 16ths."
+}

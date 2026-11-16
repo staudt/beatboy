@@ -1,0 +1,20 @@
+{
+  "description": "Snare with g ghost notes and O accents.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h (s)  Sh . h (s)  kh (s) kh (s)  Sh . h (s)"
+    }
+  ],
+  "warningsContain": [],
+  "notes": "g = ghost (s in parentheses), O = accent (S)."
+}

@@ -1,0 +1,20 @@
+{
+  "description": "Lead-written holdout: a fill system with empty tom rows and a duplicated T1 row below (merged).",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 1,
+      "beat": "ks . s .  s . s .  st st s s  . . . ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Written by the lead as unseen holdout cases after the parser was built; expectations verified by hand."
+}

@@ -1,0 +1,6 @@
+Rock beat (8ths)
+
+   1+2+3+4+ 1+2+3+4+
+HH|xxxxxxxx|xxxxxxxx|
+SD|--o---o-|--o---o-|
+BD|o---o---|o---o---|

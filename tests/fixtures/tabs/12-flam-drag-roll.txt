@@ -1,0 +1,5 @@
+f = flam   d = drag   b = buzz roll   r = ruff
+
+HH|x-x-x-x-x-x-x-x-|x-x-x-x-x-x-x-x-|
+SD|f---d---b---r---|f---d---b---r---|
+BD|o-------o-------|o-------o-------|

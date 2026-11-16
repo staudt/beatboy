@@ -1,0 +1,26 @@
+{
+  "description": "Lead-written holdout: 12/8 header, triplet bars, ghost on the last triplet of bar 2.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "triplet",
+      "times": 1,
+      "beat": "kh . h  sh . h  kh . kh  sh . h"
+    },
+    {
+      "name": "Part 2",
+      "feel": "triplet",
+      "times": 1,
+      "beat": "kh . h  sh . h  kh . h  sh . (s)h"
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Written by the lead as unseen holdout cases after the parser was built; expectations verified by hand."
+}

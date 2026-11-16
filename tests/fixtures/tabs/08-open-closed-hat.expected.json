@@ -1,0 +1,20 @@
+{
+  "description": "HH line with x closed, X accented closed, o open hat.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kH . h .  sh . h .  kH . kh .  so . h ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "The HH line contains both x and o, so o = open hat (doc 2.1). X = accented closed hat."
+}

@@ -1,0 +1,38 @@
+{
+  "description": "Four repeat styles: header x4, (x2) after system, repeat 3 times, and |: :|.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Verse",
+      "feel": "straight",
+      "times": 4,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Chorus",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kr . r .  sr . r .  kr . kr .  sr . r ."
+    },
+    {
+      "name": "Bridge",
+      "feel": "straight",
+      "times": 3,
+      "beat": "kh . . .  h . . .  sh . . .  h . k ."
+    },
+    {
+      "name": "Outro",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh h h h  sh h kh h  kh h h h  sh h h h"
+    }
+  ],
+  "warningsContain": [],
+  "notes": "N = total plays. |: :| with no count = 2 plays."
+}

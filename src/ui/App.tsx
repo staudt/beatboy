@@ -6,6 +6,7 @@ import { ConfirmSheet } from './common/ConfirmSheet';
 import { SaveGrooveSheet } from './common/SaveGrooveSheet';
 import { IconBot, IconGrid } from './common/icons';
 import { ImportSheet } from './common/ImportSheet';
+import { TabImportSheet } from './common/TabImportSheet';
 import { Toast } from './common/Toast';
 import { isDesktop } from './media';
 import { navigate, route, type Route } from './router';
@@ -151,6 +152,7 @@ export function App() {
       <ConfirmSheet />
       <SaveGrooveSheet />
       <ImportSheet />
+      <TabImportSheet />
     </div>
   );
 }

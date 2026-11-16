@@ -1,0 +1,23 @@
+Band: Midnight Fixtures
+Song: Night Drive
+Tabbed by: nobody@example.com
+Tempo: 112 bpm
+
+Key:
+ x = closed hi-hat
+ o = open hi-hat
+ g = ghost note
+
+Notes:
+ 1. play the ghost notes very quietly
+ 2. open hat on the and of 4 in the last bar
+
+HH|x-x-x-x-x-x-x-x-|x-x-x-x-x-x-x-x-|
+SD|----o--g----o-g-|----o--g----o-g-|
+BD|o-------o-o-----|o-------o-o-----|
+
+HH|x-x-x-x-x-x-x-o-|
+SD|----o-------o---|
+BD|o-------o-------|
+
+(c) 2026 Midnight Fixtures. For personal study only.

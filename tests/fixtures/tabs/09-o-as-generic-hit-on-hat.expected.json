@@ -1,0 +1,22 @@
+{
+  "description": "HH line uses only o (no x/X): o is the generic hit, so closed hat, low-severity warning.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    }
+  ],
+  "warningsContain": [
+    "treated as closed"
+  ],
+  "notes": "Doc 2.1: only-o hat line means closed."
+}

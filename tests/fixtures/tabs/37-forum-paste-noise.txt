@@ -1,0 +1,13 @@
+Re: need the beat
+[code]
+> 01 groove I use:
+> 02 HH|x-x-x-x-x-x-x-x-|x-x-x-x-x-x-x-x-| <- open on the and of 4
+> 03 SD|----o-------o---|----o-------o---|
+> 04 BD|o-------o-------|o-------o-------|
+>
+> 05 and the lift:
+> 06 HH|x-x-x-x-x-x-x-x-|
+> 07 SD|----o-------o---|
+> 08 BD|o-------o-o-----|
+[/code]
+hope that helps

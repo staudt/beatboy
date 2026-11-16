@@ -14,6 +14,8 @@ export interface PatternPickerProps {
   onRename?: (name: string) => void;
   /** Enables the "+ New beat" row. Must make the new pattern current. */
   onNew?: () => void;
+  /** A secondary action under "+ New" (e.g. "Import drum tab…"); the panel closes first. */
+  extraAction?: { label: string; onClick: () => void; testId?: string };
   /** Replaces the whole row subtitle. */
   subtitleOf?: (p: Pattern) => string;
   /** A first group listed above the categories (e.g. the current song's grooves); its patterns are left out of the other groups. */
@@ -92,6 +94,7 @@ export function PatternPicker({
   onSelect,
   onRename,
   onNew,
+  extraAction,
   subtitleOf,
   leadingGroup,
   label = 'Patterns',
@@ -411,6 +414,20 @@ export function PatternPicker({
                   }}
                 >
                   <IconPlus /> {words.newLabel}
+                </button>
+              )}
+              {extraAction && (
+                <button
+                  type="button"
+                  class="btn pp-extra"
+                  data-testid={extraAction.testId}
+                  onClick={() => {
+                    flush();
+                    close({ focusTrigger: false });
+                    extraAction.onClick();
+                  }}
+                >
+                  {extraAction.label}
                 </button>
               )}
             </div>

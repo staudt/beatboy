@@ -1,0 +1,12 @@
+Verse
+HH|x-x-x-x-x-x-x-x-|x-x-x-x-x-x-x-x-|
+SD|----o-------o---|----o-------o---|
+BD|o-------o-------|o-------o-------|
+
+Chorus (same as verse)
+
+Outro
+CC|x---------------|
+HH|--x-x-x-x-x-x-x-|
+SD|o---o---o---o---|
+BD|o---------------|

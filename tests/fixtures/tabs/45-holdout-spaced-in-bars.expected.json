@@ -1,0 +1,20 @@
+{
+  "description": "Lead-written holdout: barred rows with every character separated by one space (spaces are separators, not rests).",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh . kh .  sh . h ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Written by the lead as unseen holdout cases after the parser was built; expectations verified by hand."
+}

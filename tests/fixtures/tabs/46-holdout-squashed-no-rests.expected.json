@@ -1,0 +1,22 @@
+{
+  "description": "Lead-written holdout: unbarred rows, hat row written as xxxxxxxx (no rests at all).",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh . kh .  sh . h ."
+    }
+  ],
+  "warningsContain": [
+    "no bar lines"
+  ],
+  "notes": "Written by the lead as unseen holdout cases after the parser was built; expectations verified by hand."
+}

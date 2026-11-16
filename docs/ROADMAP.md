@@ -13,11 +13,10 @@ Ideas agreed with the user but not built yet (text-first song sections are done:
 ## Section feel
 - Optional per-section modifiers: intensity, half-time, crash on entry, hats → ride.
 
-## Drum-tab importer (later)
-- Paste a drum tab from the web → a song with sections and grooves, "good, never perfect".
-- Build a fixture corpus of real tabs (various sites/styles, including broken ones) with hand-checked
-  expectations; measure accuracy per fixture so the parser only improves.
-- Tolerant parser: detect instrument lines by label (HH, Hh, CC, Cr, Ri, SD, S, BD, B, T1, T2, FT…), align
-  systems on bar lines, infer the grid per bar from character counts, map hit glyphs (x o X O g f > …),
-  handle repeats (`x2`, `|: :|`), section headers (Verse, Chorus…), stacked systems and ragged widths;
-  dedupe identical bars into shared grooves.
+## Drum-tab importer (done, first version)
+Paste a drum tab -> a song: see ARCHITECTURE, "Drum-tab importer". Remaining gaps:
+- Only synthetic fixtures so far: add real-world tabs (with permission) and re-tune.
+- No manual repair view (reassign a row's instrument, split/merge bars) when confidence is low.
+- Odd meters are kept as plain step counts (no time signature); 32nd/24-char bars are merged to the 16th/triplet grid.
+- Fills are not detected as fills (a fill bar is just another section); no "import into the current song".
+- Nested repeats, D.S./D.C., and per-bar resolution changes inside one section are not handled.

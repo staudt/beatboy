@@ -1,0 +1,28 @@
+{
+  "description": "Header 12/8 with 12-char bars, then a 24-char variant bar (16th resolution).",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Slow Blues in 12/8",
+    "bpm": 58
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "triplet",
+      "times": 2,
+      "beat": "kh h h  sh h h  kh h h  sh h h"
+    },
+    {
+      "name": "Part 2",
+      "feel": "triplet",
+      "times": 1,
+      "beat": "kh h h  sh h h  kh h h  sh sh sh"
+    }
+  ],
+  "warningsContain": [
+    "merged"
+  ],
+  "notes": "12/8 -> triplet feel, 3 tokens per dotted-quarter beat. The 24-char bar merges pairs to 12 with a warning."
+}

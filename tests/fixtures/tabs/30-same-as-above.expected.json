@@ -1,0 +1,34 @@
+{
+  "description": "Chorus header says same as verse and has no tab; verse system is duplicated.",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Verse",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Chorus",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Outro",
+      "feel": "straight",
+      "times": 1,
+      "beat": "ksc . h .  sh . h .  sh . h .  sh . h ."
+    }
+  ],
+  "warningsContain": [
+    "same as"
+  ],
+  "notes": "Duplicates the whole previous section incl. its repeats. Outro bar: crash+kick+snare on 1."
+}

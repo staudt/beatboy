@@ -1,0 +1,10 @@
+Slow Blues in 12/8
+Tempo: 58
+
+HH|xxxxxxxxxxxx|xxxxxxxxxxxx|
+SD|---o-----o--|---o-----o--|
+BD|o-----o-----|o-----o-----|
+
+HH|x-x-x-x-x-x-x-x-x-x-x-x-|
+SD|------o-----------o-o-o-|
+BD|o-----------o-----------|

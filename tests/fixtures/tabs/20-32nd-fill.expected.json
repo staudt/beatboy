@@ -1,0 +1,22 @@
+{
+  "description": "One 32-char bar (32nds) with double-kick burst; merge pairs to 16ths with a warning.",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Fill",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh k kh k  ksh . h ."
+    }
+  ],
+  "warningsContain": [
+    "merged"
+  ],
+  "notes": "32nd positions 24 and 25 merge into 16th step 12 (kick+snare). All other hits land on even 32nds."
+}

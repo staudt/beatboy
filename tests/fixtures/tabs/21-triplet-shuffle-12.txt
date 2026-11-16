@@ -1,0 +1,6 @@
+Shuffle
+
+   1 trip let 2 trip let 3 trip let 4 trip let
+HH|x-xx-xx-xx-x|x-xx-xx-xx-x|
+SD|---o-----o--|---o-----o--|
+BD|o-----o-----|o-----o-----|

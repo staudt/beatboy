@@ -1,0 +1,23 @@
+{
+  "description": "SD bar 2 is one char short (15), BD bar 3 one char long (17).",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 3,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    }
+  ],
+  "warningsContain": [
+    "padded",
+    "truncated"
+  ],
+  "notes": "Align by bar index; short row padded with rests, long row trimmed (extra char was a rest)."
+}

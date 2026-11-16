@@ -1,0 +1,26 @@
+{
+  "description": "5-line tab with single-letter labels C H T S B (TablEdit 5-line layout).",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kc . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Part 2",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh . h .  hm . hm ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "C = crash, T alone = tom mid (doc 1.2). Bar 2 is a tom fill so it is its own section."
+}

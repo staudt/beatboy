@@ -1,0 +1,20 @@
+{
+  "description": "Snare ghosts written as (o): each shifts the raw snare row by 2 columns against HH/BD.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h (s)  kh . h .  sh . (s)h ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Ghosts at steps 7 and 14. The raw snare row is 20 chars per bar but the bar is 16 steps; parentheses must be collapsed first."
+}

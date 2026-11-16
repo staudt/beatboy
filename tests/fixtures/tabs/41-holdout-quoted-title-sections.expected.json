@@ -1,0 +1,32 @@
+{
+  "description": "Lead-written holdout: quoted title on a prose first line, tempo line, lowercase headers, (x4) on header, crash intro, ride chorus with snare pickup.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1,
+  "song": {
+    "name": "Night Drive",
+    "bpm": 132
+  },
+  "sections": [
+    {
+      "name": "Intro",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kc . . .  sh . h .  kh . kh .  sh . h .  kh . h .  sh . h .  kh . kh .  sh . h ."
+    },
+    {
+      "name": "Verse",
+      "feel": "straight",
+      "times": 4,
+      "beat": "kh . h .  sh . h .  kh . kh .  sh . h ."
+    },
+    {
+      "name": "Chorus",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kr . kr .  sr . r .  kr . kr .  sr . r .  kr . kr .  sr . r .  kr . kr .  sr . sr s"
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Written by the lead as unseen holdout cases after the parser was built; expectations verified by hand."
+}

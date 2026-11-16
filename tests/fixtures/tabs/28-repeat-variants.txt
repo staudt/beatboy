@@ -1,0 +1,21 @@
+Verse x4
+HH|x-x-x-x-x-x-x-x-|
+SD|----o-------o---|
+BD|o-------o-------|
+
+Chorus
+RD|x-x-x-x-x-x-x-x-|
+SD|----o-------o---|
+BD|o-------o-o-----|
+(x2)
+
+Bridge
+HH|x---x---x---x---|
+SD|--------o-------|
+BD|o-------------o-|
+repeat 3 times
+
+Outro
+HH|:xxxxxxxxxxxxxxxx:|
+SD|:----o-------o---:|
+BD|:o-----o-o-------:|

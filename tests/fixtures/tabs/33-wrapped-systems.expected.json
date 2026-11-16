@@ -1,0 +1,28 @@
+{
+  "description": "A 3-bar system hard-wrapped mid-bar after 12 chars of bar 2; the second block repeats the labels.",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Part 2",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh . h .  sh s sh s"
+    }
+  ],
+  "warningsContain": [
+    "wrapped"
+  ],
+  "notes": "Blocks rejoined row by row: 12-char partial + 4-char remainder = 16."
+}

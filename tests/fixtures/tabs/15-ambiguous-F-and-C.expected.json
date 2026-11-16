@@ -1,0 +1,28 @@
+{
+  "description": "Both an F and an FT line and no legend: F is the hi-hat foot (rule 1.2); C is the crash.",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kc . h .  shd . h .  kh . h .  shd . hf ."
+    },
+    {
+      "name": "Part 2",
+      "feel": "straight",
+      "times": 1,
+      "beat": "k . h .  shd . h .  kh . h .  shd . h ."
+    }
+  ],
+  "warningsContain": [
+    "ambiguous"
+  ],
+  "notes": "DECISION: doc 1.2 says F = floor tom unless the system also has an FT line; here FT exists so F = hat foot (pedal, d). C = crash. Both get a warning."
+}

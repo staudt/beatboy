@@ -6,6 +6,7 @@ import { PATTERN_LIMITS } from '../../domain/types';
 import { IconCopy, IconDownload, IconGear, IconLoop, IconMinus, IconPlay, IconPlus, IconStop, IconTrash } from '../common/icons';
 import { Sheet } from '../common/Sheet';
 import { agoLabel } from '../../storage/exportImport';
+import { openTabImport } from '../state/tabImport';
 import { exportCurrentSong, exportEverything, lastExportAt, startImport } from '../state/backup';
 import { PatternPicker } from '../common/PatternPicker';
 import { isDesktop } from '../media';
@@ -78,6 +79,7 @@ function SongHeader() {
           onSelect={selectSong}
           onRename={renameSong}
           onNew={newSong}
+          extraAction={{ label: 'Import drum tab…', onClick: openTabImport, testId: 'import-tab-link' }}
           subtitleOf={subtitleOf}
           label="Song"
           nameTestId="song-name"
@@ -239,6 +241,17 @@ function Backup() {
         </button>
         <button type="button" class="btn" onClick={() => input.current?.click()}>
           Import…
+        </button>
+        <button
+          type="button"
+          class="btn btn-ghost"
+          data-testid="settings-import-tab"
+          onClick={() => {
+            settingsOpen.value = false;
+            openTabImport();
+          }}
+        >
+          Import drum tab…
         </button>
         <input
           ref={input}

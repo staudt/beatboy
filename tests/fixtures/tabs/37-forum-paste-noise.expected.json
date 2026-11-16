@@ -1,0 +1,28 @@
+{
+  "description": "BBCode [code] wrapper, > quote prefix, leading line numbers, trailing inline comment, prose around.",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Part 2",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh . kh .  sh . h ."
+    }
+  ],
+  "warningsContain": [
+    "comment"
+  ],
+  "notes": "The trailing comment 'open on the and of 4' is ignored (no open hat is added)."
+}

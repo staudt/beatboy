@@ -163,6 +163,18 @@ in the panel; the row itself is never an input.
 - **Save as groove** (the panel's name field + button; the Beat Editor uses a small sheet) clears `ownerSongId` (category "My beats"); sections keep referencing it.
   **Open in Beat Editor** selects the pattern even while a song plays (`link.openInEditor`).
 
+## Drum-tab importer
+
+`src/import/tab/` is a pure TypeScript pipeline (no DOM, never throws) behind `parseDrumTab(text) -> TabImport` (`reject`, `confidence`, `song {name, bpm}`, `sections {name, feel, times, beat}`, `warnings`). Strategy: `docs/tab-formats.md` section 7; corpus: `tests/fixtures/tabs` (40 fixtures, `tests/unit/tabImport.test.ts`).
+
+- `normalise.ts`: entities, NFKC, BOM/zero-width/NBSP, Unicode dashes and bars, tabs, BBCode wrappers, `>` quotes, line-number column.
+- `classify.ts` + `rows.ts` + `legend.ts`: per-line classification (row, count, bracket/ending/repeat line, header, legend, metadata, prose); rows are split into bar cells (beat groups joined, `||` stronger than `|`, `(o)` ghosts collapsed, repeat signs, trailing comments cut, fret-number rows flagged as guitar).
+- `instruments.ts`: label to instrument (legend wins; `F` ambiguity rule) and per-family hit-character mapping (accent, ghost, open/closed hat, flams simplified).
+- `systems.ts`: label inference, bar alignment by bar index (pad/truncate), per-bar grid from the character count (8/16/32/12/24, odd lengths kept), hits into sparse steps. `index.ts` also joins hard-wrapped systems.
+- `repeats.ts`, `sections.ts`: `|: :|` and endings, `xN`, "same as", headers, shortest period (up to 4 bars) = one section x times, headerless runs = "Part N", unique names.
+- `beat.ts`: bars to a Pattern and `formatBeatText`, so beats are canonical. `confidence.ts`: warnings with penalties. `toSong.ts`: tab to Song + song-local beats (identical beats shared, kinds from names).
+- UI: `ui/common/TabImportSheet.tsx` (live preview, 300 ms debounce), `ui/state/tabImport.ts` (create, select, toast); entry points in the Drummer song picker and the settings Backup section.
+
 ## Sound
 
 - One kit = one MP3 **sprite** plus `kit.json` (start/duration/gain per sound), ~250 KB.

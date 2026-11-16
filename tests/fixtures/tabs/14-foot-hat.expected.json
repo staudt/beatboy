@@ -1,0 +1,28 @@
+{
+  "description": "HH plus Hf (foot = hatPedal); a legend says F is a floor tom in the fill system.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Groove",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  shd . h .  kh . h .  shd . h ."
+    },
+    {
+      "name": "Fill",
+      "feel": "straight",
+      "times": 1,
+      "beat": "ks . s .  s . s .  kf . f .  f . f ."
+    }
+  ],
+  "warningsContain": [
+    "legend"
+  ],
+  "notes": "Legend resolves F as floor tom (f); Hf is hat pedal (d). Header names give section names."
+}

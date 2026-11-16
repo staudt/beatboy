@@ -1,0 +1,41 @@
+{
+  "description": "Two unrelated songs pasted together: different label sets, resolutions (16 vs 12) and tempos.",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Road Trip",
+    "bpm": 110
+  },
+  "sections": [
+    {
+      "name": "Verse",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Chorus",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kc . r .  sr . r .  kr . kr .  sr . r ."
+    },
+    {
+      "name": "Verse 2",
+      "feel": "triplet",
+      "times": 2,
+      "beat": "kh . h  sh . h  kh . h  sh . h"
+    },
+    {
+      "name": "Bridge",
+      "feel": "triplet",
+      "times": 1,
+      "beat": "kh h h  sh h h  kh h h  sh sh sh"
+    }
+  ],
+  "warningsContain": [
+    "second tab",
+    "tempo"
+  ],
+  "notes": "DECISION: one paste = one import = one song. The first title and tempo win; the second tab's sections are appended in order. A repeated section name gets a numeric suffix (Verse 2). Warn that a second tab was found and its tempo ignored."
+}

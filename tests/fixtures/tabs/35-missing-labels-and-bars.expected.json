@@ -1,0 +1,29 @@
+{
+  "description": "Second system has no labels (inferred HH/SD/BD from system 1 order); trailing/leading bars missing; an extra Wb row is dropped.",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Part 2",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh h h h  sh h h h  kh h kh h  sh h h h"
+    }
+  ],
+  "warningsContain": [
+    "label",
+    "unknown instrument"
+  ],
+  "notes": "Unlabelled rows inferred by position from the previous system; woodblock has no Beatboy sound and is dropped."
+}

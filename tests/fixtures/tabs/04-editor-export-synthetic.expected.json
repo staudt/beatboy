@@ -1,0 +1,26 @@
+{
+  "description": "Software-export style: long padded labels (Crash, Hi-Hat, Snare, Bass Drum), 4 bars in one system.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Steady Eight",
+    "bpm": 120
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kc . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Part 2",
+      "feel": "straight",
+      "times": 3,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Bar 1 has the opening crash, bars 2-4 are identical. Headerless: runs of identical bars become separate sections."
+}

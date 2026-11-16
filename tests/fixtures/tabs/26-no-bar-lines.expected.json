@@ -1,0 +1,22 @@
+{
+  "description": "Rows of 48 chars with no | at all (3 bars of 16).",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 3,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    }
+  ],
+  "warningsContain": [
+    "no bar lines"
+  ],
+  "notes": "48 chars cannot be a single 32nd bar; split into 3 bars of 16."
+}

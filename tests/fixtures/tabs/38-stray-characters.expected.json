@@ -1,0 +1,22 @@
+{
+  "description": "Stray characters: ? and ~ as rests, . as rest, * on the snare as accent.",
+  "reject": false,
+  "minConfidence": 0.5,
+  "maxConfidence": 0.9,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . h .  Sh . h ."
+    }
+  ],
+  "warningsContain": [
+    "stray"
+  ],
+  "notes": "Judgement: * on the snare row = accent (doc table: accent/crash marker); ? and ~ are punctuation = rest."
+}

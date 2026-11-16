@@ -1,0 +1,20 @@
+{
+  "description": "Each row writes its own label letter as the hit (H on H, S on S, K on K).",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Judgement: an uppercase letter equal to the row label is a normal hit, not an accent (doc 2.1)."
+}

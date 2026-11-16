@@ -1,0 +1,26 @@
+{
+  "description": "Fill system with only SD T1 T2 FT BD rows (no hats); rows omitted per system.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Groove",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Fill",
+      "feel": "straight",
+      "times": 1,
+      "beat": "ks . . .  s . . .  t t t t  m m f f"
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Per system row sets differ; sixteenth toms t,t,t,t,m,m,f,f."
+}

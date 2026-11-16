@@ -1,0 +1,26 @@
+{
+  "description": "Mixed label case and width (hh, S, Bd, CC:) inside one system; CC uses a colon and no leading bar.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 1,
+      "beat": "khc . h .  sh . h .  kh . h .  sh . h ."
+    },
+    {
+      "name": "Part 2",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kh . h .  sh . h .  kh . h .  sh . h ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Crash only in bar 1, so the two bars are different sections. Grid starts after label punctuation."
+}

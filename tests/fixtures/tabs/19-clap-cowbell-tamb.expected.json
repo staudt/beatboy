@@ -1,0 +1,20 @@
+{
+  "description": "Cowbell, tambourine, clap and kick rows.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 2,
+      "beat": "kz . zw .  klz . zw .  kz . zw .  klz . zw ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "Cb=w, Ta=z, Cl=l. Header 'Disco bar' is not a recognised section keyword so section stays Part 1; song name stays default."
+}

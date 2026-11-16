@@ -1,0 +1,15 @@
+{
+  "description": "Ordinary 6-string guitar tab with fret numbers: not a drum tab, must be rejected.",
+  "reject": true,
+  "minConfidence": 0.0,
+  "maxConfidence": 0.49,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [],
+  "warningsContain": [
+    "not a drum tab"
+  ],
+  "notes": "Labels e B G D A E with digit bodies. No sections, empty result."
+}

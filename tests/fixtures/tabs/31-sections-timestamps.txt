@@ -1,0 +1,37 @@
+q=96
+
+[Intro]
+HH|x---x---x---x---|
+BD|o-------o-------|
+
+Verse 1 (0:23)
+HH|x-x-x-x-x-x-x-x-|
+SD|----o-------o---|
+BD|o-------o-o-----|
+  walking down the long road home
+HH|x-x-x-x-x-x-x-x-|
+SD|----o-------o---|
+BD|o-------o-o-----|
+
+Pre-Chorus
+HH|x-x-x-x-x-x-x-x-|
+SD|----o-------o-o-|
+BD|o-------o-------|
+
+Chorus x2
+CC|x---------------|
+HH|--x-x-x-x-x-x-x-|
+SD|----o-------o---|
+BD|o-------o-o-----|
+
+Solo
+SD|xxxx------------|
+T1|----xxxx--------|
+T2|--------xxxx----|
+FT|------------xxxx|
+BD|o-------o-------|
+
+Outro
+CC|x---------------|
+SD|x---------------|
+BD|x---------------|

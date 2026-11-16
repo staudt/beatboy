@@ -1,0 +1,26 @@
+{
+  "description": "8-line TablEdit layout CC RC HH T1 T2 SD T3 BD; bar 2 is a tom fill T1->T2->T3. Empty HH row.",
+  "reject": false,
+  "minConfidence": 0.9,
+  "maxConfidence": 1.0,
+  "song": {
+    "name": "Imported tab",
+    "bpm": null
+  },
+  "sections": [
+    {
+      "name": "Part 1",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kc . r .  sr . r .  kr . r .  sr . r ."
+    },
+    {
+      "name": "Part 2",
+      "feel": "straight",
+      "times": 1,
+      "beat": "kr . r .  sr . r .  kt . t .  m . f ."
+    }
+  ],
+  "warningsContain": [],
+  "notes": "T1=high(t) T2=mid(m) T3=floor(f); RC = ride, CC = crash. The all-rest HH row yields nothing."
+}

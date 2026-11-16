@@ -1,0 +1,13 @@
+Hf = hi-hat foot
+F  = floor tom
+
+Groove
+HH|x-x-x-x-x-x-x-x-|x-x-x-x-x-x-x-x-|
+Hf|----x-------x---|----x-------x---|
+SD|----o-------o---|----o-------o---|
+BD|o-------o-------|o-------o-------|
+
+Fill
+SD|x-x-x-x---------|
+ F|--------x-x-x-x-|
+BD|o-------o-------|
